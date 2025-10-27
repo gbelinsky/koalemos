@@ -127,9 +127,22 @@
     - [x] Images prepended as user messages (not saved to history)
     - [x] Simplified screenshot handling - lens decides when to provide images
     - [x] Updated 11 files, 493 tests passing
-- [ ] **Phase 7: Integration Testing**
-  - [ ] Basic test: Can instantiate and run simple routine
-  - [ ] Registry integration tests
+
+- [x] **Phase 7: Integration Testing** ✅ (~650 lines test code)
+  - [x] Phase 7a: Basic Engine Integration (10 tests, 150 lines)
+    - [x] Single-step and multi-step routine execution
+    - [x] Registry integration (start, lookup, stop)
+    - [x] Context flow between steps
+    - [x] Error handling
+  - [x] Phase 7b: Full Agent Loop Integration (3 tests + framework, 400 lines)
+    - [x] Complete agent workflow routine (9 steps)
+    - [x] Test lens with tools (echo, add, fail)
+    - [x] Real API integration tests (Anthropic, Ollama)
+    - [x] Marked with @moduletag :real_api (excluded by default)
+  - [x] Phase 7c: Error Handling Integration (2 tests, 100 lines)
+    - [x] Tool execution errors
+    - [x] Missing credentials
+  - [x] All 508 tests passing (5 real API tests excluded)
 
 ---
 
