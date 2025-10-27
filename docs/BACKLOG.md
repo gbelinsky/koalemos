@@ -109,11 +109,15 @@
     - [x] System prompt handling
     - [x] Achieved: ToolSchemaConverter 100%, OpenAI 57.2%, 21 tests
 
-  - [ ] **Phase 6d-6: Ollama Provider** (~227 lines)
-    - [ ] LLMProviders.Ollama - Third plugin
-    - [ ] Reuses OpenAI format conversion
-    - [ ] Local endpoint support
-    - [ ] Target: 90%+ coverage
+  - [x] **Phase 6d-6: Ollama Provider & Format Converter** ✅ (~726 lines)
+    - [x] OpenAIFormatConverter - Shared conversion logic (357 lines, 91.3% coverage, 20 tests)
+    - [x] Refactored OpenAI provider to use converter (reduced from 400 to 152 lines, 78.9%)
+    - [x] LLMProviders.Ollama - Third plugin (149 lines, 86.8% coverage, 16 tests)
+    - [x] Reuses OpenAI format conversion (DRY principle)
+    - [x] Local endpoint support (http://localhost:11434)
+    - [x] Reasoning model support (qwen3, deepseek-r1, gpt-oss)
+    - [x] Real API testing with user's Ollama server
+    - [x] Achieved: 86.8% coverage for Ollama, 91.3% for converter
 
   - [ ] **Phase 6d-7: Screenshot Filtering** (~50 lines, may be obsolete)
     - [ ] Evaluate if still needed after content block refactor

@@ -152,16 +152,18 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
   end
 
   defp get_credentials("ollama", _context) do
-    # Ollama doesn't need API keys, just base URL
+    # Ollama doesn't need API keys, just base URL and model
     case Koalemos.DemoCredentialStore.get_provider_config("ollama") do
       {:ok, config} when is_map(config) ->
         Logger.info("LLMRequest: Using Ollama from DemoCredentialStore")
         base_url = Map.get(config, "base_url", "http://localhost:11434")
+        model = Map.get(config, "model", "llama2")
 
         {:ok, %{
           provider: :ollama,
           api_key: nil,
-          base_url: base_url
+          base_url: base_url,
+          model: model
         }}
 
       {:error, reason} ->
@@ -170,7 +172,8 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
         {:ok, %{
           provider: :ollama,
           api_key: nil,
-          base_url: "http://localhost:11434"
+          base_url: "http://localhost:11434",
+          model: "llama2"
         }}
     end
   end

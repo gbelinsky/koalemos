@@ -38,6 +38,7 @@ defmodule Koalemos.LLMProviders.OpenAI do
   @behaviour Koalemos.LLMProvider
   alias Koalemos.LLMProvider.Utils
   alias Koalemos.ToolSchemaConverter
+  alias Koalemos.OpenAIFormatConverter
 
   require Logger
 
@@ -57,10 +58,10 @@ defmodule Koalemos.LLMProviders.OpenAI do
       |> Utils.keep_only_last_screenshot()
 
     # Convert to OpenAI format
-    openai_messages = convert_messages_to_openai(filtered_messages)
+    openai_messages = OpenAIFormatConverter.convert_messages_to_openai(filtered_messages)
 
     # Build and prepend system message
-    system_message = build_system_message(lens_contexts)
+    system_message = OpenAIFormatConverter.build_system_message(lens_contexts)
     all_messages = [system_message | openai_messages]
 
     # Get model parameters from config with defaults
@@ -91,160 +92,6 @@ defmodule Koalemos.LLMProviders.OpenAI do
     make_request(credentials, json_body, routine_id)
   end
 
-  # Convert Anthropic format messages to OpenAI format
-  defp convert_messages_to_openai(messages) do
-    messages
-    |> Enum.flat_map(fn msg ->
-      content = msg[:content] || msg["content"]
-      role = msg[:role] || msg["role"]
-
-      cond do
-        # Handle messages with content array
-        is_list(content) ->
-          convert_content_array_message(role, content)
-
-        # Handle simple text messages
-        is_binary(content) ->
-          [%{"role" => role, "content" => content}]
-
-        # Empty or nil content
-        true ->
-          []
-      end
-    end)
-  end
-
-  # Convert a message with content array to OpenAI format
-  defp convert_content_array_message(role, content_array) do
-    # Separate tool results from other content
-    {tool_results, other_content} =
-      Enum.split_with(content_array, fn block ->
-        type = block["type"] || block[:type]
-        type == "tool_result"
-      end)
-
-    # Separate tool uses from text content
-    {tool_uses, text_content} =
-      Enum.split_with(other_content, fn block ->
-        type = block["type"] || block[:type]
-        type == "tool_use"
-      end)
-
-    result_messages = []
-
-    # If there's text content or tool uses, create a message
-    result_messages =
-      if length(text_content) > 0 || length(tool_uses) > 0 do
-        # Extract text
-        text =
-          text_content
-          |> Enum.map(fn block ->
-            block["text"] || block[:text] || ""
-          end)
-          |> Enum.join("\n")
-
-        # If assistant with tool uses, add tool_calls
-        if length(tool_uses) > 0 && role == "assistant" do
-          tool_calls =
-            Enum.map(tool_uses, fn tool_use ->
-              %{
-                "id" => tool_use["id"] || tool_use[:id],
-                "type" => "function",
-                "function" => %{
-                  "name" => tool_use["name"] || tool_use[:name],
-                  "arguments" => Jason.encode!(tool_use["input"] || tool_use[:input] || %{})
-                }
-              }
-            end)
-
-          [
-            %{
-              "role" => "assistant",
-              "content" => text,
-              "tool_calls" => tool_calls
-            }
-            | result_messages
-          ]
-        else
-          # Regular message with text
-          if text != "" do
-            [%{"role" => role, "content" => text} | result_messages]
-          else
-            result_messages
-          end
-        end
-      else
-        result_messages
-      end
-
-    # Convert each tool_result to a separate tool message
-    tool_messages =
-      Enum.map(tool_results, fn tool_result ->
-        tool_use_id = tool_result["tool_use_id"] || tool_result[:tool_use_id]
-        result_content = tool_result["content"] || tool_result[:content]
-
-        # Handle different content formats
-        content_text =
-          cond do
-            is_binary(result_content) ->
-              result_content
-
-            is_list(result_content) ->
-              # Extract text from content blocks
-              result_content
-              |> Enum.map(fn block ->
-                cond do
-                  is_map(block) -> block["text"] || block[:text] || ""
-                  is_binary(block) -> block
-                  true -> ""
-                end
-              end)
-              |> Enum.join("\n")
-
-            true ->
-              ""
-          end
-
-        %{
-          "role" => "tool",
-          "tool_call_id" => tool_use_id,
-          "content" => content_text
-        }
-      end)
-
-    # Return all messages (text/tool_calls message + tool result messages)
-    result_messages ++ tool_messages
-  end
-
-  # Build system message from lens contexts
-  defp build_system_message(lens_contexts) do
-    base_text = "You are Claude Code, Anthropic's official CLI for Claude."
-
-    lens_text =
-      lens_contexts
-      |> Enum.map(fn context ->
-        case context do
-          %{"type" => "text", "text" => text} -> text
-          %{type: "text", text: text} -> text
-          _ -> ""
-        end
-      end)
-      |> Enum.reject(&(&1 == ""))
-      |> Enum.join("\n\n")
-
-    combined_text =
-      if lens_text != "" do
-        "#{base_text}\n\n#{lens_text}"
-      else
-        base_text
-      end
-
-    %{
-      "role" => "system",
-      "content" => combined_text
-    }
-  end
-
   # Make HTTP request to OpenAI API
   defp make_request(credentials, json_body, _routine_id) do
     headers = build_headers(credentials)
@@ -260,7 +107,7 @@ defmodule Koalemos.LLMProviders.OpenAI do
           Logger.info("[OpenAI] Request succeeded")
 
           # Convert OpenAI response to Anthropic format
-          case convert_response_to_anthropic(response.body) do
+          case OpenAIFormatConverter.convert_response_to_anthropic(response.body) do
             {:ok, anthropic_response} ->
               {:ok, [llm_response: anthropic_response]}
 
@@ -292,101 +139,6 @@ defmodule Koalemos.LLMProviders.OpenAI do
       error in ArgumentError ->
         Logger.error("[OpenAI] Invalid request: #{error.message}")
         {:error, "Invalid request: #{error.message}"}
-    end
-  end
-
-  # Convert OpenAI response to Anthropic format
-  defp convert_response_to_anthropic(openai_response) do
-    try do
-      choice = openai_response["choices"] |> List.first()
-
-      if !choice do
-        {:error, "No choices in response"}
-      else
-        message = choice["message"]
-
-        # Build content array
-        content = []
-
-        # Add text content if present
-        content =
-          if message["content"] && message["content"] != "" do
-            [%{"type" => "text", "text" => message["content"]} | content]
-          else
-            content
-          end
-
-        # Add tool calls if present
-        content =
-          if message["tool_calls"] do
-            tool_content =
-              Enum.map(message["tool_calls"], fn tool_call ->
-                tool_name = get_in(tool_call, ["function", "name"]) || ""
-
-                # Parse arguments
-                input =
-                  case tool_call["function"]["arguments"] do
-                    args when is_binary(args) ->
-                      case Jason.decode(args) do
-                        {:ok, parsed} -> parsed
-                        {:error, _} -> %{}
-                      end
-
-                    args when is_map(args) ->
-                      args
-
-                    _ ->
-                      %{}
-                  end
-
-                %{
-                  "type" => "tool_use",
-                  "id" => tool_call["id"] || "tool_#{System.unique_integer([:positive])}",
-                  "name" => tool_name,
-                  "input" => input
-                }
-              end)
-
-            content ++ tool_content
-          else
-            content
-          end
-
-        # Reverse to get correct order (text first, then tools)
-        content = Enum.reverse(content)
-
-        # Determine stop reason
-        stop_reason =
-          case choice["finish_reason"] do
-            "stop" -> "end_turn"
-            "tool_calls" -> "tool_use"
-            "length" -> "max_tokens"
-            _ -> "end_turn"
-          end
-
-        # Build Anthropic format response
-        anthropic_response = %{
-          "content" => content,
-          "stop_reason" => stop_reason,
-          "role" => "assistant"
-        }
-
-        # Add usage if present
-        anthropic_response =
-          if openai_response["usage"] do
-            Map.put(anthropic_response, "usage", %{
-              "input_tokens" => openai_response["usage"]["prompt_tokens"] || 0,
-              "output_tokens" => openai_response["usage"]["completion_tokens"] || 0
-            })
-          else
-            anthropic_response
-          end
-
-        {:ok, anthropic_response}
-      end
-    rescue
-      error ->
-        {:error, "Failed to parse response: #{inspect(error)}"}
     end
   end
 

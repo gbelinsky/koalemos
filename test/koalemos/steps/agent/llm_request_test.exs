@@ -75,9 +75,9 @@ defmodule Koalemos.Steps.Agent.LLMRequestTest do
         }
       }
 
-      # Will fail with stub error but shows routing works
+      # Will fail with connection error (Ollama not running) or API error (model not found)
       assert {:error, error_msg} = LLMRequest.execute(%{}, state)
-      assert error_msg == "Ollama provider not yet implemented (Phase 6d-6)"
+      assert error_msg =~ "Connection refused" || error_msg =~ "API error"
     end
 
     test "returns error for unknown provider" do
@@ -159,9 +159,10 @@ defmodule Koalemos.Steps.Agent.LLMRequestTest do
         }
       }
 
-      # Will fail with stub but credentials defaulted
+      # Will fail with connection error (Ollama not running) or API error (model not found)
+      # But credentials defaulted successfully
       assert {:error, error_msg} = LLMRequest.execute(%{}, state)
-      assert error_msg == "Ollama provider not yet implemented (Phase 6d-6)"
+      assert error_msg =~ "Connection refused" || error_msg =~ "API error"
     end
   end
 
