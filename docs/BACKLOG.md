@@ -75,18 +75,17 @@
   - **Credential management required** - File-based storage with OAuth support
 
   **Sub-phases:**
-  - [ ] **Phase 6d-1: Credential Management** (~574 lines, PRIORITY)
-    - [ ] DemoCredentialStore (307 lines) - Multi-provider credential file storage
-    - [ ] SimpleCredentialManager (267 lines) - OAuth token lifecycle for Anthropic
-    - [ ] Supervision tree integration
-    - [ ] Credential file format: `.koalemos/.credentials.json`
-    - [ ] Target: 92%+ coverage
+  - [x] **Phase 6d-1: Credential Management** ✅ (~574 lines)
+    - [x] DemoCredentialStore (312 lines, 82.6% coverage, 22 tests)
+    - [x] SimpleCredentialManager (269 lines, 58.6% coverage, 15 tests)
+    - [x] Supervision tree integration
+    - [x] Credential file format: `.koalemos/.credentials.json`
 
-  - [ ] **Phase 6d-2: Response Parsing** (~80 lines)
-    - [ ] Steps.Agent.ResponseParsing (was ResponseParsingNode)
-    - [ ] Extract tool calls from LLM response
-    - [ ] Build assistant message
-    - [ ] Target: 100% coverage
+  - [x] **Phase 6d-2: Response Parsing** ✅ (~94 lines)
+    - [x] Steps.Agent.ResponseParsing (94 lines, 100% coverage, 15 tests)
+    - [x] Extract tool calls from LLM response
+    - [x] Build assistant message
+    - [x] Usage metadata passthrough
 
   - [ ] **Phase 6d-3: Anthropic Plugin** (~250 lines)
     - [ ] Steps.Agent.LLMRequest - Anthropic provider

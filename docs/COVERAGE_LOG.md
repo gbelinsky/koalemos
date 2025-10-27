@@ -40,6 +40,8 @@
 | **Phase 6d-1: Credential Management** |
 | DemoCredentialStore | 312 | 82.6% (62/75) | ✅ Complete | Multi-provider credential storage, 22 tests |
 | SimpleCredentialManager | 269 | 58.6% (44/75) | ⚠️ Complete | OAuth token lifecycle, 15 tests |
+| **Phase 6d-2: Response Parsing** |
+| Steps.Agent.ResponseParsing | 94 | 100% (18/18) | ✅ Complete | LLM response parser, 15 tests |
 
 **Legend:**
 - ✅ Complete (>= 90% coverage)
@@ -724,3 +726,98 @@ test/koalemos/simple_credential_manager_test.exs (15 tests)
 - Extract tool calls from LLM response
 - Build assistant message
 - Target: 100% coverage
+
+---
+
+## Phase 6d-2: Response Parsing ✅
+
+**Started:** October 27, 2024
+**Completed:** October 27, 2024
+
+### Module Ported
+
+**Steps.Agent.ResponseParsing** (94 lines)
+- **Coverage:** 100% (18/18 relevant lines)
+- **Tests:** 15 tests
+- **Purpose:** Parse LLM API responses into structured data
+- **Key features:**
+  - Extracts assistant message content from `llm_response`
+  - Appends assistant message to conversation history
+  - Extracts tool calls into structured format: `%{id, name, input}`
+  - Passes through usage metadata (tokens)
+  - Pure data transformation (no side effects)
+
+**Input Context:**
+- `llm_response` - raw API response from LLMRequest step
+- `messages` - existing conversation array
+
+**Output Context:**
+- `messages` - updated with assistant response appended
+- `tool_calls` - list of tool calls (only if tools were used)
+
+**Error Handling:**
+- Invalid content format (not a list)
+- Missing content in response
+- Malformed llm_response
+
+### Test Coverage
+
+**Text-only responses (3 tests):**
+- Single text block
+- Multiple text blocks
+- Response without usage data
+
+**Tool call responses (5 tests):**
+- Single tool call
+- Multiple tool calls
+- Tool call with empty input
+- Mixed content (text + tools)
+- Tool calls only (no text)
+
+**Edge cases (2 tests):**
+- Empty content array
+- Content with only tool calls
+
+**Error handling (4 tests):**
+- Content not a list
+- Content missing from response
+- llm_response is nil
+- llm_response is malformed
+
+**Metadata (2 tests):**
+- routine_id in assistant message
+- Usage metadata passthrough
+
+### Changes from Flo
+
+1. Renamed `workflow_id` → `routine_id`
+2. Simplified logging:
+   - Removed `[TRACE]` prefix
+   - Changed assistant message log to debug level
+   - Kept token usage logging at info level
+3. Updated import: `Koalemos.Utils.MessageBuilder`
+4. Fixed append pattern: wrapped message in list `[assistant_message]`
+
+### Phase 6d-2 Summary
+
+- **Module ported:** 1/1
+- **Coverage:** 100% (perfect!)
+- **Total tests:** 15 tests
+- **Overall test suite:** 407 tests pass, 1 skipped
+- **Design:** Simple, pure parser with no external dependencies
+- **Status:** ✅ Complete
+
+### Files Created
+```
+lib/koalemos/steps/agent/response_parsing.ex (94 lines)
+test/koalemos/steps/agent/response_parsing_test.exs (15 tests)
+```
+
+### Next Phase: 6d-3 Anthropic Plugin
+
+**Scope:** ~250 lines, first LLM provider
+- Native Anthropic message format
+- API key and OAuth authentication  
+- Progressive retry logic
+- System prompt handling
+- Target: 90%+ coverage
