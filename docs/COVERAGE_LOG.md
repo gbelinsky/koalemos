@@ -19,7 +19,7 @@
 | Engine.StepUtils | 197 | 100% (11/11) | ✅ Complete | Level 2 module |
 | Engine.Observer | 312 | 80.5% (62/77) | ✅ Complete | Level 2 module, GenServer |
 | **Phase 3: Level 3** |
-| Engine.EventRecorder | - | - | ⏳ Pending | Level 3 module |
+| Engine.EventRecorder | 137 | 100% (10/10) | ✅ Complete | Level 3 module, thin wrapper |
 | **Phase 4: Level 4** |
 | Engine.Orchestrator | - | - | ⏳ Pending | Level 4 module, critical |
 | **Phase 5: Level 5** |
@@ -148,6 +148,49 @@
 - **Modules ported:** 2/2
 - **Average coverage:** 90.3%
 - **Total tests:** 49 tests
+- **Compilation warnings:** 0
+- **Status:** ✅ Complete
+
+---
+
+## Phase 3: Level 3 Module (EventRecorder) ✅
+
+**Started:** October 27, 2024
+**Completed:** October 27, 2024
+
+### Engine.EventRecorder ✅
+**Target:** 95%+ coverage
+**Actual:** 100% coverage (10/10 relevant lines)
+
+**Test cases covered:**
+- ✅ Extracts routine_id from state (basic extraction, prefers routine_id, fallback to workflow_id)
+- ✅ Extracts routine_module from state.module (atom serialization)
+- ✅ Extracts step_id from state (current_step, current_node fallback, prefers current_step)
+- ✅ Preserves workflow_id for backward compatibility
+- ✅ Sets event_type from parameter
+- ✅ Merges additional fields into event (custom fields, override base fields)
+- ✅ Handles empty/omitted additional fields
+- ✅ Handles extra state fields gracefully
+- ✅ record_routine_started (all parameters, step_id :start, context_diff, metadata)
+- ✅ Integration with Observer (PubSub broadcasting, multiple events)
+- ✅ 21 tests total
+
+**Files:**
+- `lib/koalemos/engine/event_recorder.ex` (137 lines)
+- `test/koalemos/engine/event_recorder_test.exs` (21 tests)
+
+**Compilation:** ✅ Zero warnings
+
+**Notes:**
+- Simple wrapper module that extracts fields from engine state
+- Pattern documented as non-idiomatic in BACKLOG.md (see Deferred Improvements)
+- Preserves workflow_id for backward compatibility with legacy code
+- All tests handle Observer's serialization behavior (atom/string key variations)
+
+### Phase 3 Summary
+- **Modules ported:** 1/1
+- **Average coverage:** 100%
+- **Total tests:** 21 tests
 - **Compilation warnings:** 0
 - **Status:** ✅ Complete
 
