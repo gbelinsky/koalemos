@@ -119,8 +119,14 @@
     - [x] Real API testing with user's Ollama server
     - [x] Achieved: 86.8% coverage for Ollama, 91.3% for converter
 
-  - [ ] **Phase 6d-7: Screenshot Filtering** (~50 lines, may be obsolete)
-    - [ ] Evaluate if still needed after content block refactor
+  - [x] **Phase 6d-7: Lens-Based Image Context Handling** ✅ (~161 insertions, 246 deletions)
+    - [x] Updated LensRendering to separate text and image contexts
+    - [x] Updated all providers (Anthropic, OpenAI, Ollama) to prepend image contexts
+    - [x] Removed keep_only_last_screenshot logic from Utils (51 lines deleted)
+    - [x] Lenses can now return images in provide_context()
+    - [x] Images prepended as user messages (not saved to history)
+    - [x] Simplified screenshot handling - lens decides when to provide images
+    - [x] Updated 11 files, 493 tests passing
 - [ ] **Phase 7: Integration Testing**
   - [ ] Basic test: Can instantiate and run simple routine
   - [ ] Registry integration tests

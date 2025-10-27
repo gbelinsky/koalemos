@@ -63,7 +63,12 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
               {:ok, credentials} ->
                 # Prepare inputs for provider
                 tool_descriptions = Map.get(state.context, :tool_descriptions, [])
-                lens_contexts = Map.get(state.context, :lens_contexts, [])
+
+                # Get lens contexts (both text and images)
+                lens_contexts = %{
+                  text: Map.get(state.context, :lens_text_contexts, []),
+                  images: Map.get(state.context, :lens_image_contexts, [])
+                }
 
                 # Build config map from context
                 config = %{

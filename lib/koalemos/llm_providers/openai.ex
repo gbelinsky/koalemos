@@ -50,19 +50,29 @@ defmodule Koalemos.LLMProviders.OpenAI do
   def call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
     Logger.info("[OpenAI] Making request for routine #{routine_id}")
 
+    # Extract text and image contexts
+    text_contexts = Map.get(lens_contexts, :text, [])
+    image_contexts = Map.get(lens_contexts, :images, [])
+
     # Prepare messages using common utilities
     filtered_messages =
       messages
       |> Enum.map(&Utils.strip_metadata/1)
       |> Utils.filter_empty_assistant_messages()
-      |> Utils.keep_only_last_screenshot()
 
     # Convert to OpenAI format
     openai_messages = OpenAIFormatConverter.convert_messages_to_openai(filtered_messages)
 
-    # Build and prepend system message
-    system_message = OpenAIFormatConverter.build_system_message(lens_contexts)
-    all_messages = [system_message | openai_messages]
+    # Build system message from text contexts
+    system_message = OpenAIFormatConverter.build_system_message(text_contexts)
+
+    # Convert image contexts to user messages
+    image_messages = Enum.map(image_contexts, fn img ->
+      %{"role" => "user", "content" => [img]}
+    end)
+
+    # Combine: system, images, actual messages
+    all_messages = [system_message] ++ image_messages ++ openai_messages
 
     # Get model parameters from config with defaults
     model = config[:model] || @default_model

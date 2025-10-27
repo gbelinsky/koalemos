@@ -19,7 +19,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
       config = %{model: "gpt-4"}
 
       # Will fail with connection error but messages are converted
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, error_msg} = result
       assert error_msg =~ "Connection refused" or error_msg =~ "Request failed"
@@ -40,7 +40,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -62,27 +62,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
-
-      assert {:error, _} = result
-    end
-
-    test "keeps only last screenshot" do
-      messages = [
-        %{role: "user", content: [%{type: "image", source: %{data: "old"}}]},
-        %{role: "user", content: [%{type: "text", text: "What do you see?"}]},
-        %{role: "user", content: [%{type: "image", source: %{data: "new"}}]}
-      ]
-
-      credentials = %{
-        provider: :openai,
-        api_key: "test-key",
-        base_url: "http://localhost:8080"
-      }
-
-      config = %{model: "gpt-4"}
-
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -99,7 +79,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
       }
 
       config = %{model: "gpt-4"}
-      lens_contexts = []
+      lens_contexts = %{text: [], images: []}
 
       result = OpenAI.call(messages, credentials, [], lens_contexts, config, "routine-123")
 
@@ -117,10 +97,13 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      lens_contexts = [
-        %{type: "text", text: "Context from lens 1"},
-        %{type: "text", text: "Context from lens 2"}
-      ]
+      lens_contexts = %{
+        text: [
+          %{type: "text", text: "Context from lens 1"},
+          %{type: "text", text: "Context from lens 2"}
+        ],
+        images: []
+      }
 
       result = OpenAI.call(messages, credentials, [], lens_contexts, config, "routine-123")
 
@@ -152,7 +135,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
         }
       ]
 
-      result = OpenAI.call(messages, credentials, tool_descriptions, [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, tool_descriptions, %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -168,7 +151,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -187,7 +170,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
       config = %{}
 
       # Should use default model "gpt-4"
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -203,7 +186,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4-turbo", max_tokens: 8192, temperature: 0.7}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -221,7 +204,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, error_msg} = result
       assert is_binary(error_msg)
@@ -239,7 +222,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, error_msg} = result
       assert is_binary(error_msg)
@@ -272,7 +255,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -299,7 +282,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -327,7 +310,7 @@ defmodule Koalemos.LLMProviders.OpenAITest do
 
       config = %{model: "gpt-4"}
 
-      result = OpenAI.call(messages, credentials, [], [], config, "routine-123")
+      result = OpenAI.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end

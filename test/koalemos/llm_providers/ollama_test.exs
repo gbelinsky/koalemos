@@ -30,7 +30,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         }
 
         tool_descriptions = []
-        lens_contexts = []
+        lens_contexts = %{text: [], images: []}
         config = %{model: "qwen3", max_tokens: 50, temperature: 0.1}
         routine_id = "test-routine"
 
@@ -71,7 +71,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
       }
 
       tool_descriptions = []
-      lens_contexts = []
+      lens_contexts = %{text: [], images: []}
       config = %{model: "qwen3", max_tokens: 50, temperature: 0.1}
       routine_id = "test-routine"
 
@@ -101,7 +101,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 20, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
         assert Keyword.has_key?(result, :llm_response)
       end
     end
@@ -122,9 +122,12 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         }
 
         # Lens contexts should be converted to system message
-        lens_contexts = [
-          %{type: "text", text: "You are a helpful assistant who says things briefly."}
-        ]
+        lens_contexts = %{
+          text: [
+            %{type: "text", text: "You are a helpful assistant who says things briefly."}
+          ],
+          images: []
+        }
 
         config = %{max_tokens: 20, temperature: 0.1}
 
@@ -157,7 +160,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         }
 
         # Should use qwen3 from config, not llama2 from credentials
-        assert {:ok, result} = Ollama.call(messages, credentials, [], [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
         assert Keyword.has_key?(result, :llm_response)
       end
     end
@@ -183,7 +186,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
           # No model in config
         }
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
         assert Keyword.has_key?(result, :llm_response)
       end
     end
@@ -206,7 +209,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         # Very low max_tokens should truncate response
         config = %{max_tokens: 10, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
         response = result[:llm_response]
 
         # Response should be present but short due to max_tokens
@@ -234,7 +237,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         # Test with different temperature (just verify it doesn't error)
         config = %{max_tokens: 30, temperature: 0.9}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
         assert Keyword.has_key?(result, :llm_response)
       end
     end
@@ -274,7 +277,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         config = %{max_tokens: 100, temperature: 0.1}
 
         # Request should succeed (whether model uses tools or not)
-        assert {:ok, result} = Ollama.call(messages, credentials, tool_descriptions, [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, tool_descriptions, %{text: [], images: []}, config, "test")
         assert Keyword.has_key?(result, :llm_response)
       end
     end
@@ -310,7 +313,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 200, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, tool_descriptions, [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, tool_descriptions, %{text: [], images: []}, config, "test")
         response = result[:llm_response]
 
         # Response may or may not contain tool calls depending on model capability
@@ -349,7 +352,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
       config = %{max_tokens: 50, temperature: 0.1}
 
-      case Ollama.call(messages, credentials, [], [], config, "test") do
+      case Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test") do
         {:error, error_msg} ->
           # Either connection error (Ollama not running) or API error (invalid model)
           assert error_msg =~ "API error" || error_msg =~ "Connection refused"
@@ -373,7 +376,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
       config = %{max_tokens: 50, temperature: 0.1}
 
-      assert {:error, error_msg} = Ollama.call(messages, credentials, [], [], config, "test")
+      assert {:error, error_msg} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
       assert error_msg =~ "Invalid request" || error_msg =~ "Connection"
     end
   end
@@ -396,7 +399,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 20, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
         response = result[:llm_response]
 
         # Verify Anthropic format structure
@@ -445,7 +448,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 20, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], [], config, "test")
+        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
         response = result[:llm_response]
 
         # Usage may or may not be present depending on Ollama version
@@ -478,7 +481,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 30, temperature: 0.1}
 
-        case Ollama.call(messages, credentials, [], [], config, "test") do
+        case Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test") do
           {:ok, result} ->
             assert Keyword.has_key?(result, :llm_response)
 
@@ -506,7 +509,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 30, temperature: 0.1}
 
-        case Ollama.call(messages, credentials, [], [], config, "test") do
+        case Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test") do
           {:ok, result} ->
             assert Keyword.has_key?(result, :llm_response)
 

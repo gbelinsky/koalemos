@@ -1431,11 +1431,176 @@ test/koalemos/llm_providers/ollama_test.exs (520 lines, 16 tests)
 test/koalemos/steps/agent/llm_request_test.exs (updated 2 tests for real API)
 ```
 
+---
+
+## Phase 6d-7: Lens-Based Image Context Handling ✅
+
+**Date:** October 27, 2024
+**Goal:** Enable lenses to provide images as context, simplify screenshot handling
+**Result:** ✅ Complete - 493 tests passing, cleaner architecture
+
+### What We Built
+
+1. **LensRendering Context Separation** (lib/koalemos/steps/agent/lens_rendering.ex)
+   - Added `separate_context_blocks/1` function
+   - Separates lens contexts into text and image blocks
+   - Returns `{lens_text_contexts, lens_image_contexts}` instead of single list
+   - Text blocks → system message
+   - Image blocks → prepended user messages (not saved to history)
+
+2. **LLMRequest Structured Context** (lib/koalemos/steps/agent/llm_request.ex)
+   - Changed from passing flat list to structured map:
+     ```elixir
+     lens_contexts = %{
+       text: Map.get(state.context, :lens_text_contexts, []),
+       images: Map.get(state.context, :lens_image_contexts, [])
+     }
+     ```
+
+3. **Provider Updates** (All 3 providers updated)
+   - **Anthropic** (lib/koalemos/llm_providers/anthropic.ex)
+     - Extract text and image contexts from map
+     - Build system content from text only
+     - Convert images to user messages
+     - Prepend images before actual messages
+
+   - **OpenAI** (lib/koalemos/llm_providers/openai.ex)
+     - Same structured extraction
+     - Images as user messages in OpenAI format
+
+   - **Ollama** (lib/koalemos/llm_providers/ollama.ex)
+     - Identical to OpenAI (uses same format)
+
+4. **Removed Obsolete Logic** (lib/koalemos/llm_provider/utils.ex)
+   - Deleted `keep_only_last_screenshot/1` function (51 lines)
+   - Removed complex screenshot filtering logic
+   - Simplified architecture - lenses now responsible for current state
+
+### Test Results
+
+All tests passing: 493 tests, 0 failures, 1 skipped
+
+**Files Modified:**
+```
+lib/koalemos/llm_provider/utils.ex                | 62 lines removed
+lib/koalemos/llm_providers/anthropic.ex           | 18 lines changed
+lib/koalemos/llm_providers/ollama.ex              | 18 lines changed
+lib/koalemos/llm_providers/openai.ex              | 18 lines changed
+lib/koalemos/steps/agent/lens_rendering.ex        | 42 lines added
+lib/koalemos/steps/agent/llm_request.ex           |  7 lines changed
+test/koalemos/llm_provider/utils_test.exs         | 67 lines removed (obsolete tests)
+test/koalemos/llm_providers/anthropic_test.exs    | 55 lines updated
+test/koalemos/llm_providers/ollama_test.exs       | 39 lines updated
+test/koalemos/llm_providers/openai_test.exs       | 57 lines updated
+test/koalemos/steps/agent/lens_rendering_test.exs | 24 lines updated
+
+Total: 161 insertions, 246 deletions
+```
+
+**Test Updates:**
+- LensRendering: 10 tests updated for dual-output format
+- Provider tests: All updated to use structured `%{text: [], images: []}` format
+- Removed obsolete screenshot filtering tests (4 tests from utils_test, 2 from provider tests)
+
+### Key Decisions
+
+**1. Lens-Provided Images**
+- **Problem:** Screenshots needed in lens context, but can't go in system message (OpenAI/Ollama limitation)
+- **Previous approach:** Filter screenshots from messages using `keep_only_last_screenshot()`
+- **New approach:** Lenses provide images in `provide_context()` each turn
+- **Benefits:**
+  - Stateless - no screenshot storage needed
+  - Always fresh - lens provides current state
+  - Clear separation - text vs images
+  - Lens controls what to show when
+
+**2. Prepended User Messages**
+- **Implementation:** Images converted to user messages and prepended
+- **Not saved to history:** Images only sent to LLM, not persisted
+- **Why:** Keeps message history clean, lens decides freshness each turn
+
+**3. Removed Screenshot Filtering**
+- **Deleted:** `keep_only_last_screenshot/1` (51 lines)
+- **Reason:** No longer needed with lens-based approach
+- **Impact:** Simpler Utils module, clearer responsibility boundaries
+
+### Architecture Improvements
+
+**Before:**
+- Screenshots in messages array
+- Complex filtering logic in Utils
+- Lens-agnostic screenshot handling
+- Images mixed with text in lens_contexts
+
+**After:**
+- Lenses provide images when needed
+- No filtering logic needed
+- Lens-aware (lens decides when to provide)
+- Clear separation: text vs images
+- Simpler, more maintainable code
+
+### Integration Points
+
+**LensRendering → LLMRequest:**
+```elixir
+# LensRendering output
+{:ok, [add_or_update: %{
+  lens_text_contexts: [...],  # Text blocks for system message
+  lens_image_contexts: [...]  # Images to prepend
+}]}
+
+# LLMRequest consumption
+lens_contexts = %{
+  text: state.context[:lens_text_contexts],
+  images: state.context[:lens_image_contexts]
+}
+```
+
+**Provider Implementation Pattern:**
+```elixir
+# Extract contexts
+text_contexts = Map.get(lens_contexts, :text, [])
+image_contexts = Map.get(lens_contexts, :images, [])
+
+# Build system message from text
+system_content = build_system_content(text_contexts)
+
+# Convert images to user messages
+image_messages = Enum.map(image_contexts, fn img ->
+  %{role: "user", content: [img]}
+end)
+
+# Prepend images
+all_messages = image_messages ++ filtered_messages
+```
+
+### Coverage Impact
+
+No coverage change (all changes in integration code):
+- LensRendering: 93.7% (unchanged)
+- LLMRequest: 71.4% (unchanged)
+- Anthropic: 70.5% (unchanged)
+- OpenAI: 78.9% (unchanged)
+- Ollama: 86.8% (unchanged)
+- Utils: Improved (removed untested complex logic)
+
 ### Phase 6d Complete!
 
-All LLM providers implemented:
-- ✅ Anthropic (Phase 6d-4)
-- ✅ OpenAI (Phase 6d-5, refactored in 6d-6)
-- ✅ Ollama (Phase 6d-6)
+All Phase 6d sub-phases implemented:
+- ✅ Phase 6d-1: Credential Management
+- ✅ Phase 6d-2: Response Parsing
+- ✅ Phase 6d-3: Plugin Architecture
+- ✅ Phase 6d-4: Anthropic Provider
+- ✅ Phase 6d-5: OpenAI Provider
+- ✅ Phase 6d-6: Ollama Provider & Format Converter
+- ✅ Phase 6d-7: Lens-Based Image Context Handling
+
+**Total Phase 6d Stats:**
+- 6 credential/auth modules (~843 lines)
+- 3 LLM provider plugins (~499 lines)
+- 2 format converters (~442 lines)
+- 5 supporting steps (~658 lines)
+- Total: ~2,442 lines of production code
+- 493 tests passing
 
 Next: Phase 7 - Integration Testing

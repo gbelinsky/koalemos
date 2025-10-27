@@ -3,7 +3,7 @@ defmodule Koalemos.Steps.Agent.LensRendering do
   LensRendering step queries active lenses for their current context blocks.
 
   Takes lens configs and calls provide_context/1 on each lens module to get
-  the context blocks that should be included in the LLM system prompt.
+  the context blocks. Lenses can return both text and image blocks.
 
   ## Input Context
   - lenses: List of lens configs in format:
@@ -11,7 +11,17 @@ defmodule Koalemos.Steps.Agent.LensRendering do
     - ["ModuleName", config] (list with config)
 
   ## Output Context
-  - lens_contexts: List of context blocks for LLM system prompt
+  - lens_text_contexts: List of text blocks for LLM system prompt
+  - lens_image_contexts: List of image blocks to prepend as user messages
+
+  ## Lens Context Format
+
+  Lenses return a list of blocks:
+  - Text: `%{type: "text", text: "..."}`
+  - Image: `%{type: "image", source: %{type: "base64", media_type: "image/png", data: "..."}}`
+
+  Text blocks are combined into the system message, while image blocks are
+  prepended to the messages array as user messages (not saved to history).
   """
 
   def execute(_config, state) do
@@ -21,7 +31,13 @@ defmodule Koalemos.Steps.Agent.LensRendering do
       # Collect all context blocks from all lens modules
       all_context_blocks = collect_context_from_lens_configs(lenses_config, state)
 
-      {:ok, [add_or_update: %{lens_contexts: all_context_blocks}]}
+      # Separate text and image blocks
+      {text_blocks, image_blocks} = separate_context_blocks(all_context_blocks)
+
+      {:ok, [add_or_update: %{
+        lens_text_contexts: text_blocks,
+        lens_image_contexts: image_blocks
+      }]}
     rescue
       error ->
         {:error, "Lens context rendering failed: #{Exception.message(error)}"}
@@ -63,5 +79,25 @@ defmodule Koalemos.Steps.Agent.LensRendering do
       error in ArgumentError ->
         reraise error, __STACKTRACE__
     end
+  end
+
+  # Separate context blocks into text and image blocks
+  defp separate_context_blocks(blocks) do
+    Enum.split_with(blocks, fn block ->
+      cond do
+        # Plain string - treat as text
+        is_binary(block) ->
+          true
+
+        # Map with type field
+        is_map(block) ->
+          type = block["type"] || block[:type]
+          type == "text"
+
+        # Anything else - treat as text for safety
+        true ->
+          true
+      end
+    end)
   end
 end

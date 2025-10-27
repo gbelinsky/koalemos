@@ -50,15 +50,25 @@ defmodule Koalemos.LLMProviders.Anthropic do
   def call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
     Logger.info("[Anthropic] Making request for routine #{routine_id}")
 
-    # Build system content with lens contexts
-    system_content = build_system_content(lens_contexts)
+    # Extract text and image contexts
+    text_contexts = Map.get(lens_contexts, :text, [])
+    image_contexts = Map.get(lens_contexts, :images, [])
+
+    # Build system content with text contexts only
+    system_content = build_system_content(text_contexts)
 
     # Prepare messages using common utilities
     filtered_messages =
       messages
       |> Enum.map(&Utils.strip_metadata/1)
       |> Utils.filter_empty_assistant_messages()
-      |> Utils.keep_only_last_screenshot()
+
+    # Prepend image contexts as user messages (not saved to history)
+    image_messages = Enum.map(image_contexts, fn img ->
+      %{role: "user", content: [img]}
+    end)
+
+    all_messages = image_messages ++ filtered_messages
 
     # Get model parameters from config with defaults
     model = config[:model] || @default_model
@@ -73,7 +83,7 @@ defmodule Koalemos.LLMProviders.Anthropic do
       max_tokens: max_tokens,
       temperature: temperature,
       system: system_content,
-      messages: filtered_messages
+      messages: all_messages
     }
 
     # Add tools if any are available
