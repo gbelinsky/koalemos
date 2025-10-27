@@ -1,7 +1,16 @@
 defmodule Koalemos.EngineManagerTest do
   use ExUnit.Case, async: false
-  alias Koalemos.{EngineManager, Engine}
+  alias Koalemos.EngineManager
   alias Koalemos.Engine.Observer
+
+  # Helper to drain all messages from mailbox
+  defp flush_messages do
+    receive do
+      _ -> flush_messages()
+    after
+      0 -> :ok
+    end
+  end
 
   defmodule TestStep do
     def execute(_config, _state) do
@@ -35,50 +44,50 @@ defmodule Koalemos.EngineManagerTest do
 
     Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine_events")
 
-    # Clear messages
-    receive do
-      _ -> :ok
-    after
-      0 -> :ok
-    end
+    # Drain ALL pending messages
+    :timer.sleep(10)
+    flush_messages()
 
-    :ok
+    # Generate unique routine ID for this test
+    routine_id = "manager-test-#{:erlang.unique_integer([:positive])}"
+
+    # Cleanup function
+    on_exit(fn ->
+      case Registry.lookup(Koalemos.RoutineRegistry, routine_id) do
+        [{pid, _}] -> GenServer.stop(pid, :normal, 100)
+        [] -> :ok
+      end
+    end)
+
+    {:ok, routine_id: routine_id}
   end
 
   describe "start_routine/3" do
-    test "starts a routine successfully" do
-      {:ok, pid} = EngineManager.start_routine("test-1", TestRoutine, %{user: "alice"})
+    test "starts a routine successfully", %{routine_id: routine_id} do
+      {:ok, pid} = EngineManager.start_routine(routine_id, TestRoutine, %{user: "alice"})
 
       assert Process.alive?(pid)
-
-      GenServer.stop(pid)
     end
 
-    test "accepts initial context" do
-      {:ok, pid} = EngineManager.start_routine("test-2", TestRoutine, %{key: "value"})
+    test "accepts initial context", %{routine_id: routine_id} do
+      {:ok, pid} = EngineManager.start_routine(routine_id, TestRoutine, %{key: "value"})
 
       state = :sys.get_state(pid)
       assert state.context.key == "value"
-
-      GenServer.stop(pid)
     end
 
-    test "defaults context to empty map" do
-      {:ok, pid} = EngineManager.start_routine("test-3", TestRoutine)
+    test "defaults context to empty map", %{routine_id: routine_id} do
+      {:ok, pid} = EngineManager.start_routine(routine_id, TestRoutine)
 
       state = :sys.get_state(pid)
       assert is_map(state.context)
-
-      GenServer.stop(pid)
     end
 
-    test "returns existing pid if already started" do
-      {:ok, pid1} = EngineManager.start_routine("test-4", TestRoutine)
-      {:ok, pid2} = EngineManager.start_routine("test-4", TestRoutine)
+    test "returns existing pid if already started", %{routine_id: routine_id} do
+      {:ok, pid1} = EngineManager.start_routine(routine_id, TestRoutine)
+      {:ok, pid2} = EngineManager.start_routine(routine_id, TestRoutine)
 
       assert pid1 == pid2
-
-      GenServer.stop(pid1)
     end
   end
 
@@ -111,21 +120,31 @@ defmodule Koalemos.EngineManagerTest do
       assert EngineManager.list_routines() == []
     end
 
-    test "returns list of running routines" do
-      {:ok, _} = EngineManager.start_routine("test-6", TestRoutine)
-      {:ok, _} = EngineManager.start_routine("test-7", TestRoutine)
+    test "returns list of running routines", %{routine_id: routine_id} do
+      routine_id2 = "manager-test-#{:erlang.unique_integer([:positive])}"
+
+      {:ok, _} = EngineManager.start_routine(routine_id, TestRoutine)
+      {:ok, _} = EngineManager.start_routine(routine_id2, TestRoutine)
+
+      on_exit(fn ->
+        case Registry.lookup(Koalemos.RoutineRegistry, routine_id2) do
+          [{pid, _}] -> GenServer.stop(pid, :normal, 100)
+          [] -> :ok
+        end
+      end)
 
       routines = EngineManager.list_routines()
 
       assert length(routines) >= 2
-      assert Enum.any?(routines, fn r -> r.id == "test-6" end)
-      assert Enum.any?(routines, fn r -> r.id == "test-7" end)
+      assert Enum.any?(routines, fn r -> r.id == routine_id end)
+      assert Enum.any?(routines, fn r -> r.id == routine_id2 end)
     end
 
-    test "returns RoutineInfo structs with correct fields" do
-      {:ok, _} = EngineManager.start_routine("test-8", TestRoutine, %{user: "bob"})
+    test "returns RoutineInfo structs with correct fields", %{routine_id: routine_id} do
+      {:ok, _} = EngineManager.start_routine(routine_id, TestRoutine, %{user: "bob"})
 
-      [info | _] = EngineManager.list_routines()
+      routines = EngineManager.list_routines()
+      info = Enum.find(routines, fn r -> r.id == routine_id end)
 
       assert %EngineManager.RoutineInfo{} = info
       assert is_binary(info.id)
@@ -138,12 +157,12 @@ defmodule Koalemos.EngineManagerTest do
   end
 
   describe "get_routine/1" do
-    test "returns routine info for existing routine" do
-      {:ok, _} = EngineManager.start_routine("test-9", TestRoutine, %{user: "charlie"})
+    test "returns routine info for existing routine", %{routine_id: routine_id} do
+      {:ok, _} = EngineManager.start_routine(routine_id, TestRoutine, %{user: "charlie"})
 
-      {:ok, info} = EngineManager.get_routine("test-9")
+      {:ok, info} = EngineManager.get_routine(routine_id)
 
-      assert info.id == "test-9"
+      assert info.id == routine_id
       assert info.module == TestRoutine
       assert info.context.user == "charlie"
     end
@@ -152,10 +171,10 @@ defmodule Koalemos.EngineManagerTest do
       assert {:error, :not_found} = EngineManager.get_routine("nonexistent")
     end
 
-    test "includes status and current step" do
-      {:ok, _} = EngineManager.start_routine("test-10", TestRoutine)
+    test "includes status and current step", %{routine_id: routine_id} do
+      {:ok, _} = EngineManager.start_routine(routine_id, TestRoutine)
 
-      {:ok, info} = EngineManager.get_routine("test-10")
+      {:ok, info} = EngineManager.get_routine(routine_id)
 
       assert info.status in [:running, :completed]
       assert is_atom(info.current_step)
@@ -163,13 +182,13 @@ defmodule Koalemos.EngineManagerTest do
   end
 
   describe "get_routine_state/1" do
-    test "returns raw state for existing routine" do
-      {:ok, _} = EngineManager.start_routine("test-11", TestRoutine)
+    test "returns raw state for existing routine", %{routine_id: routine_id} do
+      {:ok, _} = EngineManager.start_routine(routine_id, TestRoutine)
 
-      {:ok, state} = EngineManager.get_routine_state("test-11")
+      {:ok, state} = EngineManager.get_routine_state(routine_id)
 
       assert is_map(state)
-      assert state.routine_id == "test-11"
+      assert state.routine_id == routine_id
       assert state.module == TestRoutine
       assert is_map(state.context)
     end

@@ -3,6 +3,15 @@ defmodule Koalemos.EngineTest do
   alias Koalemos.Engine
   alias Koalemos.Engine.Observer
 
+  # Helper to drain all messages from mailbox
+  defp flush_messages do
+    receive do
+      _ -> flush_messages()
+    after
+      0 -> :ok
+    end
+  end
+
   # Test helper modules
 
   defmodule SimpleStep do
@@ -98,34 +107,37 @@ defmodule Koalemos.EngineTest do
     # Subscribe to PubSub
     Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine_events")
 
-    # Clear any pending messages
-    receive do
-      _ -> :ok
-    after
-      0 -> :ok
-    end
+    # Drain ALL pending messages
+    :timer.sleep(10)
+    flush_messages()
 
-    :ok
+    # Generate unique routine ID for this test
+    routine_id = "engine-test-#{:erlang.unique_integer([:positive])}"
+
+    # Cleanup function
+    on_exit(fn ->
+      case Registry.lookup(Koalemos.RoutineRegistry, routine_id) do
+        [{pid, _}] -> GenServer.stop(pid, :normal, 100)
+        [] -> :ok
+      end
+    end)
+
+    {:ok, routine_id: routine_id}
   end
 
   describe "start/1 and start_link/1" do
-    test "starts engine process successfully" do
+    test "starts engine process successfully", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-1",
+        routine_id: routine_id,
         initial_context: %{},
         auto_execute: false
       )
 
       assert Process.alive?(pid)
-
-      # Clean up
-      GenServer.stop(pid)
     end
 
-    test "registers with RoutineRegistry" do
-      routine_id = "test-2"
-
+    test "registers with RoutineRegistry", %{routine_id: routine_id} do
       {:ok, _pid} = Engine.start(
         routine_module: SimpleRoutine,
         routine_id: routine_id,
@@ -135,15 +147,12 @@ defmodule Koalemos.EngineTest do
       # Should be able to look up by routine_id
       [{pid, _}] = Registry.lookup(Koalemos.RoutineRegistry, routine_id)
       assert Process.alive?(pid)
-
-      # Clean up
-      GenServer.stop(pid)
     end
 
-    test "accepts initial context" do
+    test "accepts initial context", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-3",
+        routine_id: routine_id,
         initial_context: %{user: "alice", value: 42},
         auto_execute: false
       )
@@ -151,90 +160,80 @@ defmodule Koalemos.EngineTest do
       state = :sys.get_state(pid)
       assert state.context.user == "alice"
       assert state.context.value == 42
-
-      GenServer.stop(pid)
     end
 
-    test "defaults to auto_execute true" do
+    test "defaults to auto_execute true", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-4"
+        routine_id: routine_id
       )
 
       state = :sys.get_state(pid)
       assert state.auto_execute == true
-
-      GenServer.stop(pid)
     end
 
-    test "can set auto_execute false" do
+    test "can set auto_execute false", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-5",
+        routine_id: routine_id,
         auto_execute: false
       )
 
       state = :sys.get_state(pid)
       assert state.auto_execute == false
-
-      GenServer.stop(pid)
     end
 
-    test "calls routine setup if defined" do
+    test "calls routine setup if defined", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SetupRoutine,
-        routine_id: "test-6",
+        routine_id: routine_id,
         auto_execute: false
       )
 
       state = :sys.get_state(pid)
       assert state.context.setup_ran == true
-
-      GenServer.stop(pid)
     end
 
-    test "uses custom start step if defined" do
+    test "uses custom start step if defined", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: CustomStartRoutine,
-        routine_id: "test-7",
+        routine_id: routine_id,
         auto_execute: false
       )
 
       state = :sys.get_state(pid)
       assert state.current_step == :custom_start
-
-      GenServer.stop(pid)
     end
 
-    test "records routine_started event" do
+    test "records routine_started event", %{routine_id: routine_id} do
       Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-8",
+        routine_id: routine_id,
         initial_context: %{user: "bob"},
         auto_execute: false
       )
 
       assert_receive {:routine_event, event}, 1000
       assert event.event_type == "routine_started"
-      assert event.routine_id == "test-8"
+      assert event.routine_id == routine_id
     end
 
-    test "returns error if routine_module missing routine_definition/0" do
+    test "returns error if routine_module missing routine_definition/0", %{routine_id: routine_id} do
       defmodule InvalidRoutine do
         # Missing routine_definition/0
       end
 
       assert {:error, {:error, _reason}} = Engine.start(
         routine_module: InvalidRoutine,
-        routine_id: "test-9"
+        routine_id: routine_id
       )
     end
 
-    test "sends :continue_routine when auto_execute true" do
+    test "sends :continue_routine when auto_execute true", %{routine_id: routine_id} do
       # Start with auto_execute false first, then manually verify continue works
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-10",
+        routine_id: routine_id,
         auto_execute: false
       )
 
@@ -247,16 +246,14 @@ defmodule Koalemos.EngineTest do
       state = :sys.get_state(pid)
       # Should have executed at least start step
       assert state.context[:step_executed] == true
-
-      GenServer.stop(pid)
     end
   end
 
   describe "handle_info :continue_routine" do
-    test "delegates to Orchestrator.execute_current_step" do
+    test "delegates to Orchestrator.execute_current_step", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-11",
+        routine_id: routine_id,
         auto_execute: false
       )
 
@@ -271,16 +268,14 @@ defmodule Koalemos.EngineTest do
       state = :sys.get_state(pid)
       assert state.context.step_executed == true
       assert state.current_step == :step2  # Transitioned
-
-      GenServer.stop(pid)
     end
   end
 
   describe "handle_info {:event, :step_complete, ...}" do
-    test "delegates success to Orchestrator.handle_step_success" do
+    test "delegates success to Orchestrator.handle_step_success", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-12",
+        routine_id: routine_id,
         auto_execute: false
       )
 
@@ -291,11 +286,9 @@ defmodule Koalemos.EngineTest do
       # State should be updated with diff after step completes
       state = :sys.get_state(pid)
       assert state.context.step_executed == true
-
-      GenServer.stop(pid)
     end
 
-    test "delegates error to Orchestrator.handle_step_error" do
+    test "delegates error to Orchestrator.handle_step_error", %{routine_id: routine_id} do
       defmodule FailingStep do
         def execute(_config, _state) do
           {:error, "test error"}
@@ -315,7 +308,7 @@ defmodule Koalemos.EngineTest do
 
       {:ok, pid} = Engine.start(
         routine_module: FailingRoutine,
-        routine_id: "test-13",
+        routine_id: routine_id,
         auto_execute: false
       )
 
@@ -325,16 +318,14 @@ defmodule Koalemos.EngineTest do
       # Check state after error
       state = :sys.get_state(pid)
       assert state.routine_status == :error
-
-      GenServer.stop(pid)
     end
   end
 
   describe "handle_cast {:external_event, ...}" do
-    test "delegates to EventHandler.handle_external_event" do
+    test "delegates to EventHandler.handle_external_event", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-14",
+        routine_id: routine_id,
         auto_execute: false
       )
 
@@ -345,13 +336,9 @@ defmodule Koalemos.EngineTest do
       # Event should be buffered
       state = :sys.get_state(pid)
       assert Koalemos.Engine.EventBuffer.size(state.event_buffer) == 1
-
-      GenServer.stop(pid)
     end
 
-    test "can use send_external_event/3 helper" do
-      routine_id = "test-15"
-
+    test "can use send_external_event/3 helper", %{routine_id: routine_id} do
       {:ok, _pid} = Engine.start(
         routine_module: SimpleRoutine,
         routine_id: routine_id,
@@ -371,10 +358,10 @@ defmodule Koalemos.EngineTest do
   end
 
   describe "handle_call {:get_event, ...}" do
-    test "delegates to EventHandler.handle_get_event" do
+    test "delegates to EventHandler.handle_get_event", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-16",
+        routine_id: routine_id,
         auto_execute: false
       )
 
@@ -391,13 +378,9 @@ defmodule Koalemos.EngineTest do
 
       # Should have received the event
       assert result.context[:user_message] == "hello"
-
-      GenServer.stop(pid)
     end
 
-    test "can use handle_event/4 helper" do
-      routine_id = "test-17"
-
+    test "can use handle_event/4 helper", %{routine_id: routine_id} do
       {:ok, _pid} = Engine.start(
         routine_module: SimpleRoutine,
         routine_id: routine_id,
@@ -421,10 +404,10 @@ defmodule Koalemos.EngineTest do
   end
 
   describe "handle_info {:external_event, :timeout, ...}" do
-    test "delegates to EventHandler.handle_timeout_event" do
+    test "delegates to EventHandler.handle_timeout_event", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-18",
+        routine_id: routine_id,
         auto_execute: false
       )
 
@@ -445,10 +428,10 @@ defmodule Koalemos.EngineTest do
   end
 
   describe "integration: full routine execution" do
-    test "executes simple routine from start to completion" do
+    test "executes simple routine from start to completion", %{routine_id: routine_id} do
       {:ok, pid} = Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-19",
+        routine_id: routine_id,
         auto_execute: true  # Auto-execute
       )
 
@@ -468,16 +451,14 @@ defmodule Koalemos.EngineTest do
       assert state.context.step_executed == true
       # May or may not have completed depending on timing
       # Just verify execution progressed
-
-      GenServer.stop(pid)
     catch
       :completed -> :ok
     end
 
-    test "records all lifecycle events" do
+    test "records all lifecycle events", %{routine_id: routine_id} do
       Engine.start(
         routine_module: SimpleRoutine,
-        routine_id: "test-20",
+        routine_id: routine_id,
         auto_execute: true
       )
 

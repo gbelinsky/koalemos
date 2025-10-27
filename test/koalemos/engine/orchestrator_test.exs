@@ -2,6 +2,15 @@ defmodule Koalemos.Engine.OrchestratorTest do
   use ExUnit.Case, async: false
   alias Koalemos.Engine.{Orchestrator, Observer}
 
+  # Helper to drain all messages from mailbox
+  defp flush_messages do
+    receive do
+      _ -> flush_messages()
+    after
+      0 -> :ok
+    end
+  end
+
   # Test helper modules
 
   defmodule TestStep do
@@ -57,16 +66,16 @@ defmodule Koalemos.Engine.OrchestratorTest do
     # Subscribe to PubSub
     Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine_events")
 
-    # Clear any pending messages
-    receive do
-      _ -> :ok
-    after
-      0 -> :ok
-    end
+    # Drain ALL pending messages
+    :timer.sleep(10)
+    flush_messages()
+
+    # Generate unique routine ID for this test
+    routine_id = "orchestrator-test-#{:erlang.unique_integer([:positive])}"
 
     # Create a test state
     state = %{
-      routine_id: "test-routine",
+      routine_id: routine_id,
       module: TestRoutine,
       routine_definitions: %{TestRoutine => TestRoutine.routine_definition()},
       current_routine_module: TestRoutine,
@@ -122,7 +131,7 @@ defmodule Koalemos.Engine.OrchestratorTest do
 
       assert_receive {:routine_event, event}, 1000
       assert event.event_type == "step_started"
-      assert event.routine_id == "test-routine"
+      assert event.routine_id == state.routine_id
     end
 
     test "executes step and sends completion message", %{state: state} do

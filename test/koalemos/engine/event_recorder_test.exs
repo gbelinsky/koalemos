@@ -2,6 +2,15 @@ defmodule Koalemos.Engine.EventRecorderTest do
   use ExUnit.Case, async: false
   alias Koalemos.Engine.{EventRecorder, Observer}
 
+  # Helper to drain all messages from mailbox
+  defp flush_messages do
+    receive do
+      _ -> flush_messages()
+    after
+      0 -> :ok
+    end
+  end
+
   setup do
     # Start Observer if not running
     case GenServer.whereis(Observer) do
@@ -12,12 +21,9 @@ defmodule Koalemos.Engine.EventRecorderTest do
     # Subscribe to PubSub to capture events that Observer broadcasts
     Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine_events")
 
-    # Clear any pending messages
-    receive do
-      _ -> :ok
-    after
-      0 -> :ok
-    end
+    # Drain ALL pending messages
+    :timer.sleep(10)
+    flush_messages()
 
     :ok
   end

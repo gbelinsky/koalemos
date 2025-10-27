@@ -2,6 +2,15 @@ defmodule Koalemos.Engine.EventHandlerTest do
   use ExUnit.Case, async: false
   alias Koalemos.Engine.{EventHandler, Observer, EventBuffer}
 
+  # Helper to drain all messages from mailbox
+  defp flush_messages do
+    receive do
+      _ -> flush_messages()
+    after
+      0 -> :ok
+    end
+  end
+
   # Test helper modules
 
   defmodule TestStep do
@@ -45,16 +54,16 @@ defmodule Koalemos.Engine.EventHandlerTest do
     # Subscribe to PubSub
     Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine_events")
 
-    # Clear any pending messages
-    receive do
-      _ -> :ok
-    after
-      0 -> :ok
-    end
+    # Drain ALL pending messages
+    :timer.sleep(10)
+    flush_messages()
+
+    # Generate unique routine ID for this test
+    routine_id = "event-handler-test-#{:erlang.unique_integer([:positive])}"
 
     # Create a test state
     state = %{
-      routine_id: "test-routine",
+      routine_id: routine_id,
       module: TestRoutine,
       routine_definitions: %{TestRoutine => TestRoutine.routine_definition()},
       current_routine_module: TestRoutine,
