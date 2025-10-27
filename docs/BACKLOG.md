@@ -29,10 +29,11 @@
 - [x] **Phase 3: Level 3 Modules** ✅
   - [x] Port Engine.EventRecorder (100% coverage, 137 lines)
   - [x] Update documentation (BACKLOG, COVERAGE_LOG)
+- [x] **Phase 4: Level 4 Modules** ✅
+  - [x] Port Engine.Orchestrator (79.2% coverage, 489 lines) - Execution heart
+  - [x] Update documentation (BACKLOG, COVERAGE_LOG)
 
 ### Todo
-- [ ] **Phase 4: Level 4 Modules**
-  - [ ] Port Engine.Orchestrator (was WorkflowOrchestrator) - Critical module
 - [ ] **Phase 5: Level 5 Modules**
   - [ ] Port Engine.EventHandler
   - [ ] Port Engine (was WorkflowEngine)
@@ -191,6 +192,55 @@ During Phase 2, we considered splitting Observer (312 lines) into three modules:
 - If message tracking logic grows, extract MessageTracker
 - Could improve testability with smaller modules
 
+### Observer Serialization
+**Status:** Ported as-is, needs revisit
+
+The current JSON serialization in Observer has known issues and has caused problems in production:
+
+**Current approach:**
+- `make_serializable/1` recursively walks data structures
+- Converts complex types (PIDs, functions, tuples, DateTime) to strings/lists
+- Atom keys may or may not be converted depending on nesting
+- Inconsistent behavior makes event data hard to work with
+
+**Problems:**
+- Inconsistent atom/string key handling causes test brittleness
+- Loss of type information (everything becomes strings/lists)
+- Hard to deserialize back into useful Elixir structures
+- Recursive approach can be slow for large data structures
+
+**Better alternatives to consider:**
+1. **Use Jason with custom encoders:**
+   ```elixir
+   defimpl Jason.Encoder, for: [PID, Reference, Port, Function] do
+     def encode(term, opts), do: Jason.Encode.string(inspect(term), opts)
+   end
+   ```
+
+2. **Structured event format with explicit type tags:**
+   ```elixir
+   %{type: :pid, value: "#PID<0.123.0>"}
+   %{type: :datetime, value: "2024-10-27T12:00:00Z"}
+   ```
+
+3. **Don't serialize complex types - log references only:**
+   ```elixir
+   # Instead of serializing the whole PID, just note that a PID was there
+   %{metadata: %{had_pid: true}}
+   ```
+
+**Why deferred:**
+- Serialization works for current use cases
+- Fixing would require updating all event consumers
+- Tests now handle the inconsistency
+- Better to establish event patterns first, then optimize serialization
+
+**Future considerations:**
+- After porting all engine components, audit what data is actually being logged
+- Consider using Erlang's `:erlang.term_to_binary/1` for faithful round-tripping
+- May want different serialization for file logs vs PubSub broadcasts
+- Telemetry events might eliminate need for custom serialization entirely
+
 ### Logging Reduction
 **Status:** Noted during port
 
@@ -199,8 +249,34 @@ The Observer has minimal logging in the Koalemos port (removed excessive TRACE l
 - Add structured logging with log levels
 - Consider using telemetry events instead of logs
 
+### Orchestrator Refactoring
+**Status:** Ported as-is in Phase 4, consider splitting later
+
+The Orchestrator (489 lines) handles the complete step execution lifecycle. The original Flo code has a TODO suggesting splitting into separate modules:
+
+**Current structure:**
+- Single module with step execution, transition logic, sub-routine management, LLM transitions
+
+**Suggested split:**
+1. **StepExecutor** - Handle step execution (execute_current_step, async execution, setup)
+2. **TransitionManager** - Handle transitions (check_transitions, handle_transitions, condition evaluation)
+3. **SubRoutineManager** - Handle sub-routine stack (enter/exit sub-routines)
+
+**Why deferred:**
+- Module is large but cohesive (all about step lifecycle)
+- Splitting would require careful coordination between modules
+- Step completion immediately triggers transitions - coupling is natural
+- Better to port working code first, understand usage patterns
+- Can refactor after Phase 5 when we see how Engine uses it
+
+**Future considerations:**
+- After porting Engine and EventHandler, evaluate if split would improve clarity
+- Sub-routine management might be cleanly separable
+- Transition logic is tightly coupled to step completion - may not be worth splitting
+- Consider if the module becomes hard to test or maintain
+
 ### EventRecorder Pattern
-**Status:** Will port as-is in Phase 3, consider refactoring later
+**Status:** Ported as-is in Phase 3, consider refactoring later
 
 EventRecorder is a thin wrapper around Observer that extracts standard fields from engine state. This pattern isn't idiomatic Elixir.
 
