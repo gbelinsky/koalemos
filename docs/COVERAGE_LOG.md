@@ -26,6 +26,13 @@
 | Engine.EventHandler | 309 | 97.5% (39/40) | ✅ Complete | Level 5 module, event handling |
 | Engine | 293 | 86.6% (26/30) | ✅ Complete | Level 5 module, main GenServer |
 | EngineManager | 289 | 83.3% (25/30) | ✅ Complete | Level 5 module, convenience API |
+| **Phase 6a: Foundation Steps** |
+| Utils.MessageBuilder | 211 | 94.1% (32/34) | ✅ Complete | Message formatting utility |
+| Steps.System.Config | 37 | 100% (1/1) | ✅ Complete | Config injection step |
+| Steps.System.Action | 48 | 100% (10/10) | ✅ Complete | Action delegation step |
+| Steps.Agent.LensRendering | 67 | 93.7% (15/16) | ✅ Complete | Lens context collection |
+| **Phase 6b: User Input** |
+| Steps.User.ChatUserInput | 174 | 78.3% (29/37) | ⚠️ Complete | User input handling, 24 tests |
 
 **Legend:**
 - ✅ Complete (>= 90% coverage)
@@ -359,6 +366,98 @@
 - **Overall test suite:** 235 tests pass, 1 skipped
 - **Compilation warnings:** 0
 - **Status:** ✅ Complete
+
+---
+
+## Phase 6a: Foundation Steps ✅
+
+**Started:** October 27, 2024
+**Completed:** October 27, 2024
+
+### Modules Ported
+
+1. **Utils.MessageBuilder** (211 lines)
+   - **Coverage:** 94.1% (32/34 relevant lines)
+   - **Tests:** 18 tests
+   - **Purpose:** Standardized message builder for Anthropic API format
+   - **Key features:**
+     - build_user_message/2 - text messages
+     - build_user_message_with_content/2 - mixed content (text + images)
+     - build_assistant_message/2 - assistant responses
+     - build_tool_result_message/3 - tool execution results
+     - validate_message/1 - message format validation
+   - **Missing coverage:** Fallback metadata generation (defensive code)
+
+2. **Steps.System.Config** (37 lines)
+   - **Coverage:** 100% (1/1 relevant line)
+   - **Tests:** 4 tests
+   - **Purpose:** Simple config injection step
+   - **Implementation:** Takes config map and injects all keys into context
+
+3. **Steps.System.Action** (48 lines)
+   - **Coverage:** 100% (10/10 relevant lines)
+   - **Tests:** 6 tests
+   - **Purpose:** Delegates to routine's handle_action/2
+   - **Features:** Error handling for undefined/invalid actions
+
+4. **Steps.Agent.LensRendering** (67 lines)
+   - **Coverage:** 93.7% (15/16 relevant lines)
+   - **Tests:** 10 tests
+   - **Purpose:** Queries lenses for context blocks
+   - **Features:**
+     - Supports string format: "ModuleName"
+     - Supports list format: ["ModuleName", config]
+     - Calls provide_context/1 on each lens module
+   - **Missing coverage:** Error handling for non-existent lens modules
+
+### Phase 6a Summary
+- **Modules ported:** 4/4
+- **Average coverage:** 96.9%
+- **Total tests:** 38 tests (18 MessageBuilder + 4 Config + 6 Action + 10 LensRendering)
+- **Overall test suite:** 288 tests pass, 1 skipped
+- **Status:** ✅ Complete
+
+---
+
+## Phase 6b: User Input ✅
+
+**Started:** October 27, 2024
+**Completed:** October 27, 2024
+
+### Modules Ported
+
+1. **Steps.User.ChatUserInput** (174 lines)
+   - **Coverage:** 78.3% (29/37 relevant lines)
+   - **Tests:** 24 tests
+   - **Purpose:** Waits for user input events and formats them into messages
+   - **Simplified from Flo:** Removed ~70 lines of wireframe-specific code
+     - No screenshot capture logic
+     - No ScreenshotCache interaction
+     - No PubSub subscribe/broadcast
+     - Clean, focused step: wait → format → append
+   - **Supported input formats:**
+     - Plain string: "Hello world"
+     - Structured: %{user_input: "Hello world"}
+     - Text + images: %{text: "...", images: [...]}
+     - Images only: %{images: [...]}
+     - Pre-formatted: %{messages: [%{role: "user", content: [...]}]}
+   - **Key features:**
+     - execute/2 - Waits for :user_input event via Engine.handle_event
+     - handle_event/3 - Formats and appends message
+     - format_user_input/2 - 6 clauses for different input types
+     - normalize_content_block/1 - Converts string keys to atom keys
+   - **Missing coverage (8 lines):**
+     - try-rescue error handling in execute/2 (4 lines) - defensive code
+     - validate_message error case (1 line) - edge case
+     - nested map normalization (3 lines) - edge case
+
+### Phase 6b Summary
+- **Modules ported:** 1/1
+- **Coverage:** 78.3%
+- **Total tests:** 24 tests
+- **Overall test suite:** 312 tests pass, 1 skipped
+- **Design decision:** Screenshot/wireframe logic deferred to Milestone 2 (separate step or lens)
+- **Status:** ✅ Complete (lower coverage due to defensive error handling)
 
 ---
 

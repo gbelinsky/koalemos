@@ -41,14 +41,20 @@
   - [x] Update documentation (BACKLOG, COVERAGE_LOG)
 
 ### Todo
-- [ ] **Phase 6: Essential Steps** (minimal set)
-  - [ ] Steps.Core.Config (was ConfigNode)
-  - [ ] Steps.Core.System (was SystemNode)
+- [x] **Phase 6a: Foundation Steps** ✅
+  - [x] Utils.MessageBuilder (211 lines, 94.1% coverage)
+  - [x] Steps.System.Config (37 lines, 100% coverage)
+  - [x] Steps.System.Action (48 lines, 100% coverage)
+  - [x] Steps.Agent.LensRendering (67 lines, 93.7% coverage)
+- [x] **Phase 6b: User Input** ✅
+  - [x] Steps.User.ChatUserInput (174 lines, 78.3% coverage, 24 tests)
+- [ ] **Phase 6c: Tool System**
+  - [ ] Steps.Agent.ToolSchema (was ToolSchemaV2Node)
+  - [ ] Steps.Agent.ToolLookup (was ToolLookupNode)
+  - [ ] Steps.Agent.ToolExecution (was ToolExecutionNode)
+- [ ] **Phase 6d: LLM Integration**
   - [ ] Steps.Agent.LLMRequest (was LLMRequestNode)
   - [ ] Steps.Agent.ResponseParsing (was ResponseParsingNode)
-  - [ ] Steps.Agent.ToolExecution (was ToolExecutionNode)
-  - [ ] Steps.User.ChatUserInput (was ChatUserInputNode)
-  - [ ] Steps.User.CombinedInput (was CombinedInputNode)
 - [ ] **Phase 7: Integration Testing**
   - [ ] Basic test: Can instantiate and run simple routine
   - [ ] Registry integration tests
@@ -62,6 +68,9 @@
 ### Todo
 - [ ] Port TemplatedSemanticAgent subroutine
 - [ ] Port WireframeEditor lens
+  - [ ] Screenshot capture integration (~30 lines, deferred from ChatUserInput)
+  - [ ] PubSub snapshot handling (~20 lines, wireframe-specific)
+- [ ] Port ScreenshotCache (~20 lines, deferred from ChatUserInput)
 - [ ] Port supporting lenses
   - [ ] Scratchpad
   - [ ] PersonaLens
