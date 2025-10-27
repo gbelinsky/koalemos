@@ -4,35 +4,48 @@
 
 ---
 
-## Milestone 1: Foundation ✅
+## Milestone 1: Foundation (In Progress)
 
 **Goal:** Project setup and core engine extraction
 
 ### Completed
 - [x] Create new Phoenix project `koalemos`
 - [x] Set up directory structure (engine/, routines/, subroutines/, steps/, lenses/)
-- [x] Create project documentation (PRD, BACKLOG, ARCHITECTURE, NAMING)
+- [x] Create project documentation (PRD, BACKLOG, ARCHITECTURE, NAMING, COVERAGE_LOG)
+- [x] Initialize git repository
+- [x] Create GitHub private repository
+- [x] Initial commit and push
+- [x] **Phase 1: Setup & Level 1 Modules** ✅
+  - [x] Setup testing infrastructure (excoveralls, coverage config)
+  - [x] Port Engine.ContextManager (100% coverage, 193 lines)
+  - [x] Port Engine.EventBuffer (100% coverage, 297 lines)
+  - [x] Update documentation (BACKLOG, COVERAGE_LOG)
 
 ### In Progress
-- [ ] Initialize git repository
-- [ ] Create GitHub private repository
-- [ ] Initial commit and push
+- [ ] **Phase 2: Level 2 Modules**
+  - [ ] Port Engine.StepUtils (was NodeUtils)
+  - [ ] Port Engine.Observer (was WorkflowObserver) - Large module, may need refactoring
 
 ### Todo
-- [ ] Port core workflow engine
-  - [ ] Extract Flo.WorkflowEngine → Koalemos.Engine
-  - [ ] Extract WorkflowOrchestrator → Engine.Orchestrator
-  - [ ] Extract WorkflowObserver → Engine.Observer
-  - [ ] Extract WorkflowRegistryAdapter → Engine.Registry
-- [ ] Port essential steps (minimal set)
-  - [ ] ConfigNode → Steps.Core.Config
-  - [ ] SystemNode → Steps.Core.System
-  - [ ] LLMRequestNode → Steps.Agent.LLMRequest
-  - [ ] ResponseParsingNode → Steps.Agent.ResponseParsing
-  - [ ] ToolExecutionNode → Steps.Agent.ToolExecution
-  - [ ] ChatUserInputNode → Steps.User.ChatUserInput
-  - [ ] CombinedInputNode → Steps.User.CombinedInput (wireframe specific)
-- [ ] Basic test: Can instantiate and run simple routine
+- [ ] **Phase 3: Level 3 Modules**
+  - [ ] Port Engine.EventRecorder
+- [ ] **Phase 4: Level 4 Modules**
+  - [ ] Port Engine.Orchestrator (was WorkflowOrchestrator) - Critical module
+- [ ] **Phase 5: Level 5 Modules**
+  - [ ] Port Engine.EventHandler
+  - [ ] Port Engine (was WorkflowEngine)
+  - [ ] Port Engine.Registry (was WorkflowRegistryAdapter)
+- [ ] **Phase 6: Essential Steps** (minimal set)
+  - [ ] Steps.Core.Config (was ConfigNode)
+  - [ ] Steps.Core.System (was SystemNode)
+  - [ ] Steps.Agent.LLMRequest (was LLMRequestNode)
+  - [ ] Steps.Agent.ResponseParsing (was ResponseParsingNode)
+  - [ ] Steps.Agent.ToolExecution (was ToolExecutionNode)
+  - [ ] Steps.User.ChatUserInput (was ChatUserInputNode)
+  - [ ] Steps.User.CombinedInput (was CombinedInputNode)
+- [ ] **Phase 7: Integration Testing**
+  - [ ] Basic test: Can instantiate and run simple routine
+  - [ ] Registry integration tests
 
 ---
 
