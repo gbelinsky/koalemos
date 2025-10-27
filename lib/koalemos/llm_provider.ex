@@ -21,7 +21,7 @@ defmodule Koalemos.LLMProvider do
   - `messages` - List of conversation messages in internal format
   - `credentials` - Map with provider credentials (from DemoCredentialStore/SimpleCredentialManager)
   - `tool_descriptions` - List of tool schemas (from ToolSchema step)
-  - `lens_contexts` - List of lens context blocks (from LensRendering step)
+  - `lens_contexts` - Map with `%{text: [...], images: [...]}` (from LensRendering step)
   - `config` - Map with runtime configuration (model, max_tokens, temperature, etc.)
   - `routine_id` - Routine ID for logging/tracking
 
@@ -62,7 +62,7 @@ defmodule Koalemos.LLMProvider do
   - `messages` - Conversation history in internal format
   - `credentials` - Provider credentials map
   - `tool_descriptions` - Available tool schemas
-  - `lens_contexts` - Lens context blocks for system prompt
+  - `lens_contexts` - Map with `%{text: [...], images: [...]}` for context
   - `config` - Runtime configuration (model, max_tokens, etc.)
   - `routine_id` - Routine ID for logging
 
@@ -75,7 +75,7 @@ defmodule Koalemos.LLMProvider do
               messages :: list(),
               credentials :: map(),
               tool_descriptions :: list(),
-              lens_contexts :: list(),
+              lens_contexts :: map(),
               config :: map(),
               routine_id :: String.t()
             ) :: {:ok, Keyword.t()} | {:error, String.t() | atom()}
