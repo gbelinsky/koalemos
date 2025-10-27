@@ -87,27 +87,34 @@
     - [x] Build assistant message
     - [x] Usage metadata passthrough
 
-  - [ ] **Phase 6d-3: Anthropic Plugin** (~250 lines)
-    - [ ] Steps.Agent.LLMRequest - Anthropic provider
+  - [ ] **Phase 6d-3: Plugin Architecture** (~150 lines)
+    - [ ] LLMProvider behavior - Define plugin interface
+    - [ ] LLMProvider.Utils - Common message utilities
+    - [ ] Steps.Agent.LLMRequest - Provider router step
+    - [ ] docs/LLM_PROVIDER_GUIDE.md - Provider implementation guide
+    - [ ] Target: 95%+ coverage
+
+  - [ ] **Phase 6d-4: Anthropic Provider** (~250 lines)
+    - [ ] LLMProviders.Anthropic - First plugin implementation
     - [ ] Native Anthropic message format
     - [ ] API key and OAuth authentication
     - [ ] Progressive retry logic
     - [ ] Target: 90%+ coverage
 
-  - [ ] **Phase 6d-4: OpenAI Plugin** (~230 lines)
-    - [ ] Steps.Agent.LLMRequest - OpenAI provider
+  - [ ] **Phase 6d-5: OpenAI Provider** (~230 lines)
+    - [ ] LLMProviders.OpenAI - Second plugin
     - [ ] ToolSchemaConverter (57 lines) - Anthropic ↔ OpenAI schema conversion
     - [ ] Message format conversion
     - [ ] System prompt handling
     - [ ] Target: 90%+ coverage
 
-  - [ ] **Phase 6d-5: Ollama Plugin** (~227 lines)
-    - [ ] Steps.Agent.LLMRequest - Ollama provider
+  - [ ] **Phase 6d-6: Ollama Provider** (~227 lines)
+    - [ ] LLMProviders.Ollama - Third plugin
     - [ ] Reuses OpenAI format conversion
     - [ ] Local endpoint support
     - [ ] Target: 90%+ coverage
 
-  - [ ] **Phase 6d-6: Screenshot Filtering** (~50 lines, may be obsolete)
+  - [ ] **Phase 6d-7: Screenshot Filtering** (~50 lines, may be obsolete)
     - [ ] Evaluate if still needed after content block refactor
 - [ ] **Phase 7: Integration Testing**
   - [ ] Basic test: Can instantiate and run simple routine

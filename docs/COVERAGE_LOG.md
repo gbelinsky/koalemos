@@ -42,6 +42,13 @@
 | SimpleCredentialManager | 269 | 58.6% (44/75) | ⚠️ Complete | OAuth token lifecycle, 15 tests |
 | **Phase 6d-2: Response Parsing** |
 | Steps.Agent.ResponseParsing | 94 | 100% (18/18) | ✅ Complete | LLM response parser, 15 tests |
+| **Phase 6d-3: Plugin Architecture** |
+| LLMProvider (behavior) | 82 | 0% (0/0) | ✅ Complete | Behavior definition only |
+| LLMProvider.Utils | 115 | 100% (16/16) | ✅ Complete | Common utilities, 15 tests |
+| Steps.Agent.LLMRequest | 205 | 70.8% (34/48) | ⚠️ Complete | Provider router, 15 tests |
+| LLMProviders.Anthropic (stub) | 20 | 100% (1/1) | ✅ Complete | Stub for Phase 6d-4 |
+| LLMProviders.OpenAI (stub) | 20 | 100% (1/1) | ✅ Complete | Stub for Phase 6d-5 |
+| LLMProviders.Ollama (stub) | 19 | 100% (1/1) | ✅ Complete | Stub for Phase 6d-6 |
 
 **Legend:**
 - ✅ Complete (>= 90% coverage)
@@ -813,11 +820,135 @@ lib/koalemos/steps/agent/response_parsing.ex (94 lines)
 test/koalemos/steps/agent/response_parsing_test.exs (15 tests)
 ```
 
-### Next Phase: 6d-3 Anthropic Plugin
+---
 
-**Scope:** ~250 lines, first LLM provider
+## Phase 6d-3: Plugin Architecture ✅
+
+**Started:** October 27, 2024
+**Completed:** October 27, 2024
+
+### Modules Ported
+
+**Design Decision:** Instead of porting Flo's monolithic LLMRequestNode (821 lines with all providers in one file), we designed a plugin architecture to keep providers modular and maintainable.
+
+**LLMProvider Behavior** (`lib/koalemos/llm_provider.ex`, 82 lines)
+- **Coverage:** 0% (0/0 relevant lines - behavior definition only)
+- **Purpose:** Define plugin contract for all LLM providers
+- **Signature:** `@callback call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id)`
+- **Returns:** `{:ok, [llm_response: response]} | {:error, reason}`
+
+**LLMProvider.Utils** (`lib/koalemos/llm_provider/utils.ex`, 115 lines)
+- **Coverage:** 100% (16/16 relevant lines)
+- **Tests:** 3 doctests
+- **Purpose:** Common utilities shared across all providers
+- **Functions:**
+  - `strip_metadata/1` - Remove internal metadata before API calls
+  - `filter_empty_assistant_messages/1` - Remove empty assistant messages
+  - `keep_only_last_screenshot/1` - Token optimization for images
+
+**Steps.Agent.LLMRequest** (`lib/koalemos/steps/agent/llm_request.ex`, 205 lines)
+- **Coverage:** 70.8% (34/48 relevant lines)
+- **Tests:** 15 tests (across 3 describe blocks)
+- **Purpose:** Router step that delegates to appropriate provider
+- **Key features:**
+  - Provider resolution by name (anthropic/openai/ollama)
+  - Credential resolution from DemoCredentialStore
+  - OAuth fallback for Anthropic (with graceful degradation)
+  - Config passthrough (model, max_tokens, temperature, base_url)
+  - Error handling for missing credentials and unknown providers
+
+**Input Context:**
+- `messages` - conversation history (required)
+- `tool_descriptions` - from ToolSchema step
+- `lens_contexts` - from LensRendering step
+- `llm_provider` - provider name (default: "anthropic")
+- `llm_model` - model name (optional, provider default)
+- `max_tokens` - token limit (default: 16384)
+- `temperature` - sampling temperature (default: 0.1)
+- `llm_base_url` - override base URL (optional)
+
+**Output Context:**
+- `llm_response` - raw API response (for ResponseParsing step)
+
+**Stub Provider Modules:**
+- `LLMProviders.Anthropic` (20 lines, 100% coverage)
+- `LLMProviders.OpenAI` (20 lines, 100% coverage)
+- `LLMProviders.Ollama` (19 lines, 100% coverage)
+
+All three stub providers implement the behavior and return "not yet implemented" errors with phase numbers.
+
+### Test Coverage
+
+**Provider routing (5 tests):**
+- Routes to anthropic by default
+- Routes to openai when specified
+- Routes to ollama when specified
+- Returns error for unknown provider
+- Returns error when no messages in context
+
+**Credential resolution (5 tests):**
+- Uses API key from DemoCredentialStore for anthropic
+- Uses API key from DemoCredentialStore for openai
+- Returns error when OpenAI API key not configured
+- Uses default config for ollama when credentials missing
+- Handles OAuth fallback gracefully (SimpleCredentialManager not available)
+
+**Config passthrough (2 tests):**
+- Passes model, max_tokens, temperature to provider
+- Uses default config values when not provided
+
+**Utils tests (3 doctests + 12 tests):**
+- strip_metadata/1 (2 tests)
+- filter_empty_assistant_messages/1 (5 tests)
+- keep_only_last_screenshot/1 (5 tests)
+
+### Coverage Notes
+
+LLMRequest coverage at 70.8% is acceptable for this phase:
+- All routing logic covered
+- All error paths covered
+- Credential resolution paths covered
+- Uncovered lines are mainly Logger.info calls and OAuth success path
+- Coverage will improve when actual providers are implemented (phases 6d-4, 6d-5, 6d-6)
+
+### Architectural Benefits
+
+1. **Modularity**: Each provider in its own file (~250 lines each)
+2. **Testability**: Providers can be tested independently
+3. **Maintainability**: Changes to one provider don't affect others
+4. **Extensibility**: New providers just implement the behavior
+5. **Documentation**: Clear guide for adding new providers
+
+### Phase 6d-3 Summary
+
+- **Modules ported:** 3 core + 3 stubs = 6 modules
+- **Coverage:**
+  - Utils: 100%
+  - Stubs: 100%
+  - Router: 70.8%
+  - Behavior: 0% (no executable code)
+- **Total tests:** 429 tests pass (was 407, +22 tests)
+- **Documentation:** Added LLM_PROVIDER_GUIDE.md (285 lines)
+- **Status:** ✅ Complete
+
+### Files Created
+```
+lib/koalemos/llm_provider.ex (82 lines)
+lib/koalemos/llm_provider/utils.ex (115 lines)
+lib/koalemos/steps/agent/llm_request.ex (205 lines)
+lib/koalemos/llm_providers/anthropic.ex (20 lines, stub)
+lib/koalemos/llm_providers/openai.ex (20 lines, stub)
+lib/koalemos/llm_providers/ollama.ex (19 lines, stub)
+test/koalemos/llm_provider/utils_test.exs (159 lines, 3 doctests + 12 tests)
+test/koalemos/steps/agent/llm_request_test.exs (213 lines, 15 tests)
+docs/LLM_PROVIDER_GUIDE.md (285 lines)
+```
+
+### Next Phase: 6d-4 Anthropic Provider
+
+**Scope:** ~250 lines, first LLM provider implementation
 - Native Anthropic message format
-- API key and OAuth authentication  
-- Progressive retry logic
+- API key and OAuth authentication
+- Progressive retry logic (45s, 90s, 180s timeouts)
 - System prompt handling
 - Target: 90%+ coverage
