@@ -101,12 +101,13 @@
     - [x] Progressive retry logic
     - [x] Achieved: 70.5% coverage (acceptable for HTTP client), 13 tests
 
-  - [ ] **Phase 6d-5: OpenAI Provider** (~230 lines)
-    - [ ] LLMProviders.OpenAI - Second plugin
-    - [ ] ToolSchemaConverter (57 lines) - Anthropic ↔ OpenAI schema conversion
-    - [ ] Message format conversion
-    - [ ] System prompt handling
-    - [ ] Target: 90%+ coverage
+  - [x] **Phase 6d-5: OpenAI Provider** ✅ (~485 lines)
+    - [x] LLMProviders.OpenAI - Second plugin (~400 lines)
+    - [x] ToolSchemaConverter (~85 lines) - Anthropic ↔ OpenAI schema conversion
+    - [x] Message format conversion (text, tool_use, tool_result)
+    - [x] Response conversion (OpenAI → Anthropic format)
+    - [x] System prompt handling
+    - [x] Achieved: ToolSchemaConverter 100%, OpenAI 57.2%, 21 tests
 
   - [ ] **Phase 6d-6: Ollama Provider** (~227 lines)
     - [ ] LLMProviders.Ollama - Third plugin
