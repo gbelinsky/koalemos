@@ -198,6 +198,51 @@ The Observer has minimal logging in the Koalemos port (removed excessive TRACE l
 - Add structured logging with log levels
 - Consider using telemetry events instead of logs
 
+### EventRecorder Pattern
+**Status:** Will port as-is in Phase 3, consider refactoring later
+
+EventRecorder is a thin wrapper around Observer that extracts standard fields from engine state. This pattern isn't idiomatic Elixir.
+
+**Current pattern:**
+```elixir
+EventRecorder.record_event(state, "step_started", %{metadata: %{}})
+# Extracts routine_id, module, current_step from state
+```
+
+**More idiomatic alternatives:**
+1. **Observer takes state directly:**
+   ```elixir
+   Observer.record_event(state, "step_started", %{metadata: %{}})
+   # Observer extracts what it needs
+   ```
+
+2. **Explicit parameters (most explicit):**
+   ```elixir
+   Observer.record_event(
+     routine_id: state.routine_id,
+     event_type: "step_started",
+     ...
+   )
+   ```
+
+3. **Protocol-based (most flexible):**
+   ```elixir
+   defprotocol EventSource do
+     def extract_event_context(source)
+   end
+   ```
+
+**Why deferred:**
+- EventRecorder works and is used throughout engine components
+- Small module (35 lines), easy to understand
+- Changing would require updating all call sites in Orchestrator, EventHandler, Engine
+- Better to port working code first, refactor after we understand usage patterns
+
+**Future considerations:**
+- After porting all engine components, evaluate which pattern fits best
+- Consider if the abstraction is even needed - maybe Observer should handle state directly
+- Telemetry events might be a better fit than custom event recording
+
 ---
 
 ## Future / Ideas
