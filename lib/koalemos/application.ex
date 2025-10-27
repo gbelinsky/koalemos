@@ -11,6 +11,10 @@ defmodule Koalemos.Application do
       KoalemosWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:koalemos, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Koalemos.PubSub},
+      # Routine Registry - for looking up Engine processes by routine_id
+      {Registry, keys: :unique, name: Koalemos.RoutineRegistry},
+      # Observer - for recording routine events
+      Koalemos.Engine.Observer,
       # Start a worker by calling: Koalemos.Worker.start_link(arg)
       # {Koalemos.Worker, arg},
       # Start to serve requests, typically the last entry
