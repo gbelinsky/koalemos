@@ -73,16 +73,35 @@ defmodule Koalemos.Utils.MessageBuilder do
   @doc """
   Creates a tool result message.
 
+  Result content can be:
+  - A string: "result text"
+  - Content blocks: [{:text, "result"}, {:image, base64, media_type}]
+
   ## Options
 
   Same options as `build_user_message/2`, plus:
   - `:is_error` - Boolean indicating if this is an error result
   """
   def build_tool_result_message(tool_id, result_content, opts \\ []) do
+    # Format result_content based on type
+    formatted_content = case result_content do
+      # String result (backward compatible)
+      content when is_binary(content) ->
+        content
+
+      # Content blocks [{:text, "..."}, {:image, base64, type}]
+      content_parts when is_list(content_parts) ->
+        Enum.map(content_parts, &format_content_part/1)
+
+      # Unexpected format - convert to string
+      content ->
+        inspect(content)
+    end
+
     content_block = %{
       type: "tool_result",
       tool_use_id: tool_id,
-      content: result_content
+      content: formatted_content
     }
 
     content_block = if Keyword.get(opts, :is_error, false) do

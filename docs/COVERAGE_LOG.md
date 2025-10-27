@@ -27,12 +27,16 @@
 | Engine | 293 | 86.6% (26/30) | ✅ Complete | Level 5 module, main GenServer |
 | EngineManager | 289 | 83.3% (25/30) | ✅ Complete | Level 5 module, convenience API |
 | **Phase 6a: Foundation Steps** |
-| Utils.MessageBuilder | 211 | 94.1% (32/34) | ✅ Complete | Message formatting utility |
+| Utils.MessageBuilder | 230 | 92.1% (35/38) | ✅ Complete | Message formatting utility |
 | Steps.System.Config | 37 | 100% (1/1) | ✅ Complete | Config injection step |
 | Steps.System.Action | 48 | 100% (10/10) | ✅ Complete | Action delegation step |
 | Steps.Agent.LensRendering | 67 | 93.7% (15/16) | ✅ Complete | Lens context collection |
 | **Phase 6b: User Input** |
 | Steps.User.ChatUserInput | 174 | 78.3% (29/37) | ⚠️ Complete | User input handling, 24 tests |
+| **Phase 6c: Tool System** |
+| Steps.Agent.ToolSchema | 119 | 96.4% (27/28) | ✅ Complete | Tool collection from lenses |
+| Steps.Agent.ToolLookup | 122 | 100% (26/26) | ✅ Complete | Tool call resolution |
+| Steps.Agent.ToolExecution | 131 | 100% (26/26) | ✅ Complete | Tool execution, 15 tests |
 
 **Legend:**
 - ✅ Complete (>= 90% coverage)
@@ -458,6 +462,122 @@
 - **Overall test suite:** 312 tests pass, 1 skipped
 - **Design decision:** Screenshot/wireframe logic deferred to Milestone 2 (separate step or lens)
 - **Status:** ✅ Complete (lower coverage due to defensive error handling)
+
+---
+
+## Phase 6c: Tool System ✅
+
+**Started:** October 27, 2024
+**Completed:** October 27, 2024
+
+### Modules Ported
+
+1. **Steps.Agent.ToolSchema** (119 lines)
+   - **Coverage:** 96.4% (27/28 relevant lines)
+   - **Tests:** 12 tests
+   - **Purpose:** Collects tools from active lenses and builds schemas for LLM
+   - **Key features:**
+     - Queries `tools()` on each lens module → list of `{module, tool_atom}` tuples
+     - Calls `info/2` (context-aware) or `info/1` (fallback) for tool descriptions
+     - Builds `tool_descriptions` array for LLM API
+     - Builds `tool_map` (tool_name → {module, tool_atom}) for lookup
+   - **Missing coverage (1 line):** Error case for lens module not loaded
+
+2. **Steps.Agent.ToolLookup** (122 lines)
+   - **Coverage:** 100% (26/26 relevant lines)
+   - **Tests:** 11 tests
+   - **Purpose:** Resolves LLM's tool calls to executable format
+   - **Key features:**
+     - Takes `tool_calls` from ResponseParsingNode
+     - Uses `tool_map` to resolve tool names to `{module, function}`
+     - Graceful error handling: creates error tool_result messages for invalid tools
+     - Agent can recover from tool not found errors
+   - **Missing coverage:** None! Perfect 100%
+
+3. **Steps.Agent.ToolExecution** (182 lines)
+   - **Coverage:** 88.0% (37/42 relevant lines)
+   - **Tests:** 16 tests
+   - **Purpose:** Executes one tool at a time from queue
+   - **Key features:**
+     - Consume pattern: processes first tool, updates queue
+     - Supports 3 result formats: string, {result, lens_updates}, {result, lens_updates, metadata}
+     - Updates `lens_state` if tool returns lens updates
+     - Appends tool_result message to conversation
+     - Screenshot integration with graceful degradation (checks if ScreenshotCache exists)
+   - **Missing coverage (5 lines):** Screenshot cache branches when:
+     - ScreenshotCache module exists (Milestone 2)
+     - Screenshot found in cache
+     - These paths cannot be tested until ScreenshotCache is implemented
+   - **Removed dead code:** `request_screenshot/1` and `strip_screenshot_messages/1` (not used)
+
+### Phase 6c Summary
+- **Modules ported:** 3/3
+- **Average coverage:** 94.8%
+- **Total tests:** 39 tests (12 ToolSchema + 11 ToolLookup + 16 ToolExecution)
+- **Overall test suite:** 351 tests pass, 1 skipped
+- **Design decisions:**
+  - Screenshot cache with graceful degradation (checks if module exists)
+  - Tool execution errors return as tool_result messages (agent can recover)
+  - Removed unused dead code from original Flo implementation
+- **Status:** ✅ Complete
+
+---
+
+## Phase 6c-refactor: Tool Result Images ✅
+
+**Started:** October 27, 2024
+**Completed:** October 27, 2024
+
+### Design Change
+
+**Problem:** ToolExecution had screenshot-specific logic (ScreenshotCache checking, conditional image appending based on metadata flags). This coupled the execution engine to application-specific screenshot functionality.
+
+**Solution:** Let tools return their own content (text + images) directly. ToolExecution just formats and appends whatever the tool returns. Cleaner separation of concerns.
+
+### Changes Made
+
+1. **ToolExecution Simplification** (182 lines → 131 lines, 28% reduction)
+   - Removed `append_screenshot_if_available/2` function (~22 lines)
+   - Removed screenshot checking logic (last tool + metadata flag)
+   - Simplified execute flow: tool result → format → append
+   - **Coverage improved:** 88.0% → 100%
+   - Removed 3 screenshot-related tests
+
+2. **MessageBuilder Extension** (211 lines → 230 lines)
+   - Updated `build_tool_result_message/3` to accept content blocks
+   - String results (backward compatible): `"result"` → `content: "result"`
+   - Content blocks: `[{:text, "..."}, {:image, base64, type}]` → formatted blocks
+   - **Coverage:** 94.1% → 92.1% (added more complex code)
+   - Added 5 new tests for content block functionality
+
+3. **ToolExecution Documentation**
+   - Updated moduledoc to document new result formats
+   - Content blocks: `{[{:text, "result"}, {:image, base64, type}], lens_updates, metadata}`
+   - Removed Screenshot Integration section
+
+4. **Test Updates**
+   - Removed `tool_with_screenshot_request` helper
+   - Removed 3 screenshot integration tests
+   - Added 2 content block tests in ToolExecution
+   - Added 5 content block tests in MessageBuilder
+   - **Net change:** +4 tests (355 total, was 351)
+
+### Results
+
+- **ToolExecution:** 100% coverage (perfect!), 51 fewer lines
+- **MessageBuilder:** 92.1% coverage, supports rich tool results
+- **Backward compatibility:** Maintained - string results still work
+- **Architecture:** Cleaner - tools control their own output format
+- **Future work:** Screenshot tool can now return images directly in tool result
+
+### Phase 6c-refactor Summary
+- **Modules refactored:** 2 (ToolExecution, MessageBuilder)
+- **Lines removed:** 51 (net: 182 - 131)
+- **Lines added:** 19 (net: 230 - 211)
+- **Coverage improvement:** ToolExecution 88% → 100%
+- **Tests added:** 7 new content block tests
+- **Overall test suite:** 355 tests pass, 1 skipped
+- **Status:** ✅ Complete
 
 ---
 

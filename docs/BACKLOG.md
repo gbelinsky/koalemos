@@ -48,10 +48,24 @@
   - [x] Steps.Agent.LensRendering (67 lines, 93.7% coverage)
 - [x] **Phase 6b: User Input** ✅
   - [x] Steps.User.ChatUserInput (174 lines, 78.3% coverage, 24 tests)
-- [ ] **Phase 6c: Tool System**
-  - [ ] Steps.Agent.ToolSchema (was ToolSchemaV2Node)
-  - [ ] Steps.Agent.ToolLookup (was ToolLookupNode)
-  - [ ] Steps.Agent.ToolExecution (was ToolExecutionNode)
+- [x] **Phase 6c: Tool System** ✅
+  - [x] Steps.Agent.ToolSchema (119 lines, 96.4% coverage, 12 tests)
+  - [x] Steps.Agent.ToolLookup (122 lines, 100% coverage, 11 tests)
+  - [x] Steps.Agent.ToolExecution (131 lines, 100% coverage, 15 tests)
+- [x] **Phase 6c-refactor: Tool Result Images** ✅
+  - **Summary:** Made tools self-contained by letting them return images in their results. Cleaner architecture and better separation of concerns.
+  - **Changes:**
+    - [x] Removed ScreenshotCache logic from ToolExecution (~22 lines)
+    - [x] Extended tool result format to support content blocks (images + text)
+    - [x] Tools can now return: `{content_blocks, lens_updates, metadata}`
+    - [x] Content blocks format: `[{:text, "result"}, {:image, base64, media_type}]`
+    - [x] Updated MessageBuilder.build_tool_result_message to accept content blocks
+    - [x] Maintained backward compatibility: string results still work
+    - [x] Added 7 new tests for content block format
+  - **Results:**
+    - ToolExecution: 182 lines → 131 lines (28% reduction), coverage 88% → 100%
+    - MessageBuilder: 211 lines → 230 lines (new functionality), coverage 94.1% → 92.1%
+    - Overall: 355 tests pass (was 351)
 - [ ] **Phase 6d: LLM Integration**
   - [ ] Steps.Agent.LLMRequest (was LLMRequestNode)
   - [ ] Steps.Agent.ResponseParsing (was ResponseParsingNode)
@@ -68,9 +82,13 @@
 ### Todo
 - [ ] Port TemplatedSemanticAgent subroutine
 - [ ] Port WireframeEditor lens
-  - [ ] Screenshot capture integration (~30 lines, deferred from ChatUserInput)
-  - [ ] PubSub snapshot handling (~20 lines, wireframe-specific)
-- [ ] Port ScreenshotCache (~20 lines, deferred from ChatUserInput)
+- [ ] **Screenshot Tool Implementation** (deferred from ChatUserInput + ToolExecution)
+  - [ ] Create ScreenshotCache module (~20 lines, basic get/set/clear)
+  - [ ] Create screenshot capture tool in WireframeEditor lens (~30 lines)
+  - [ ] Tool uses PubSub to request screenshot from JavaScript (~20 lines)
+  - [ ] Tool returns image as part of tool result (using Phase 6c-refactor format)
+  - [ ] Total: ~70 lines moved from ChatUserInput/ToolExecution to proper location
+  - **Design:** Tool controls whether to include images in result, not the execution engine
 - [ ] Port supporting lenses
   - [ ] Scratchpad
   - [ ] PersonaLens

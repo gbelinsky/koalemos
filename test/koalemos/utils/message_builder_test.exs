@@ -304,6 +304,73 @@ defmodule Koalemos.Utils.MessageBuilderTest do
     end
   end
 
+  describe "build_tool_result_message/3 - content blocks" do
+    test "handles string result (backward compatible)" do
+      message = MessageBuilder.build_tool_result_message("tool_123", "Simple result")
+
+      assert message.role == "user"
+      [content_block] = message.content
+      assert content_block.type == "tool_result"
+      assert content_block.tool_use_id == "tool_123"
+      assert content_block.content == "Simple result"
+    end
+
+    test "handles content blocks with text and image" do
+      content_blocks = [{:text, "Result text"}, {:image, "base64data", "image/jpeg"}]
+      message = MessageBuilder.build_tool_result_message("tool_456", content_blocks)
+
+      assert message.role == "user"
+      [tool_result_block] = message.content
+      assert tool_result_block.type == "tool_result"
+      assert tool_result_block.tool_use_id == "tool_456"
+
+      # Content should be formatted as content blocks
+      assert is_list(tool_result_block.content)
+      [text_block, image_block] = tool_result_block.content
+
+      assert text_block.type == "text"
+      assert text_block.text == "Result text"
+
+      assert image_block.type == "image"
+      assert image_block.source.type == "base64"
+      assert image_block.source.data == "base64data"
+      assert image_block.source.media_type == "image/jpeg"
+    end
+
+    test "handles content blocks with text only" do
+      content_blocks = [{:text, "Only text result"}]
+      message = MessageBuilder.build_tool_result_message("tool_789", content_blocks)
+
+      [tool_result_block] = message.content
+      assert is_list(tool_result_block.content)
+      [text_block] = tool_result_block.content
+      assert text_block.text == "Only text result"
+    end
+
+    test "handles content blocks with multiple images" do
+      content_blocks = [
+        {:text, "Multiple images"},
+        {:image, "data1", "image/png"},
+        {:image, "data2", "image/jpeg"}
+      ]
+      message = MessageBuilder.build_tool_result_message("tool_abc", content_blocks)
+
+      [tool_result_block] = message.content
+      assert length(tool_result_block.content) == 3
+
+      [_text, image1, image2] = tool_result_block.content
+      assert image1.source.media_type == "image/png"
+      assert image2.source.media_type == "image/jpeg"
+    end
+
+    test "includes is_error flag when specified" do
+      message = MessageBuilder.build_tool_result_message("tool_error", "Error result", is_error: true)
+
+      [content_block] = message.content
+      assert content_block.is_error == true
+    end
+  end
+
   describe "metadata generation" do
     test "generates unique message IDs" do
       msg1 = MessageBuilder.build_user_message("Test 1")
