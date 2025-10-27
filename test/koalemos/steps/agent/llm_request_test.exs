@@ -44,9 +44,9 @@ defmodule Koalemos.Steps.Agent.LLMRequestTest do
         }
       }
 
-      # Will fail with stub error but shows routing works
+      # Will fail with API error (invalid key) but shows routing works
       assert {:error, error_msg} = LLMRequest.execute(%{}, state)
-      assert error_msg == "Anthropic provider not yet implemented (Phase 6d-4)"
+      assert error_msg =~ "API error 401"
     end
 
     test "routes to openai provider when specified" do
