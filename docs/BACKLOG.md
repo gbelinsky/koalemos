@@ -21,10 +21,11 @@
   - [x] Port Engine.EventBuffer (100% coverage, 297 lines)
   - [x] Update documentation (BACKLOG, COVERAGE_LOG)
 
-### In Progress
-- [ ] **Phase 2: Level 2 Modules**
-  - [ ] Port Engine.StepUtils (was NodeUtils)
-  - [ ] Port Engine.Observer (was WorkflowObserver) - Large module, may need refactoring
+### Completed (continued)
+- [x] **Phase 2: Level 2 Modules** ✅
+  - [x] Port Engine.StepUtils (100% coverage, 197 lines)
+  - [x] Port Engine.Observer (80.5% coverage, 312 lines)
+  - [x] Update documentation (BACKLOG, COVERAGE_LOG)
 
 ### Todo
 - [ ] **Phase 3: Level 3 Modules**
@@ -166,6 +167,39 @@
 
 ---
 
+## Deferred Improvements
+
+**Decisions we made during porting - documented for future consideration**
+
+### Engine.Observer Refactoring
+**Status:** Deferred (ported as-is in Phase 2)
+
+During Phase 2, we considered splitting Observer (312 lines) into three modules:
+1. **Observer** - Core GenServer, event recording, file writing
+2. **EventSerializer** - Handle JSON serialization of complex types (PIDs, functions, tuples)
+3. **MessageTracker** - Track message changes and broadcast only new messages
+
+**Why deferred:**
+- Module is large but cohesive (all event observation)
+- Code works well and is well-organized
+- Refactoring would add complexity without clear immediate benefit
+- Can revisit if maintenance becomes difficult
+
+**Future considerations:**
+- If we add more serialization types, extract EventSerializer
+- If message tracking logic grows, extract MessageTracker
+- Could improve testability with smaller modules
+
+### Logging Reduction
+**Status:** Noted during port
+
+The Observer has minimal logging in the Koalemos port (removed excessive TRACE logs from Flo). Future work could:
+- Make debug logging configurable via environment
+- Add structured logging with log levels
+- Consider using telemetry events instead of logs
+
+---
+
 ## Future / Ideas
 
 *(Not committed to any milestone)*
@@ -188,3 +222,4 @@
 - Mark blockers clearly
 - Celebrate completed milestones!
 - Re-plan as needed
+- Document deferred decisions in "Deferred Improvements" section
