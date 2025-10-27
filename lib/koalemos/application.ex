@@ -7,6 +7,7 @@ defmodule Koalemos.Application do
 
   @impl true
   def start(_type, _args) do
+    # Base children list
     children = [
       KoalemosWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:koalemos, :dns_cluster_query) || :ignore},
@@ -14,12 +15,19 @@ defmodule Koalemos.Application do
       # Routine Registry - for looking up Engine processes by routine_id
       {Registry, keys: :unique, name: Koalemos.RoutineRegistry},
       # Observer - for recording routine events
-      Koalemos.Engine.Observer,
-      # Start a worker by calling: Koalemos.Worker.start_link(arg)
-      # {Koalemos.Worker, arg},
-      # Start to serve requests, typically the last entry
-      KoalemosWeb.Endpoint
+      Koalemos.Engine.Observer
     ]
+
+    # Add credential manager only in non-test environments
+    # Tests start their own instances for better isolation
+    children = if Mix.env() != :test do
+      children ++ [Koalemos.SimpleCredentialManager]
+    else
+      children
+    end
+
+    # Web endpoint
+    children = children ++ [KoalemosWeb.Endpoint]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

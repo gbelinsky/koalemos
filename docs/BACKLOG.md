@@ -66,9 +66,50 @@
     - ToolExecution: 182 lines → 131 lines (28% reduction), coverage 88% → 100%
     - MessageBuilder: 211 lines → 230 lines (new functionality), coverage 94.1% → 92.1%
     - Overall: 355 tests pass (was 351)
-- [ ] **Phase 6d: LLM Integration**
-  - [ ] Steps.Agent.LLMRequest (was LLMRequestNode)
-  - [ ] Steps.Agent.ResponseParsing (was ResponseParsingNode)
+- [ ] **Phase 6d: LLM Integration** (~1,531 lines total)
+
+  **Architecture Decisions:**
+  - **Multi-provider support is NON-NEGOTIABLE** - Must support Anthropic, OpenAI, and Ollama
+  - **Plugin architecture** - Providers are pluggable modules with common interface
+  - **Anthropic is first plugin** - Other providers follow same pattern
+  - **Credential management required** - File-based storage with OAuth support
+
+  **Sub-phases:**
+  - [ ] **Phase 6d-1: Credential Management** (~574 lines, PRIORITY)
+    - [ ] DemoCredentialStore (307 lines) - Multi-provider credential file storage
+    - [ ] SimpleCredentialManager (267 lines) - OAuth token lifecycle for Anthropic
+    - [ ] Supervision tree integration
+    - [ ] Credential file format: `.koalemos/.credentials.json`
+    - [ ] Target: 92%+ coverage
+
+  - [ ] **Phase 6d-2: Response Parsing** (~80 lines)
+    - [ ] Steps.Agent.ResponseParsing (was ResponseParsingNode)
+    - [ ] Extract tool calls from LLM response
+    - [ ] Build assistant message
+    - [ ] Target: 100% coverage
+
+  - [ ] **Phase 6d-3: Anthropic Plugin** (~250 lines)
+    - [ ] Steps.Agent.LLMRequest - Anthropic provider
+    - [ ] Native Anthropic message format
+    - [ ] API key and OAuth authentication
+    - [ ] Progressive retry logic
+    - [ ] Target: 90%+ coverage
+
+  - [ ] **Phase 6d-4: OpenAI Plugin** (~230 lines)
+    - [ ] Steps.Agent.LLMRequest - OpenAI provider
+    - [ ] ToolSchemaConverter (57 lines) - Anthropic ↔ OpenAI schema conversion
+    - [ ] Message format conversion
+    - [ ] System prompt handling
+    - [ ] Target: 90%+ coverage
+
+  - [ ] **Phase 6d-5: Ollama Plugin** (~227 lines)
+    - [ ] Steps.Agent.LLMRequest - Ollama provider
+    - [ ] Reuses OpenAI format conversion
+    - [ ] Local endpoint support
+    - [ ] Target: 90%+ coverage
+
+  - [ ] **Phase 6d-6: Screenshot Filtering** (~50 lines, may be obsolete)
+    - [ ] Evaluate if still needed after content block refactor
 - [ ] **Phase 7: Integration Testing**
   - [ ] Basic test: Can instantiate and run simple routine
   - [ ] Registry integration tests
