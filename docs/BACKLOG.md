@@ -32,12 +32,15 @@
 - [x] **Phase 4: Level 4 Modules** ✅
   - [x] Port Engine.Orchestrator (79.2% coverage, 489 lines) - Execution heart
   - [x] Update documentation (BACKLOG, COVERAGE_LOG)
+- [x] **Phase 5: Level 5 Modules** ✅
+  - [x] Port Engine.EventHandler (97.5% coverage, 309 lines)
+  - [x] Port Engine (86.6% coverage, 293 lines)
+  - [x] Port EngineManager (83.3% coverage, 289 lines) - renamed from Engine.Registry
+  - [x] Update Application.ex (add Registry and Observer to supervision tree)
+  - [x] Fix test failures with unique IDs and proper cleanup (235 tests pass)
+  - [x] Update documentation (BACKLOG, COVERAGE_LOG)
 
 ### Todo
-- [ ] **Phase 5: Level 5 Modules**
-  - [ ] Port Engine.EventHandler
-  - [ ] Port Engine (was WorkflowEngine)
-  - [ ] Port Engine.Registry (was WorkflowRegistryAdapter)
 - [ ] **Phase 6: Essential Steps** (minimal set)
   - [ ] Steps.Core.Config (was ConfigNode)
   - [ ] Steps.Core.System (was SystemNode)
