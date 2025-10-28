@@ -14,6 +14,9 @@ defmodule KoalemosWeb.MessageCards.UserCard do
   attr :message, :map, required: true, doc: "Message map with content and metadata"
   attr :expanded_images, :any, default: MapSet.new(), doc: "Set of expanded card IDs"
   attr :card_id, :string, default: nil, doc: "Optional card ID (generated if not provided)"
+  attr :on_expand, :string, default: "expand_image", doc: "Event name for expand action"
+  attr :on_collapse, :string, default: "collapse_image", doc: "Event name for collapse action"
+  attr :target, :any, default: nil, doc: "Event target (for LiveComponent)"
 
   def render(assigns) do
     # Generate card ID if not provided or nil
@@ -47,18 +50,20 @@ defmodule KoalemosWeb.MessageCards.UserCard do
               images={@image_items}
               card_id={@card_id}
               expanded={false}
-              on_expand="expand_image"
+              on_expand={@on_expand}
+              target={@target}
             />
           <% end %>
         </div>
         <%= if @has_images && @expanded do %>
           <button
-            phx-click="collapse_image"
+            phx-click={@on_collapse}
             phx-value-card={@card_id}
-            class="text-blue-400/60 hover:text-blue-600 transition-colors text-sm"
+            phx-target={@target}
+            class="text-blue-400/60 hover:text-blue-600 hover:bg-blue-50/50 transition-all px-3 py-2 rounded-lg text-sm"
             title="Collapse images"
           >
-            ▲
+            ▲ collapse
           </button>
         <% end %>
       </div>
@@ -74,7 +79,8 @@ defmodule KoalemosWeb.MessageCards.UserCard do
           images={@image_items}
           card_id={@card_id}
           expanded={true}
-          on_collapse="collapse_image"
+          on_collapse={@on_collapse}
+          target={@target}
         />
       <% end %>
     </div>

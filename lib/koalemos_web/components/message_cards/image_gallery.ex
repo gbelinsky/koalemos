@@ -13,6 +13,7 @@ defmodule KoalemosWeb.MessageCards.ImageGallery do
   attr :expanded, :boolean, default: false, doc: "Whether images are expanded"
   attr :on_expand, :string, default: "expand_image", doc: "Event name for expand action"
   attr :on_collapse, :string, default: "collapse_image", doc: "Event name for collapse action"
+  attr :target, :any, default: nil, doc: "Event target (for LiveComponent)"
 
   def render(assigns) do
     ~H"""
@@ -47,6 +48,7 @@ defmodule KoalemosWeb.MessageCards.ImageGallery do
               class="h-12 w-auto rounded-lg border-2 border-slate-300/50 cursor-pointer hover:opacity-80 hover:scale-105 transition-all duration-200 shadow-sm"
               phx-click={@on_expand}
               phx-value-card={@card_id}
+              phx-target={@target}
               alt={"Thumbnail #{idx + 1}"}
             />
           <% end %>
