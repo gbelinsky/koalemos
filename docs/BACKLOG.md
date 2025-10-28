@@ -177,42 +177,35 @@
 - Proves complete architecture flow without screenshot complexity
 - Tests engine → routine → lens → LiveView integration
 - Derisks M3+ by validating design early
+- Generic chat interface works with ANY routine (not wireframe-specific)
 
-**Components Needed:**
-- [ ] **LiveView Pages** (~800 lines)
-  - [ ] Basic WireframeEditorLive (simplified - just chat, no preview features yet)
-  - [ ] Static WireframePreviewLive (displays HTML, no JavaScript yet)
-  - [ ] MessageCardsComponent (displays chat messages)
-  - [ ] UserInputComponent (text input field)
-  - [ ] Routing (`/editor/:routine_id`)
+**Strategy:** Component-by-component, bottom-up build. Port working components where possible, break monolithic components into smaller pieces.
 
-- [ ] **TemplatedSemanticAgent Subroutine** (~150 lines)
-  - [ ] Port from Flo (simplified if needed)
-  - [ ] Agent loop: chat input → LLM → response
-  - [ ] No tool calls yet (just conversation)
+**Detailed Planning:** See [docs/milestones/M2.md](./milestones/M2.md) for sprint breakdown and component architecture.
 
-- [ ] **TestLens** (~100 lines)
-  - [ ] Simple lens for testing
-  - [ ] Provides text context only
-  - [ ] No tools, no screenshots
-  - [ ] Just enough to prove lens integration
-
-- [ ] **Integration** (~200 lines)
-  - [ ] Wire LiveView to start routine
-  - [ ] Display routine events in UI
-  - [ ] User input triggers agent steps
+**High-Level Components:**
+- [ ] **Foundation** - Layouts, core components, minimal app.js
+- [ ] **Message Cards** - UserCard, AssistantCard, ErrorCard, ImageGallery (break down monolith)
+- [ ] **Input & Feed** - UserInputComponent (port), MessageFeed (new)
+- [ ] **Chat Panel** - Combine feed + input
+- [ ] **Pages** - HomePage, StartSessionModal, RoutineChatLive
+- [ ] **Backend** - TemplatedSemanticAgent (port), TestLens (update)
+- [ ] **Integration** - Tests, polish, error handling
 
 **Dependencies:** M1 only
 
 **Test Criteria:**
-- ✅ Can start a routine from LiveView
-- ✅ Type message, see it in chat
+- ✅ Navigate to home page
+- ✅ Click "Start Chat" → modal opens
+- ✅ Start session → navigates to chat page
+- ✅ Type message, see in chat
 - ✅ AI responds with message
-- ✅ Preview shows static HTML
+- ✅ Multi-turn conversation works
+- ✅ Routine status displays correctly
 - ✅ No errors, smooth flow
 
-**Lines:** ~1,250
-**Status:** Todo
+**Lines:** ~2,250 (7 sprints, ~300 lines each)
+**Status:** Planning → Sprint 1 Ready
 
 ---
 
