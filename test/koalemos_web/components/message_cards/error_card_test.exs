@@ -12,10 +12,10 @@ defmodule KoalemosWeb.MessageCards.ErrorCardTest do
 
       html = render_component(&ErrorCard.render/1, assigns)
 
-      assert html =~ "ERROR"
+      assert html =~ "unfortunate"
       assert html =~ "Something went wrong"
-      assert html =~ "border-l-red-500"
-      assert html =~ "bg-red-50"
+      assert html =~ "border-red-400"
+      assert html =~ "bg-gradient-to-br"
     end
 
     test "displays error icon" do
@@ -25,7 +25,7 @@ defmodule KoalemosWeb.MessageCards.ErrorCardTest do
 
       html = render_component(&ErrorCard.render/1, assigns)
 
-      assert html =~ "⚠️"
+      assert html =~ "⚠"
     end
 
     test "has role=alert for accessibility" do
@@ -90,8 +90,8 @@ defmodule KoalemosWeb.MessageCards.ErrorCardTest do
       html = render_component(&ErrorCard.render/1, assigns)
 
       # Should still render the card structure
-      assert html =~ "ERROR"
-      assert html =~ "border-l-red-500"
+      assert html =~ "unfortunate"
+      assert html =~ "border-red-400"
     end
   end
 end

@@ -27,7 +27,7 @@ defmodule KoalemosWeb.MessageCards.ImageGallery do
             <div class="w-full">
               <img
                 src={"data:#{media_type};base64,#{data}"}
-                class="w-full h-auto rounded border border-gray-200 shadow-sm"
+                class="w-full h-auto rounded-xl border-2 border-slate-200/60 shadow-md"
                 alt={"Image #{idx + 1}"}
               />
             </div>
@@ -44,7 +44,7 @@ defmodule KoalemosWeb.MessageCards.ImageGallery do
           <%= if data do %>
             <img
               src={"data:#{media_type};base64,#{data}"}
-              class="h-12 w-auto rounded border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+              class="h-12 w-auto rounded-lg border-2 border-slate-300/50 cursor-pointer hover:opacity-80 hover:scale-105 transition-all duration-200 shadow-sm"
               phx-click={@on_expand}
               phx-value-card={@card_id}
               alt={"Thumbnail #{idx + 1}"}

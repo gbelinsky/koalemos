@@ -25,15 +25,15 @@ defmodule KoalemosWeb.MessageCards.AssistantCard do
 
     ~H"""
     <div
-      class="bg-white p-3 border-l-4 border-l-indigo-400 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
+      class="bg-gradient-to-br from-white to-indigo-50/20 p-4 border-r-[6px] border-t border-l-2 border-indigo-400/60 rounded-2xl shadow-[-2px_4px_12px_-2px_rgba(99,102,241,0.15)] hover:shadow-[-3px_6px_16px_-2px_rgba(99,102,241,0.25)] transition-all duration-300"
       id={@card_id}
     >
       <!-- Header -->
-      <div class="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-2">
-        ASSISTANT
+      <div class="text-[0.65rem] font-medium text-indigo-600/70 tracking-wider mb-2.5">
+        koalemos
       </div>
       <!-- Content with markdown -->
-      <div class="text-gray-700 text-sm leading-relaxed">
+      <div class="text-slate-700 text-[0.9rem] leading-relaxed">
         <%= safe_markdown_to_html(@text_content) %>
       </div>
     </div>

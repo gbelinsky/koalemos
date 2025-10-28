@@ -35,13 +35,13 @@ defmodule KoalemosWeb.MessageCards.UserCard do
 
     ~H"""
     <div
-      class="bg-gray-50 p-3 border-l-4 border-l-blue-400 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
+      class="bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 border-l-[6px] border-t border-r-2 border-blue-400/60 rounded-2xl shadow-[2px_4px_12px_-2px_rgba(59,130,246,0.15)] hover:shadow-[3px_6px_16px_-2px_rgba(59,130,246,0.25)] transition-all duration-300"
       id={@card_id}
     >
       <!-- Header with label and expand/collapse button -->
-      <div class="flex items-center justify-between mb-2">
-        <div class="text-xs font-semibold text-blue-600 uppercase tracking-wide flex items-center gap-2">
-          <span>USER</span>
+      <div class="flex items-center justify-between mb-2.5">
+        <div class="text-[0.65rem] font-medium text-blue-600/80 tracking-wider flex items-center gap-2">
+          <span>you</span>
           <%= if @has_images && !@expanded do %>
             <KoalemosWeb.MessageCards.ImageGallery.render
               images={@image_items}
@@ -55,7 +55,7 @@ defmodule KoalemosWeb.MessageCards.UserCard do
           <button
             phx-click="collapse_image"
             phx-value-card={@card_id}
-            class="text-gray-400 hover:text-gray-600 transition-colors text-sm"
+            class="text-blue-400/60 hover:text-blue-600 transition-colors text-sm"
             title="Collapse images"
           >
             ▲
@@ -64,7 +64,7 @@ defmodule KoalemosWeb.MessageCards.UserCard do
       </div>
       <!-- Text content -->
       <%= if @text_content != "" do %>
-        <div class="text-gray-700 text-sm leading-relaxed mb-2">
+        <div class="text-slate-700 text-[0.9rem] leading-relaxed mb-2.5">
           <%= safe_markdown_to_html(@text_content) %>
         </div>
       <% end %>

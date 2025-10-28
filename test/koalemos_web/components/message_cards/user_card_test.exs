@@ -16,9 +16,9 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
 
       html = render_component(&UserCard.render/1, assigns)
 
-      assert html =~ "USER"
+      assert html =~ "you"
       assert html =~ "Hello world"
-      assert html =~ "border-l-blue-400"
+      assert html =~ "border-blue-400"
     end
 
     test "renders user message with markdown formatting" do
@@ -122,7 +122,7 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
 
       html = render_component(&UserCard.render/1, assigns)
 
-      assert html =~ "USER"
+      assert html =~ "you"
       assert html =~ "data:image/png;base64,abc123"
       refute html =~ ~r/<div class="text-gray-700.*?>.*?<\/div>/
     end

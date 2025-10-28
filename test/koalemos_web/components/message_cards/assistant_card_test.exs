@@ -15,9 +15,9 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
 
       html = render_component(&AssistantCard.render/1, assigns)
 
-      assert html =~ "ASSISTANT"
+      assert html =~ "koalemos"
       assert html =~ "I can help you with that."
-      assert html =~ "border-l-indigo-400"
+      assert html =~ "border-indigo-400"
     end
 
     test "renders assistant message with markdown formatting" do
@@ -117,9 +117,9 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
 
       html = render_component(&AssistantCard.render/1, assigns)
 
-      assert html =~ "ASSISTANT"
+      assert html =~ "koalemos"
       # Should still render the card structure
-      assert html =~ "border-l-indigo-400"
+      assert html =~ "border-indigo-400"
     end
   end
 end

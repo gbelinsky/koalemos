@@ -20,19 +20,19 @@ defmodule KoalemosWeb.MessageCards.ErrorCard do
 
     ~H"""
     <div
-      class="bg-red-50 p-3 border-l-4 border-l-red-500 rounded-md shadow-sm"
+      class="bg-gradient-to-br from-red-50/80 to-orange-50/40 p-4 border-l-[5px] border-b-[3px] border-r border-red-400/70 rounded-2xl shadow-[2px_3px_10px_-2px_rgba(239,68,68,0.2)]"
       id={@card_id}
       role="alert"
     >
       <!-- Header with error icon -->
       <div class="flex items-center gap-2 mb-2">
-        <span class="text-red-600 text-lg" aria-hidden="true">⚠️</span>
-        <div class="text-xs font-semibold text-red-700 uppercase tracking-wide">
-          ERROR
+        <span class="text-red-500/80 text-base" aria-hidden="true">⚠</span>
+        <div class="text-[0.65rem] font-medium text-red-600/80 tracking-wider">
+          well, that's unfortunate
         </div>
       </div>
       <!-- Error message -->
-      <div class="text-red-800 text-sm leading-relaxed">
+      <div class="text-red-900/80 text-[0.9rem] leading-relaxed">
         <%= @error_message %>
       </div>
     </div>
