@@ -64,6 +64,7 @@ defmodule Koalemos.MixProject do
       {:finch, "~> 0.13"},
       {:nodejs, "~> 3.1"},
       {:req, "~> 0.5.10"},
+      {:earmark, "~> 1.4"},
       # Testing and coverage
       {:excoveralls, "~> 0.18", only: :test}
     ]
