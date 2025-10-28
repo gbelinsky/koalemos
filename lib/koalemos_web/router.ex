@@ -18,6 +18,7 @@ defmodule KoalemosWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    live "/samples", SamplesLive
   end
 
   # Other scopes may use custom stacks.
