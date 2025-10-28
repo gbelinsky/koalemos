@@ -23,17 +23,27 @@ defmodule KoalemosWeb.UserInputComponent do
 
   ## Required Parent Setup
 
-  **IMPORTANT**: Due to technical limitations with LiveView upload event handling,
-  the parent LiveView must include this awkward but necessary message handler:
+  **IMPORTANT**: The parent LiveView must forward two types of messages to this component.
+
+  ### 1. Upload Polling (Required for image uploads)
+
+  Due to technical limitations with LiveView upload event handling, the parent must
+  forward `:check_uploads` messages to ALL UserInputComponent instances:
 
   ```elixir
   @impl true
   def handle_info(:check_uploads, socket) do
-    # Forward this to the UserInputComponent
+    # Forward to UserInputComponent - use actual component IDs in your app
     send_update(KoalemosWeb.UserInputComponent, id: "user-input", check_uploads: true)
+
+    # If component is nested in ChatPanel or other LiveComponents:
+    send_update(KoalemosWeb.UserInputComponent, id: "chat-panel-input", check_uploads: true)
+
     {:noreply, socket}
   end
   ```
+
+  ### 2. User Input Submission (Required for functionality)
 
   The parent must also handle the component's output message:
 
@@ -80,136 +90,192 @@ defmodule KoalemosWeb.UserInputComponent do
           <!-- Hidden file input for image upload -->
           <.live_file_input upload={@uploads.image_files} class="hidden" phx-target={@myself} />
 
-          <!-- Upload Progress Indicator -->
-          <%= if has_uploads_in_progress?(@uploads.image_files) do %>
-            <div class="p-3 bg-gradient-to-br from-blue-50/80 to-indigo-50/40 rounded-2xl border-l-[3px] border-b border-r-2 border-blue-400/70 shadow-[2px_2px_8px_-2px_rgba(59,130,246,0.2)]">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-[0.65rem] font-medium text-blue-700/80 tracking-wide">uploading images...</span>
-                <span class="text-xs text-blue-600/70"><%= count_in_progress(@uploads.image_files) %> remaining</span>
-              </div>
-              <%= for entry <- @uploads.image_files.entries do %>
-                <%= if !entry.done? do %>
-                  <div class="mb-2 last:mb-0">
-                    <div class="flex items-center justify-between text-xs text-blue-600/80 mb-1">
-                      <span class="truncate max-w-[200px]"><%= entry.client_name %></span>
-                      <span><%= entry.progress %>%</span>
+          <!-- Images Drawer: Always visible -->
+          <div class="rounded-2xl border-l-[2px] border-r border-t border-slate-300/50 shadow-[1px_2px_8px_-2px_rgba(148,163,184,0.15)] overflow-hidden">
+            <!-- Clickable Drawer Header -->
+            <button
+              type="button"
+              phx-click="toggle_images_drawer"
+              phx-target={@myself}
+              class="w-full px-3 py-2 bg-gradient-to-br from-slate-100 to-gray-100/40 hover:from-slate-200 hover:to-gray-200/40 transition-colors flex items-center justify-between group"
+            >
+              <h4 class="text-[0.65rem] font-medium text-slate-700/80 tracking-wide flex items-center gap-1">
+                <%= if has_uploads_in_progress?(@uploads.image_files) do %>
+                  <svg class="w-3 h-3 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span class="text-blue-700/80">uploading <%= count_in_progress(@uploads.image_files) %>...</span>
+                <% else %>
+                  <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <%= if length(@uploaded_images) > 0 do %>
+                    <span class="text-slate-600/80">images <span class="text-green-700/80">(<%= length(@uploaded_images) %> ready)</span></span>
+                  <% else %>
+                    <span class="text-slate-600/80">images</span>
+                  <% end %>
+                <% end %>
+              </h4>
+              <!-- Toggle indicator -->
+              <svg
+                class={"w-4 h-4 text-slate-500 transition-transform duration-200 #{if @images_drawer_open, do: "rotate-180", else: ""}"}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <!-- Collapsible Images Content -->
+            <%= if @images_drawer_open do %>
+              <div class="p-3 bg-gradient-to-br from-slate-50 to-gray-50/30">
+                <!-- Thumbnails Grid: Add button + Completed images + Upload placeholders + Clear all -->
+                <div class="flex flex-wrap gap-3">
+                <!-- Add More Images Button -->
+                <button
+                  type="button"
+                  phx-click={dispatch("click", to: "##{@uploads.image_files.ref}")}
+                  class="w-20 h-20 bg-gradient-to-br from-slate-50 to-gray-50/30 rounded-xl border-2 border-dashed border-slate-300/60 flex flex-col items-center justify-center hover:border-slate-400 hover:bg-slate-100/50 transition-all duration-200"
+                >
+                  <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                  </svg>
+                  <span class="text-xs text-slate-500 mt-1">add</span>
+                </button>
+                <!-- Completed Images -->
+                <%= for {image, index} <- Enum.with_index(@uploaded_images) do %>
+                  <div class="relative group">
+                    <div class="w-20 h-20 bg-white rounded-xl border-2 border-green-200/60 overflow-hidden shadow-sm hover:shadow-md hover:scale-105 transition-transform duration-200">
+                      <img
+                        src={"data:#{image.media_type};base64,#{image.base64}"}
+                        class="w-full h-full object-cover"
+                        alt={image.filename}
+                      />
                     </div>
-                    <div class="w-full bg-blue-200/60 rounded-full h-1.5">
-                      <div
-                        class="bg-blue-600/90 h-1.5 rounded-full transition-all duration-300"
-                        style={"width: #{entry.progress}%"}
-                      ></div>
+                    <button
+                      type="button"
+                      phx-click="remove_image"
+                      phx-value-index={index}
+                      phx-target={@myself}
+                      class="absolute -top-2 -right-2 w-6 h-6 bg-red-500/90 text-white rounded-full text-xs hover:bg-red-600 hover:scale-110 opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center shadow-md"
+                    >
+                      ×
+                    </button>
+                    <div class="absolute bottom-0 left-0 right-0 bg-black/75 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity rounded-b-xl">
+                      <%= image.filename %>
                     </div>
                   </div>
                 <% end %>
-              <% end %>
-            </div>
-          <% end %>
-
-          <!-- Show uploaded images with thumbnails (or placeholder during upload) -->
-          <%= if length(@uploaded_images) > 0 || has_uploads_in_progress?(@uploads.image_files) do %>
-            <div class="p-4 bg-gradient-to-br from-slate-50 to-gray-50/30 rounded-2xl border-l-[2px] border-r border-t border-slate-300/50 shadow-[1px_2px_8px_-2px_rgba(148,163,184,0.15)] min-h-[120px]">
-              <%= if length(@uploaded_images) > 0 do %>
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="text-[0.65rem] font-medium text-slate-700/80 tracking-wide">
-                    <%= length(@uploaded_images) %> image(s) selected
-                  </h4>
+                <!-- Upload Placeholders (uploading or processing) -->
+                <%= for entry <- @uploads.image_files.entries do %>
+                  <div class="relative w-20 h-20">
+                    <%= if entry.done? do %>
+                      <!-- Processing placeholder (done uploading, waiting for consumption) -->
+                      <div class="w-full h-full bg-green-50 rounded-xl border-2 border-green-200/60 overflow-hidden shadow-sm flex flex-col items-center justify-center p-2">
+                        <svg class="w-6 h-6 text-green-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span class="text-xs text-green-600 font-medium">done</span>
+                      </div>
+                    <% else %>
+                      <!-- Uploading placeholder -->
+                      <div class="w-full h-full bg-blue-50 rounded-xl border-2 border-blue-200/60 overflow-hidden shadow-sm flex flex-col items-center justify-center p-2">
+                        <svg class="w-6 h-6 text-blue-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                        <span class="text-xs text-blue-600 font-medium"><%= entry.progress %>%</span>
+                      </div>
+                      <!-- Progress bar at bottom -->
+                      <div class="absolute bottom-1 left-1 right-1 h-1 bg-blue-200/60 rounded-full overflow-hidden">
+                        <div
+                          class="h-full bg-blue-600 transition-all duration-300"
+                          style={"width: #{entry.progress}%"}
+                        ></div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+                <!-- Clear All Button (as last item in grid when images exist) -->
+                <%= if length(@uploaded_images) > 0 do %>
                   <button
                     type="button"
                     phx-click="clear_all_images"
                     phx-target={@myself}
-                    class="text-xs text-red-600/80 hover:text-red-800 hover:scale-105 transition-all duration-200"
+                    class="w-20 h-20 bg-red-50 rounded-xl border-2 border-dashed border-red-300/60 flex flex-col items-center justify-center hover:border-red-400 hover:bg-red-100/50 transition-all duration-200"
                   >
-                    clear all
+                    <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    <span class="text-xs text-red-600 mt-1">clear all</span>
                   </button>
-                </div>
-                <div class="flex flex-wrap gap-3">
-                  <%= for {image, index} <- Enum.with_index(@uploaded_images) do %>
-                    <div class="relative group">
-                      <div class="w-20 h-20 bg-white rounded-xl border-2 border-slate-200/60 overflow-hidden shadow-sm hover:shadow-md hover:scale-105 transition-all duration-200">
-                        <img
-                          src={"data:#{image.media_type};base64,#{image.base64}"}
-                          class="w-full h-full object-cover"
-                          alt={image.filename}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        phx-click="remove_image"
-                        phx-value-index={index}
-                        phx-target={@myself}
-                        class="absolute -top-2 -right-2 w-6 h-6 bg-red-500/90 text-white rounded-full text-xs hover:bg-red-600 hover:scale-110 opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center shadow-md"
-                      >
-                        ×
-                      </button>
-                      <div class="absolute bottom-0 left-0 right-0 bg-black/75 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity rounded-b-xl">
-                        <%= image.filename %>
-                      </div>
-                    </div>
-                  <% end %>
-                </div>
-              <% else %>
-                <!-- Placeholder while uploading -->
-                <div class="flex items-center justify-center h-20">
-                  <span class="text-slate-400 text-sm">processing images...</span>
+                <% end %>
+                  </div>
                 </div>
               <% end %>
             </div>
-          <% end %>
 
-          <!-- Text Input -->
-          <div class="flex-1">
-            <textarea
-              name="user_input"
-              placeholder={@placeholder || "type your message..."}
-              rows="3"
-              class="w-full p-3 border-2 border-slate-300/60 rounded-2xl resize-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/70 transition-all duration-200 shadow-[1px_2px_6px_-2px_rgba(148,163,184,0.2)]"
-              phx-keydown="handle_keydown"
-              phx-key="Enter"
-              phx-target={@myself}
-            ><%= @current_input %></textarea>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex items-center space-x-3">
-            <!-- Add Images Button -->
-            <button
-              type="button"
-              phx-click={dispatch("click", to: "##{@uploads.image_files.ref}")}
-              class="flex items-center space-x-2 px-3 py-2 text-sm text-slate-600/80 hover:text-slate-800 hover:scale-105 transition-all duration-200 bg-gradient-to-br from-slate-50 to-gray-50/30 rounded-xl border-l-[2px] border-r border-t border-slate-300/50 shadow-[1px_1px_4px_-1px_rgba(148,163,184,0.2)] hover:shadow-md"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              </svg>
-              <span class="text-[0.65rem] tracking-wide">add images</span>
-            </button>
-
+          <!-- Text Input with inline buttons -->
+          <div class="flex items-end gap-2">
+            <!-- Text Input -->
+            <div class="flex-1">
+              <textarea
+                name="user_input"
+                placeholder={@placeholder || "type your message..."}
+                rows="3"
+                class="w-full p-3 border-2 border-slate-300/60 rounded-2xl resize-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/70 transition-all duration-200 shadow-[1px_2px_6px_-2px_rgba(148,163,184,0.2)]"
+                phx-keydown="handle_keydown"
+                phx-key="Enter"
+                phx-target={@myself}
+              ><%= @current_input %></textarea>
+            </div>
             <!-- Send Button -->
-            <button
-              type="button"
-              phx-click="send_input"
-              phx-target={@myself}
-              class="px-4 py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-[2px_2px_8px_-2px_rgba(59,130,246,0.3)] hover:shadow-[3px_3px_12px_-2px_rgba(59,130,246,0.4)] border-r-[3px] border-b-[2px] border-t border-blue-400/30 text-sm tracking-wide"
-              disabled={@current_input == "" and length(@uploaded_images) == 0}
-            >
-              send
-            </button>
-
-            <!-- Sent Feedback -->
-            <%= if @just_sent do %>
-              <div class="flex items-center text-green-600/80 text-sm animate-fade-in">
-                <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fill-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-                <span class="text-[0.65rem] tracking-wide">sent</span>
-              </div>
-            <% end %>
+            <div class="flex items-center">
+              <button
+                type="button"
+                phx-click="send_input"
+                phx-target={@myself}
+                class="px-4 py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-[2px_2px_8px_-2px_rgba(59,130,246,0.3)] hover:shadow-[3px_3px_12px_-2px_rgba(59,130,246,0.4)] border-r-[3px] border-b-[2px] border-t border-blue-400/30 text-sm tracking-wide"
+                disabled={@current_input == "" and length(@uploaded_images) == 0}
+                title="Send message"
+              >
+                send
+              </button>
+            </div>
           </div>
+          <!-- Sent Feedback (below input) -->
+          <%= if @just_sent do %>
+            <div class="flex items-center text-green-600/80 text-sm">
+              <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              <span class="text-[0.65rem] tracking-wide">sent</span>
+            </div>
+          <% end %>
         </div>
       </.form>
     </div>
@@ -223,6 +289,7 @@ defmodule KoalemosWeb.UserInputComponent do
       |> assign(:current_input, "")
       |> assign(:uploaded_images, [])
       |> assign(:just_sent, false)
+      |> assign(:images_drawer_open, false)
       |> allow_upload(:image_files,
         accept: ~w(.jpg .jpeg .png .gif .webp),
         max_entries: 5,
@@ -277,6 +344,9 @@ defmodule KoalemosWeb.UserInputComponent do
         socket
       end
 
+    # Open the drawer when files are selected
+    socket = assign(socket, :images_drawer_open, true)
+
     # TECH DEBT: Using polling to check upload completion instead of proper event handling
     # TODO: Replace with proper LiveView upload event handling (progress, auto-upload events)
     Process.send_after(self(), :check_uploads, 500)
@@ -307,6 +377,10 @@ defmodule KoalemosWeb.UserInputComponent do
     index = String.to_integer(index_str)
     updated_images = List.delete_at(socket.assigns.uploaded_images, index)
     {:noreply, assign(socket, :uploaded_images, updated_images)}
+  end
+
+  def handle_event("toggle_images_drawer", _params, socket) do
+    {:noreply, assign(socket, :images_drawer_open, !socket.assigns.images_drawer_open)}
   end
 
   def handle_event("auto-upload", params, socket) do
@@ -377,6 +451,9 @@ defmodule KoalemosWeb.UserInputComponent do
 
     # Only process if ALL entries are done (no entries in progress)
     if length(completed_entries) > 0 and length(in_progress_entries) == 0 do
+      require Logger
+      Logger.debug("Processing #{length(completed_entries)} completed uploads")
+
       try do
         uploaded_images =
           consume_uploaded_entries(socket, :image_files, fn %{path: path}, entry ->
@@ -393,17 +470,20 @@ defmodule KoalemosWeb.UserInputComponent do
                    size: entry.client_size
                  }}
 
-              {:error, _reason} ->
+              {:error, reason} ->
+                Logger.error("Failed to read uploaded file: #{inspect(reason)}")
                 {:ok, nil}
             end
           end)
           |> Enum.filter(&is_map/1)
 
         new_images = socket.assigns.uploaded_images ++ uploaded_images
+        Logger.debug("Added #{length(uploaded_images)} images. Total: #{length(new_images)}")
 
         assign(socket, :uploaded_images, new_images)
       rescue
-        _e ->
+        e ->
+          Logger.error("Error processing uploads: #{inspect(e)}")
           socket
       end
     else

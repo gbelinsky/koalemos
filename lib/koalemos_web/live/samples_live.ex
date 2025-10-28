@@ -5,6 +5,7 @@ defmodule KoalemosWeb.SamplesLive do
   alias KoalemosWeb.MessageCards.ErrorCard
   alias KoalemosWeb.MessageFeed
   alias KoalemosWeb.UserInputComponent
+  alias KoalemosWeb.ChatPanel
 
   @impl true
   def mount(_params, _session, socket) do
@@ -22,8 +23,9 @@ defmodule KoalemosWeb.SamplesLive do
 
   @impl true
   def handle_info(:check_uploads, socket) do
-    # Forward to UserInputComponent
+    # Forward to UserInputComponent instances (both standalone and in ChatPanel)
     send_update(UserInputComponent, id: "sample-input", check_uploads: true)
+    send_update(UserInputComponent, id: "sample-chat-panel-input", check_uploads: true)
     {:noreply, socket}
   end
 
@@ -178,8 +180,25 @@ defmodule KoalemosWeb.SamplesLive do
       <div class="max-w-4xl mx-auto">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">Component Samples</h1>
         <p class="text-gray-600 mb-8">
-          Demo of all message components from Sprint 2 & 3
+          Demo of all message components from Sprints 2, 3 & 4
         </p>
+        <!-- Chat Panel (Sprint 4) -->
+        <section class="mb-12">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Chat Panel (Sprint 4)</h2>
+          <p class="text-gray-600 mb-4 text-sm">
+            Complete integrated chat experience combining MessageFeed + UserInputComponent.
+            Try typing messages with or without images! Mock AI responses enabled.
+          </p>
+          <div class="bg-white rounded-xl shadow-lg overflow-hidden" style="height: 600px;">
+            <.live_component
+              module={ChatPanel}
+              id="sample-chat-panel"
+              routine_id="demo-routine-123"
+              mock_responses={true}
+            />
+          </div>
+        </section>
+        <hr class="my-12 border-gray-300" />
         <!-- Message Feed (Sprint 3) -->
         <section class="mb-12">
           <h2 class="text-xl font-semibold text-gray-800 mb-4">Message Feed</h2>
@@ -255,7 +274,7 @@ defmodule KoalemosWeb.SamplesLive do
         <!-- Footer -->
         <footer class="text-center text-gray-500 text-sm mt-12">
           <p>
-            Sprint 2 & 3 Component Samples • <a href="/" class="text-indigo-600 hover:underline">
+            Sprint 2, 3 & 4 Component Samples • <a href="/" class="text-indigo-600 hover:underline">
               Back to Home
             </a>
           </p>
