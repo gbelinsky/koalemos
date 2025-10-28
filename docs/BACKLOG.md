@@ -1,10 +1,10 @@
 # Koalemos - Development Backlog
 
-**Last Updated:** October 27, 2024
+**Last Updated:** October 28, 2025
 
 ---
 
-## Milestone 1: Foundation (In Progress)
+## Milestone 1: Foundation ✅ COMPLETE
 
 **Goal:** Project setup and core engine extraction
 
@@ -134,15 +134,21 @@
     - [x] Registry integration (start, lookup, stop)
     - [x] Context flow between steps
     - [x] Error handling
-  - [x] Phase 7b: Full Agent Loop Integration (3 tests + framework, 400 lines)
-    - [x] Complete agent workflow routine (9 steps)
-    - [x] Test lens with tools (echo, add, fail)
+  - [x] Phase 7b: Full Agent Loop Integration (4 tests + framework, 220 lines)
     - [x] Real API integration tests (Anthropic, Ollama)
+    - [x] Test lens with tools (echo, add, fail)
     - [x] Marked with @moduletag :real_api (excluded by default)
-  - [x] Phase 7c: Error Handling Integration (2 tests, 100 lines)
-    - [x] Tool execution errors
-    - [x] Missing credentials
-  - [x] All 508 tests passing (5 real API tests excluded)
+  - [x] Phase 7c: Real API Fixes (6 files, ~150 lines)
+    - [x] Fixed LLM provider return format (context diff format)
+    - [x] Removed Flo credential dependencies
+    - [x] Fixed credential manager startup in tests
+    - [x] Fixed context diff application in tests
+    - [x] Updated provider tests for new format
+  - [x] **Final Results:**
+    - [x] 507 tests passing (all providers, all steps)
+    - [x] 4 real API tests work with live credentials
+    - [x] Clean credential management (.koalemos/.credentials.json)
+    - [x] Verified with real Anthropic API ✅
 
 ---
 

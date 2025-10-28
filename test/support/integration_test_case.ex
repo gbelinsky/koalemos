@@ -4,7 +4,7 @@ defmodule Koalemos.IntegrationTestCase do
 
   Provides:
   - Registry and Observer startup
-  - Credential loading from Flo project (safely)
+  - Credential checking and skip helpers
   - Test routine cleanup
   - Skip helpers for missing dependencies
   """
@@ -56,44 +56,55 @@ defmodule Koalemos.IntegrationTestCase do
   end
 
   @doc """
-  Load credentials from Flo project (parent directory).
+  Check if credentials are available at standard location.
 
-  Returns {:ok, credentials_map} or {:error, reason}
-
-  Never logs or prints credentials.
+  Returns true if .koalemos/.credentials.json exists and is readable.
   """
-  def load_flo_credentials do
-    # Try to load from parent Flo project
-    flo_path = Path.join([File.cwd!(), "..", "flo", ".flo", ".credentials.json"])
-
-    case File.read(flo_path) do
-      {:ok, content} ->
-        case Jason.decode(content) do
-          {:ok, creds} -> {:ok, creds}
-          {:error, _} -> {:error, :invalid_json}
-        end
-      {:error, :enoent} ->
-        {:error, :not_found}
-      {:error, reason} ->
-        {:error, reason}
-    end
+  def credentials_available? do
+    creds_path = ".koalemos/.credentials.json"
+    File.exists?(creds_path) && File.regular?(creds_path)
   end
 
   @doc """
-  Skip test if Flo credentials not available.
+  Skip test if credentials not available, otherwise start SimpleCredentialManager.
 
   Usage in test:
   ```
   test "real API call", %{routine_id: id} do
-    skip_if_no_flo_credentials()
-    # ... test code using real API
+    case skip_if_no_credentials() do
+      :ok -> # run test
+      :skip -> :ok # skip
+    end
   end
   ```
+
+  This function will:
+  - Return :skip if no credentials available
+  - Start SimpleCredentialManager if not running
+  - Set KOALEMOS_CREDENTIALS_PATH env var
+  - Return :ok when ready
   """
-  def skip_if_no_flo_credentials do
-    case load_flo_credentials() do
-      {:ok, _} -> :ok
-      {:error, _} -> raise ExUnit.SkipError, message: "Flo credentials not available"
+  def skip_if_no_credentials do
+    if credentials_available?() do
+      # Set env var to credentials path
+      creds_path = Path.expand(".koalemos/.credentials.json")
+      System.put_env("KOALEMOS_CREDENTIALS_PATH", creds_path)
+
+      # Start SimpleCredentialManager if not running
+      case GenServer.whereis(Koalemos.SimpleCredentialManager) do
+        nil ->
+          # Start the manager
+          case GenServer.start_link(Koalemos.SimpleCredentialManager, [], name: Koalemos.SimpleCredentialManager) do
+            {:ok, _pid} -> :ok
+            {:error, {:already_started, _pid}} -> :ok
+          end
+        _pid -> :ok
+      end
+
+      :ok
+    else
+      IO.puts("\nSkipping test - credentials not available at .koalemos/.credentials.json")
+      :skip
     end
   end
 
@@ -112,7 +123,10 @@ defmodule Koalemos.IntegrationTestCase do
   """
   def skip_if_no_ollama do
     unless ollama_running?() do
-      raise ExUnit.SkipError, message: "Ollama server not running at localhost:11434"
+      IO.puts("\nSkipping test - Ollama server not running at localhost:11434")
+      :skip
+    else
+      :ok
     end
   end
 

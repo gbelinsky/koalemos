@@ -114,7 +114,7 @@ defmodule Koalemos.LLMProviders.Anthropic do
            ) do
         {:ok, %{status: 200} = response} ->
           Logger.info("[Anthropic] Request succeeded (attempt #{attempt})")
-          {:ok, [llm_response: response.body]}
+          {:ok, [{:add, %{llm_response: response.body}}]}
 
         {:ok, %{status: status} = _response}
         when status in [429, 500, 502, 503, 504, 529] and remaining_timeouts != [] ->

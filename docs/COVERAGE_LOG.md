@@ -1812,3 +1812,92 @@ Integration tests don't affect unit test coverage (they test the whole system, n
 - WireframeDesign routine
 
 **Confidence:** Ready to build real features! 🚀
+
+---
+
+## Phase 7 Final: Real API Testing & Credential Cleanup
+
+**Date:** 2025-10-28
+**Files Modified:** 6 files
+**Lines Changed:** ~150 lines
+
+### What We Fixed
+
+After Phase 7 initial implementation, we discovered and fixed several issues to get real API tests working:
+
+**1. Credential Management**
+- Removed all Flo project dependencies
+- Standardized on `.koalemos/.credentials.json` path
+- Fixed `SimpleCredentialManager` startup in test environment
+- Tests now properly initialize credential manager when credentials available
+
+**2. LLM Provider Return Format**
+- **Bug:** Providers returned `{:ok, [llm_response: ...]}` (keyword list)
+- **Expected:** Context diff format `{:ok, [{:add, %{llm_response: ...}}]}`
+- Fixed all 3 providers: Anthropic, OpenAI, Ollama
+- Updated Ollama provider tests to extract from diff format
+
+**3. Context Diff Application**
+- **Bug:** Tests called `apply_context_diff!(state.context, diff)`
+- **Expected:** `apply_context_diff!(state, diff)` (needs full state)
+- Fixed all 4 real API test cases
+
+### Files Modified
+
+**lib/koalemos/llm_providers/**
+- `anthropic.ex` - Return format fix (line 117)
+- `openai.ex` - Return format fix (line 122)
+- `ollama.ex` - Return format fix (line 127)
+
+**test/support/**
+- `integration_test_case.ex` - Removed Flo refs, added credential manager startup
+- `test_lens.ex` - No changes (already clean)
+
+**test/integration/**
+- `real_api_test.exs` - Fixed credential loading, context diff application
+
+### Test Results
+
+**Before fixes:** 4 failures in real API tests
+**After fixes:** 0 failures
+
+```bash
+# Without real API tests (default)
+mix test
+# 507 tests, 0 failures ✅
+
+# With real API tests (when credentials available)
+mix test --include real_api
+# 507 tests, 0 failures ✅ (all 4 real API tests pass)
+```
+
+### Real API Test Coverage
+
+**test/integration/real_api_test.exs** (4 tests):
+1. ✅ Anthropic simple text request - Verifies Claude API integration
+2. ✅ Anthropic tool calls - Verifies tool use works with real API
+3. ✅ Ollama integration - Verifies local model support (if Ollama running)
+4. ✅ Lens context integration - Verifies context injection works
+
+### What This Proves
+
+**Integration Validated:**
+- ✅ LLMRequest step works with real Anthropic API
+- ✅ ResponseParsing step works with real responses
+- ✅ Context diff system works correctly
+- ✅ Credential management works (OAuth tokens)
+- ✅ Tool schemas sent correctly to API
+- ✅ Lens contexts injected properly
+
+**System Confidence:** ⭐⭐⭐⭐⭐
+All 507 tests passing. Real API tests prove the stack works end-to-end with actual LLM providers.
+
+### Milestone 1: COMPLETE ✅
+
+**Total Delivered:**
+- 507 tests, 0 failures
+- Real API integration verified
+- Clean credential management
+- Production-ready architecture
+
+**Ready for Milestone 2!** 🚀

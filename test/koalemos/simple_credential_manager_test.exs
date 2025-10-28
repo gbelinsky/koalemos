@@ -47,8 +47,8 @@ defmodule Koalemos.SimpleCredentialManagerTest do
 
   describe "init/1" do
     test "initializes with no credentials when file not configured" do
-      # Remove env var
-      System.delete_env("KOALEMOS_CREDENTIALS_PATH")
+      # Set env var to non-existent file (don't delete env var as it falls back to default path)
+      System.put_env("KOALEMOS_CREDENTIALS_PATH", "test/tmp/nonexistent_credentials.json")
 
       # Stop existing manager and start new one
       stop_supervised(SimpleCredentialManager)
