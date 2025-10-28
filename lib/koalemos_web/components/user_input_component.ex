@@ -385,15 +385,16 @@ defmodule KoalemosWeb.UserInputComponent do
                 base64_data = Base.encode64(binary)
                 media_type = get_image_media_type(entry.client_type || "image/jpeg")
 
-                %{
-                  base64: base64_data,
-                  media_type: media_type,
-                  filename: entry.client_name,
-                  size: entry.client_size
-                }
+                {:ok,
+                 %{
+                   base64: base64_data,
+                   media_type: media_type,
+                   filename: entry.client_name,
+                   size: entry.client_size
+                 }}
 
               {:error, _reason} ->
-                nil
+                {:ok, nil}
             end
           end)
           |> Enum.filter(&is_map/1)
