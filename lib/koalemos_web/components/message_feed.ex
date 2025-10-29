@@ -77,6 +77,17 @@ defmodule KoalemosWeb.MessageFeed do
                 <AssistantCard.render message={message} card_id={card_id} />
             <% end %>
           <% end %>
+          <!-- Thinking indicator when AI is processing -->
+          <%= if @current_step == :llm_request or @current_step == "llm_request" do %>
+            <div class="flex items-center gap-3 px-4 py-3 bg-gradient-to-br from-indigo-50/50 to-blue-50/30 rounded-2xl border-l-[3px] border-indigo-300/40 shadow-sm">
+              <div class="flex gap-1.5">
+                <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0ms;"></div>
+                <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 150ms;"></div>
+                <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 300ms;"></div>
+              </div>
+              <span class="text-sm text-indigo-600/80 font-medium">thinking...</span>
+            </div>
+          <% end %>
         <% end %>
       </div>
     </div>
@@ -89,7 +100,8 @@ defmodule KoalemosWeb.MessageFeed do
      assign(socket,
        expanded_images: MapSet.new(),
        messages: [],
-       deduplicated_messages: []
+       deduplicated_messages: [],
+       current_step: nil
      )}
   end
 
@@ -100,11 +112,13 @@ defmodule KoalemosWeb.MessageFeed do
     # Deduplicate messages by metadata.id
     messages = Map.get(assigns, :messages, [])
     deduplicated = deduplicate_messages(messages)
+    current_step = Map.get(assigns, :current_step)
 
     {:ok,
      assign(socket,
        messages: messages,
-       deduplicated_messages: deduplicated
+       deduplicated_messages: deduplicated,
+       current_step: current_step
      )}
   end
 

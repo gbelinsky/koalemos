@@ -1901,3 +1901,165 @@ All 507 tests passing. Real API tests prove the stack works end-to-end with actu
 - Production-ready architecture
 
 **Ready for Milestone 2!** 🚀
+
+---
+
+## Milestone 2: UI Foundation + Simple Agent Loop ✅
+
+**Started:** October 28, 2025
+**Completed:** October 29, 2025
+**Goal:** Chat with AI works (text-only, no screenshots)
+
+### Sprint 7: Integration & Polish ✅
+
+**Date:** October 29, 2025
+**Branch:** `feature/m2-7-integration`
+**Goal:** Polish UX and prepare for production
+
+### Features Implemented
+
+**1. Loading State Indicator**
+- Pass `current_step` through component hierarchy (RoutineChatLive → ChatPanel → MessageFeed)
+- Display animated thinking indicator when `current_step == :llm_request`
+- Three bouncing dots with "thinking..." text
+- Input remains enabled (messages queue naturally)
+
+**2. Debug Panel Conditional**
+- Changed `show_debug: true` to `show_debug: Mix.env() == :dev`
+- Debug panel only visible in development environment
+- Removed from production builds
+
+**3. Debug Logging Cleanup**
+- Removed Logger.info statements from StartSessionModal (4 statements)
+- Removed debug logging block from RoutineChatLive (5 statements)
+- Kept error logging intact
+- Cleaner production logs
+
+**4. Autofocus Implementation**
+- Added `phx-hook="AutoFocus"` to UserInputComponent textarea
+- Created AutoFocus JavaScript hook with 100ms delay
+- Input field focuses automatically on page load
+- Better UX for immediate typing
+
+**5. Documentation Updates**
+- M2.md: Marked Sprint 7 and milestone complete
+- README.md: Added project description and M2 features
+- BACKLOG.md: Marked Milestone 2 complete
+
+### Files Modified
+
+**Code Changes (6 files):**
+- `lib/koalemos_web/live/routine_chat_live.ex` (2 edits)
+- `lib/koalemos_web/components/chat_panel.ex` (2 edits)
+- `lib/koalemos_web/components/message_feed.ex` (2 edits)
+- `lib/koalemos_web/components/start_session_modal.ex` (1 edit)
+- `lib/koalemos_web/components/user_input_component.ex` (1 edit)
+- `assets/js/app.js` (1 edit - added AutoFocus hook)
+
+**Documentation Changes (3 files):**
+- `docs/milestones/M2.md`
+- `README.md`
+- `docs/BACKLOG.md`
+
+### Test Results
+
+```bash
+mix test
+603 tests, 0 failures, 1 skipped
+```
+
+**Test Suite Status:**
+- All unit tests passing
+- Chat workflow integration test passing
+- One test skipped (EngineManager.stop_routine - persistence design)
+- One test with isolation issue (known, tracked in BACKLOG)
+
+### Deferred Items
+
+**Error Handling Improvements:**
+- Existing error handling sufficient for M2
+- Errors display in chat UI
+- Routine status tracking works
+- More sophisticated error recovery deferred to future milestones
+
+**Additional Integration Tests:**
+- Existing `chat_workflow_test` covers basic agent loop
+- Manual testing completed successfully
+- End-to-end browser tests deferred to future milestones
+
+### Architecture Improvements
+
+**Component Prop Passing:**
+- Established clear data flow: Parent → Child via props
+- `current_step` flows from LiveView through components
+- Enables dynamic UI updates based on routine state
+
+**JavaScript Hooks:**
+- AutoFocus: Client-side behavior for input focus
+- ScrollToBottom: Auto-scroll with user scroll detection
+- Clean separation: Server state, client behavior
+
+**Environment-Aware Features:**
+- Debug panel uses `Mix.env()` for conditional display
+- Production builds exclude debug UI
+- Clean production experience
+
+### M2 Component Architecture
+
+**Level 0: Foundation**
+- ✅ core_components.ex (Phoenix defaults)
+- ✅ layouts (root, app)
+- ✅ app.js (LiveView + ScrollToBottom + AutoFocus hooks)
+
+**Level 1: Message Cards**
+- ✅ MessageCards.UserCard
+- ✅ MessageCards.AssistantCard
+- ✅ MessageCards.ErrorCard
+- ✅ MessageCards.ImageGallery
+
+**Level 2: Input & Feed**
+- ✅ UserInputComponent (ported from Flo)
+- ✅ MessageFeed (with thinking indicator)
+
+**Level 3: Chat Panel**
+- ✅ ChatPanel (combines MessageFeed + UserInputComponent)
+
+**Level 4: Pages**
+- ✅ HomePage (landing page)
+- ✅ StartSessionModal (provider selection)
+- ✅ RoutineChatLive (main chat page)
+
+**Level 5: Backend**
+- ✅ TestChatRoutine (agent loop: ChatUserInput → LensRendering → LLMRequest → ResponseParsing)
+- ✅ Multi-provider support (Anthropic, OpenAI, Ollama)
+- ✅ Debug panel with config/errors/events
+
+### Milestone 2 Summary
+
+**Total Lines:** ~2,250 lines across 7 sprints
+- Sprint 1: Foundation (400 lines)
+- Sprint 2: Message Cards (400 lines)
+- Sprint 3: Input & Feed (500 lines)
+- Sprint 4: Chat Panel (200 lines)
+- Sprint 5: Pages (450 lines)
+- Sprint 6: Backend (200 lines)
+- Sprint 7: Integration & Polish (100 lines)
+
+**Test Coverage:**
+- 603 tests passing
+- 1 skipped (persistence design)
+- 1 isolation issue (tracked)
+- Integration test proves full stack works
+
+**Status:** ✅ **COMPLETE**
+
+**Next Steps:**
+1. Merge `feature/m2-7-integration` to `develop`
+2. Merge `develop` to `main`
+3. Tag release: `v0.2.0-m2`
+
+**Confidence Level:** ⭐⭐⭐⭐⭐
+- Real-time chat interface working
+- Multi-provider LLM support validated
+- Loading states and UX polish complete
+- Ready for Milestone 3 (Infrastructure Layer)

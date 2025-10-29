@@ -124,9 +124,6 @@ defmodule KoalemosWeb.StartSessionModal do
 
   @impl true
   def handle_event("update_config", %{"provider" => provider, "model" => model}, socket) do
-    require Logger
-    Logger.info("Modal: update_config provider=#{provider}, model=#{model}")
-
     # If provider changed, update to default model for that provider
     socket = if provider != socket.assigns.provider do
       default_model = case provider do
@@ -135,7 +132,6 @@ defmodule KoalemosWeb.StartSessionModal do
         "ollama" -> "llama3.2"
         _ -> "claude-haiku-4-5"
       end
-      Logger.info("Modal: provider changed, setting default model = #{default_model}")
       assign(socket, provider: provider, model: default_model)
     else
       # Provider didn't change, just update model
@@ -147,16 +143,12 @@ defmodule KoalemosWeb.StartSessionModal do
 
   @impl true
   def handle_event("start_chat", _params, socket) do
-    require Logger
-    Logger.info("Modal: start_chat with provider=#{socket.assigns.provider}, model=#{socket.assigns.model}")
-
     # Generate truly unique routine ID with timestamp and random component
     routine_id = "routine-#{System.system_time(:millisecond)}-#{:rand.uniform(999999)}"
 
     # Navigate with provider and model as query params
     url = "/chat/#{routine_id}?provider=#{socket.assigns.provider}&model=#{URI.encode_www_form(socket.assigns.model)}"
 
-    Logger.info("Modal: navigating to #{url}")
     send(self(), {:close_modal})
     {:noreply, push_navigate(socket, to: url)}
   end

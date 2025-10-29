@@ -29,22 +29,15 @@ defmodule KoalemosWeb.RoutineChatLive do
        last_error: nil,
        config: %{llm_provider: "anthropic", model: "claude-haiku-4-5"},
        recent_events: [],
-       show_debug: true
+       show_debug: Mix.env() == :dev
      )}
   end
 
   @impl true
-  def handle_params(%{"routine_id" => routine_id} = params, uri, socket) do
-    Logger.info("=== HANDLE_PARAMS DEBUG ===")
-    Logger.info("Full params: #{inspect(params)}")
-    Logger.info("URI: #{uri}")
-
+  def handle_params(%{"routine_id" => routine_id} = params, _uri, socket) do
     # Get provider and model from URL query params (defaults if not provided)
     provider = Map.get(params, "provider", "anthropic")
     model = Map.get(params, "model", "claude-haiku-4-5")
-
-    Logger.info("Extracted: provider=#{provider}, model=#{model}")
-    Logger.info("=== END DEBUG ===")
 
     # Subscribe to routine events and load state (only once)
     socket = if connected?(socket) && socket.assigns.routine_id == nil do
@@ -64,30 +57,37 @@ defmodule KoalemosWeb.RoutineChatLive do
           Logger.error("Failed to start routine #{routine_id}: #{inspect(reason)}")
       end
 
-      # Load existing messages if routine was already running
+      # Load existing messages and config if routine was already running
       case EngineManager.get_routine(routine_id) do
         {:ok, routine_info} ->
           Logger.info("Loaded #{length(routine_info.messages)} existing messages from routine")
-          assign(socket, messages: routine_info.messages)
-        {:error, _} ->
+
+          # Extract actual config from routine context
+          actual_provider = routine_info.context[:llm_provider] || provider
+          actual_model = routine_info.context[:llm_model] || model
+
           socket
+          |> assign(messages: routine_info.messages)
+          |> assign(config: %{
+            llm_provider: actual_provider,
+            model: actual_model,
+            max_tokens: 2000,
+            temperature: 0.7
+          })
+        {:error, _} ->
+          # New routine, use URL params
+          assign(socket, config: %{
+            llm_provider: provider,
+            model: model,
+            max_tokens: 2000,
+            temperature: 0.7
+          })
       end
     else
       socket
     end
 
-    config = %{
-      llm_provider: provider,
-      model: model,
-      max_tokens: 2000,
-      temperature: 0.7
-    }
-
-    {:noreply,
-     socket
-     |> assign(routine_id: routine_id)
-     |> assign(config: config)
-    }
+    {:noreply, assign(socket, routine_id: routine_id)}
   end
 
   @impl true
@@ -294,6 +294,7 @@ defmodule KoalemosWeb.RoutineChatLive do
             routine_id={@routine_id}
             messages={@messages}
             mock_responses={false}
+            current_step={@current_step}
           />
         </div>
       </div>

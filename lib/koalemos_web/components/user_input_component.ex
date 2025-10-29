@@ -240,6 +240,7 @@ defmodule KoalemosWeb.UserInputComponent do
             <!-- Text Input -->
             <div class="flex-1">
               <textarea
+                id={"#{@id}-textarea"}
                 name="user_input"
                 placeholder={@placeholder || "type your message..."}
                 rows="3"
@@ -247,6 +248,7 @@ defmodule KoalemosWeb.UserInputComponent do
                 phx-keydown="handle_keydown"
                 phx-key="Enter"
                 phx-target={@myself}
+                phx-hook="AutoFocus"
               ><%= @current_input %></textarea>
             </div>
             <!-- Send Button -->
