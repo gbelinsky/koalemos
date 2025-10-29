@@ -301,10 +301,12 @@
   - [x] Supervision tree integration
   - [x] 15 tests, all passing
 
-- [ ] **Sprint 2: Screenshot Capture** (~400 lines)
-  - [ ] Canvas-based capture
-  - [ ] PubSub communication
-  - [ ] Cache storage
+- [x] **Sprint 2: Screenshot Capture** (~470 lines) ✅ Oct 29
+  - [x] JavaScript capture with html2canvas
+  - [x] Test page at `/test/screenshot`
+  - [x] PubSub communication (pushEvent)
+  - [x] LiveView event handlers
+  - [x] 9 tests, all passing
 
 - [ ] **Sprint 3: Screenshot Tool** (~200 lines)
   - [ ] Tool in TestLens
@@ -341,7 +343,7 @@
 **See docs/milestones/M3.md for detailed sprint plans**
 
 **Lines:** ~3,000 (8 sprints)
-**Status:** Sprint 1 Complete ✅ → Sprint 2 Ready
+**Status:** Sprint 2 Complete ✅ → Sprint 3 Ready
 
 ---
 
