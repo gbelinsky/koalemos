@@ -33,7 +33,20 @@ defmodule KoalemosWeb.MessageCards.AssistantCard do
         koalemos
       </div>
       <!-- Content with markdown -->
-      <div class="text-slate-700 text-[0.9rem] leading-relaxed">
+      <div class="text-slate-700 text-[0.9rem] leading-relaxed prose prose-sm max-w-none
+                  prose-p:my-2 prose-p:leading-relaxed
+                  prose-ul:my-2 prose-ul:list-disc prose-ul:pl-5
+                  prose-ol:my-2 prose-ol:list-decimal prose-ol:pl-5
+                  prose-li:my-1
+                  prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono
+                  prose-pre:bg-slate-800 prose-pre:text-slate-100 prose-pre:p-3 prose-pre:rounded-lg prose-pre:overflow-x-auto
+                  prose-a:text-indigo-600 prose-a:underline hover:prose-a:text-indigo-800
+                  prose-strong:font-semibold prose-strong:text-slate-900
+                  prose-em:italic
+                  prose-h1:text-xl prose-h1:font-bold prose-h1:mt-4 prose-h1:mb-2
+                  prose-h2:text-lg prose-h2:font-bold prose-h2:mt-3 prose-h2:mb-2
+                  prose-h3:text-base prose-h3:font-semibold prose-h3:mt-2 prose-h3:mb-1
+                  prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-600">
         <%= safe_markdown_to_html(@text_content) %>
       </div>
     </div>
