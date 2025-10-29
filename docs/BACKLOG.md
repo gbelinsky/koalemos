@@ -207,11 +207,14 @@
 - ✅ No errors, smooth flow
 
 **Lines:** ~2,250 (7 sprints, ~300 lines each)
-**Status:** Planning → Sprint 1 Ready
+**Status:** ✅ **COMPLETE** (October 29, 2025)
 
 ---
 
-## Milestone 3: Infrastructure Layer
+## Milestone 3: Infrastructure Layer 🏗️ IN PROGRESS
+
+**Status:** Planning Complete → Sprint 1 Starting
+**Started:** October 29, 2025
 
 **Goal:** Screenshot capture + HTML parsing work independently
 
@@ -288,70 +291,56 @@
 
 ---
 
-### Part A: Screenshot System (~1,000 lines)
+### Sprint Structure (8 sprints, ~3,000 lines)
 
-**Components:**
-- [ ] **JavaScript Hooks** (~500 lines)
-  - [ ] Extract WireframeScriptHook from Flo (screenshot parts only)
-  - [ ] Canvas-based screenshot capture
-  - [ ] PubSub communication with Elixir
-  - [ ] Debouncing/throttling
+**Strategy:** Sequential bottom-up (Screenshots → Parsing → UX)
 
-- [ ] **ScreenshotCache** (~150 lines)
-  - [ ] GenServer for in-memory image storage
-  - [ ] Store base64 encoded images
-  - [ ] get/put/clear operations
+- [ ] **Sprint 1: Screenshot Foundation** (~350 lines)
+  - [ ] ScreenshotCache GenServer
+  - [ ] JavaScript hook scaffold
   - [ ] Supervision tree integration
 
-- [ ] **Screenshot Tool** (~100 lines)
-  - [ ] Tool definition in test lens
-  - [ ] Requests screenshot via PubSub
-  - [ ] Returns image in tool result (Phase 6c-refactor format)
-  - [ ] Proper error handling
+- [ ] **Sprint 2: Screenshot Capture** (~400 lines)
+  - [ ] Canvas-based capture
+  - [ ] PubSub communication
+  - [ ] Cache storage
 
-- [ ] **Integration** (~250 lines)
-  - [ ] Wire JavaScript hooks to LiveView
-  - [ ] PubSub channels for coordination
-  - [ ] Test workflow: request → capture → store → retrieve
+- [ ] **Sprint 3: Screenshot Tool** (~200 lines)
+  - [ ] Tool in TestLens
+  - [ ] Request → Capture → Retrieve
+  - [ ] Integration tests
 
-### Part B: Parsing System (~1,500 lines)
+- [ ] **Sprint 4: HTML Parser** (~500 lines)
+  - [ ] Semantic structure extraction
+  - [ ] Use Floki (simplified from Flo)
+  - [ ] Metadata extraction
 
-**Components:**
-- [ ] **HTMLParser** (~800 lines, simplified first version)
-  - [ ] Port from Flo (38KB original - simplify for MVP)
-  - [ ] Extract semantic structure (headings, forms, buttons, etc.)
-  - [ ] Extract metadata (ids, classes, data attributes)
-  - [ ] Basic error handling
-
-- [ ] **JavaScriptExtractor** (~200 lines)
+- [ ] **Sprint 5: JavaScript Extractor** (~200 lines)
   - [ ] Extract inline scripts
   - [ ] Extract event handlers
-  - [ ] List functions defined
+  - [ ] List functions
 
-- [ ] **Caches** (~400 lines total)
-  - [ ] DOMStateCache - Store parsed DOM structure
-  - [ ] ConsoleCache - Store console logs
-  - [ ] VariableStateCache - Store variable snapshots
-  - [ ] All GenServers, supervised
+- [ ] **Sprint 6: Cache GenServers** (~500 lines)
+  - [ ] DOMStateCache
+  - [ ] ConsoleCache
+  - [ ] VariableStateCache
+  - [ ] Supervision
 
-- [ ] **Integration** (~100 lines)
-  - [ ] Parse HTML on preview load
-  - [ ] Store results in caches
-  - [ ] Test data flow
+- [ ] **Sprint 7: Parsing Integration** (~250 lines)
+  - [ ] Parser → Caches
+  - [ ] Integration tests
+  - [ ] Data flow verification
 
-**Dependencies:**
-- M2 (LiveView for JavaScript context)
-- Part B independent of Part A
+- [ ] **Sprint 8: UX Polish & Testing** (~600 lines)
+  - [ ] Compact config display
+  - [ ] Provider panels (Ollama models, API keys)
+  - [ ] Enhanced modal
+  - [ ] Final integration
 
-**Test Criteria:**
-- ✅ Can capture screenshot from preview iframe
-- ✅ Screenshot stored in cache and retrievable
-- ✅ Can parse HTML and extract metadata
-- ✅ Caches store/retrieve data correctly
-- ✅ Both systems work independently
+**See docs/milestones/M3.md for detailed sprint plans**
 
-**Lines:** ~2,500
-**Status:** Todo
+**Lines:** ~3,000 (8 sprints)
+**Status:** Sprint 1 Starting
 
 ---
 
