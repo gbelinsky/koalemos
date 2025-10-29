@@ -236,7 +236,7 @@ defmodule KoalemosWeb.UserInputComponent do
             </div>
 
           <!-- Text Input with inline buttons -->
-          <div class="flex items-end gap-2">
+          <div class="flex items-end gap-2 relative">
             <!-- Text Input -->
             <div class="flex-1">
               <textarea
@@ -250,7 +250,7 @@ defmodule KoalemosWeb.UserInputComponent do
               ><%= @current_input %></textarea>
             </div>
             <!-- Send Button -->
-            <div class="flex items-center">
+            <div class="flex items-center relative">
               <button
                 type="button"
                 phx-click="send_input"
@@ -261,21 +261,20 @@ defmodule KoalemosWeb.UserInputComponent do
               >
                 send
               </button>
+              <!-- Sent Feedback (absolute positioned over button area) -->
+              <%= if @just_sent do %>
+                <div class="absolute inset-0 flex items-center justify-center bg-green-500 rounded-xl pointer-events-none">
+                  <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fill-rule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </div>
+              <% end %>
             </div>
           </div>
-          <!-- Sent Feedback (below input) -->
-          <%= if @just_sent do %>
-            <div class="flex items-center text-green-600/80 text-sm">
-              <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fill-rule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-              <span class="text-[0.65rem] tracking-wide">sent</span>
-            </div>
-          <% end %>
         </div>
       </.form>
     </div>
