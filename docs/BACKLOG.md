@@ -152,127 +152,350 @@
 
 ---
 
-## Milestone 2: Core Routine
+## Development Workflow (Starting M2)
 
-**Goal:** Get wireframe design working end-to-end
+**Branch Strategy:**
+- `main` - Production-ready releases (tagged milestones)
+- `develop` - Integration branch for completed features
+- `feature/*` - Feature branches off `develop`
 
-### Todo
-- [ ] Port TemplatedSemanticAgent subroutine
-- [ ] Port WireframeEditor lens
-- [ ] **Screenshot Tool Implementation** (deferred from ChatUserInput + ToolExecution)
-  - [ ] Create ScreenshotCache module (~20 lines, basic get/set/clear)
-  - [ ] Create screenshot capture tool in WireframeEditor lens (~30 lines)
-  - [ ] Tool uses PubSub to request screenshot from JavaScript (~20 lines)
-  - [ ] Tool returns image as part of tool result (using Phase 6c-refactor format)
-  - [ ] Total: ~70 lines moved from ChatUserInput/ToolExecution to proper location
-  - **Design:** Tool controls whether to include images in result, not the execution engine
-- [ ] Port supporting lenses
-  - [ ] Scratchpad
-  - [ ] PersonaLens
-  - [ ] SequentialThinking
-  - [ ] Workflow (for transitions)
-- [ ] Port WireframeDesign routine
-  - [ ] Main routine definition
-  - [ ] Discovery sub-routine
-  - [ ] Structure sub-routine
-  - [ ] Behavior sub-routine
-  - [ ] Polish sub-routine
-- [ ] Port LiveView pages
-  - [ ] WireframeEditorLive
-  - [ ] WireframePreviewLive
-  - [ ] MessageCardsComponent
-  - [ ] UserInputComponent
-- [ ] Test: Complete wireframe design session works
+**Process:**
+1. Create feature branch: `git checkout -b feature/m2-ui-foundation develop`
+2. Develop and test
+3. Create PR: `feature/m2-*` → `develop`
+4. Code review
+5. Merge to `develop`
+6. When milestone complete: `develop` → `main` (tag release)
 
 ---
 
-## Milestone 3: Infrastructure
+## Milestone 2: UI Foundation + Simple Agent Loop ✅ COMPLETE
 
-**Goal:** All supporting systems working
+**Goal:** Chat with AI works (text-only, no screenshots)
 
-### Todo
-- [ ] Port HTML/JavaScript parsers
-  - [ ] HTMLParser with metadata extraction
-  - [ ] JavaScriptParser (NodeJS integration)
-  - [ ] JavaScriptExtractor
-- [ ] Port caching system
-  - [ ] ScreenshotCache
-  - [ ] DOMStateCache
-  - [ ] ConsoleCache
-  - [ ] VariableStateCache
-- [ ] Port credential management
-  - [ ] SimpleCredentialManager (OAuth)
-  - [ ] DemoCredentialStore (file-based)
-- [ ] Clean up logging
-  - [ ] Make debug logging configurable
-  - [ ] Remove excessive trace logs
-  - [ ] Add production-level logging
-- [ ] Add dependencies to mix.exs
-  - [ ] nodejs for JS parsing
-  - [ ] finch for HTTP
-  - [ ] Review flo dependencies
-- [ ] Test: All features work correctly
+**Status:** Completed October 29, 2025
+
+**Why This Scope:**
+- Proves complete architecture flow without screenshot complexity
+- Tests engine → routine → lens → LiveView integration
+- Derisks M3+ by validating design early
+- Generic chat interface works with ANY routine (not wireframe-specific)
+
+**Strategy:** Component-by-component, bottom-up build. Port working components where possible, break monolithic components into smaller pieces.
+
+**Detailed Planning:** See [docs/milestones/M2.md](./milestones/M2.md) for sprint breakdown and component architecture.
+
+**High-Level Components:**
+- [x] **Foundation** - Layouts, core components, minimal app.js
+- [x] **Message Cards** - UserCard, AssistantCard, ErrorCard, ImageGallery (break down monolith)
+- [x] **Input & Feed** - UserInputComponent (port), MessageFeed (new)
+- [x] **Chat Panel** - Combine feed + input
+- [x] **Pages** - HomePage, StartSessionModal, RoutineChatLive
+- [x] **Backend** - TestChatRoutine (simple agent loop), TestLens
+- [x] **Integration** - Loading states, autofocus, debug cleanup
+
+**Dependencies:** M1 only
+
+**Test Criteria:**
+- ✅ Navigate to home page
+- ✅ Click "Start Chat" → modal opens
+- ✅ Start session → navigates to chat page
+- ✅ Type message, see in chat
+- ✅ AI responds with message
+- ✅ Multi-turn conversation works
+- ✅ Routine status displays correctly
+- ✅ No errors, smooth flow
+
+**Lines:** ~2,250 (7 sprints, ~300 lines each)
+**Status:** Planning → Sprint 1 Ready
 
 ---
 
-## Milestone 4: UI/UX
+## Milestone 3: Infrastructure Layer
 
-**Goal:** Polish user-facing experience
+**Goal:** Screenshot capture + HTML parsing work independently
 
-### Todo
-- [ ] Create landing page
-  - [ ] Project overview
-  - [ ] "Start Session" CTA
-  - [ ] Optional wireframe upload
-  - [ ] Quick examples/demos
-- [ ] Clean up debug UI
-  - [ ] Hide debug panel by default
-  - [ ] Add toggle for advanced users
-  - [ ] Clean up log output
-- [ ] Error handling
-  - [ ] Graceful LLM API failures
-  - [ ] Network error messages
-  - [ ] Upload validation
-- [ ] Loading states
-  - [ ] Session initialization
-  - [ ] LLM thinking indicator
-  - [ ] File upload progress
-- [ ] Modal improvements
+**Why Together:**
+- Both are infrastructure needed by M4
+- Can be tested separately (no interdependency)
+- Large milestone but two independent tracks (could parallelize)
+
+### M3 UX Improvements (Deferred from M2)
+
+**Goal:** Polish chat interface and provider configuration
+
+**Components:**
+
+- [ ] **Compact Config Display**
+  - Move provider/model info next to title (2 lines, small text)
+  - Show actual routine config (not URL params) ✅ Fixed in M2
+  - Keep unobtrusive, doesn't increase header height
+  - Remove debug panel from production
+
+- [ ] **Provider-Specific Configuration Panels**
+  - **Ollama:**
+    - Fetch available models from `/api/tags` endpoint
+    - Display model list in dropdown
+    - Show model size/parameters info
+    - Real-time availability check
+  - **Anthropic:**
+    - Update API key UI
+    - Show current key status (valid/invalid/missing)
+    - OAuth token refresh status
+  - **OpenAI:**
+    - Update API key UI
+    - Model selection with descriptions
+    - Organization ID support (optional)
+
+- [ ] **Enhanced Start Session Modal**
+  - Provider-specific configuration UI
+  - Model selection based on provider
+  - Persist last-used configuration
+  - Configuration validation before starting
+
+- [ ] **Better Error Handling**
+  - User-friendly error messages
+  - Retry mechanisms for transient failures
+  - Network status indicators
+  - Model availability warnings
+
+**Dependencies:** M2 (chat interface complete)
+**Lines:** ~400-600 (mostly UI components)
+**Status:** Deferred - Will plan during M3
+
+---
+
+### Code Quality & Coverage Review (Future Task)
+
+**Goal:** Audit codebase for unused code and coverage gaps
+
+**Observations:**
+- Some ported components may not be used and lowering overall coverage
+- Some actively used components are under-tested
+- Need systematic review to identify:
+  - Dead code to remove
+  - Under-tested critical paths
+  - Over-tested trivial code
+
+**Tasks:**
+- [ ] Run coverage report with detailed line-by-line analysis
+- [ ] Identify unused modules/functions
+- [ ] Identify coverage gaps in critical paths
+- [ ] Create cleanup/testing plan
+- [ ] Execute in focused sprint
+
+**Status:** Future - Will schedule after M3 or M4
+
+---
+
+### Part A: Screenshot System (~1,000 lines)
+
+**Components:**
+- [ ] **JavaScript Hooks** (~500 lines)
+  - [ ] Extract WireframeScriptHook from Flo (screenshot parts only)
+  - [ ] Canvas-based screenshot capture
+  - [ ] PubSub communication with Elixir
+  - [ ] Debouncing/throttling
+
+- [ ] **ScreenshotCache** (~150 lines)
+  - [ ] GenServer for in-memory image storage
+  - [ ] Store base64 encoded images
+  - [ ] get/put/clear operations
+  - [ ] Supervision tree integration
+
+- [ ] **Screenshot Tool** (~100 lines)
+  - [ ] Tool definition in test lens
+  - [ ] Requests screenshot via PubSub
+  - [ ] Returns image in tool result (Phase 6c-refactor format)
+  - [ ] Proper error handling
+
+- [ ] **Integration** (~250 lines)
+  - [ ] Wire JavaScript hooks to LiveView
+  - [ ] PubSub channels for coordination
+  - [ ] Test workflow: request → capture → store → retrieve
+
+### Part B: Parsing System (~1,500 lines)
+
+**Components:**
+- [ ] **HTMLParser** (~800 lines, simplified first version)
+  - [ ] Port from Flo (38KB original - simplify for MVP)
+  - [ ] Extract semantic structure (headings, forms, buttons, etc.)
+  - [ ] Extract metadata (ids, classes, data attributes)
+  - [ ] Basic error handling
+
+- [ ] **JavaScriptExtractor** (~200 lines)
+  - [ ] Extract inline scripts
+  - [ ] Extract event handlers
+  - [ ] List functions defined
+
+- [ ] **Caches** (~400 lines total)
+  - [ ] DOMStateCache - Store parsed DOM structure
+  - [ ] ConsoleCache - Store console logs
+  - [ ] VariableStateCache - Store variable snapshots
+  - [ ] All GenServers, supervised
+
+- [ ] **Integration** (~100 lines)
+  - [ ] Parse HTML on preview load
+  - [ ] Store results in caches
+  - [ ] Test data flow
+
+**Dependencies:**
+- M2 (LiveView for JavaScript context)
+- Part B independent of Part A
+
+**Test Criteria:**
+- ✅ Can capture screenshot from preview iframe
+- ✅ Screenshot stored in cache and retrievable
+- ✅ Can parse HTML and extract metadata
+- ✅ Caches store/retrieve data correctly
+- ✅ Both systems work independently
+
+**Lines:** ~2,500
+**Status:** Todo
+
+---
+
+## Milestone 4: WireframeEditor Lens + Supporting Lenses
+
+**Goal:** Full lens system with rich context and tools
+
+**Why This Scope:**
+- All infrastructure ready (M2 UI, M3 screenshots/parsers)
+- Focus purely on lens logic and tools
+- Supporting lenses are small and straightforward
+
+**Components:**
+- [ ] **WireframeEditor Lens** (~2,000 lines)
+  - [ ] Port from Flo (1,986 lines - may need adjustments)
+  - [ ] Context generation (uses HTMLParser, caches)
+  - [ ] Tool definitions (DOM manipulation, analysis)
+  - [ ] Screenshot integration (uses M3 screenshot tool)
+  - [ ] State management
+
+- [ ] **Supporting Lenses** (~600 lines total)
+  - [ ] PersonaLens (~200 lines) - Agent personality/instructions
+  - [ ] Scratchpad (~100 lines) - Working memory
+  - [ ] SequentialThinking (~250 lines) - Step-by-step reasoning
+  - [ ] Workflow (~50 lines) - Phase management
+
+- [ ] **Integration** (~400 lines)
+  - [ ] Wire all lenses to test routine
+  - [ ] Test tool execution
+  - [ ] Test context generation
+  - [ ] Verify screenshot flow
+
+**Dependencies:** M2 (LiveView), M3 (screenshots + parsers)
+
+**Test Criteria:**
+- ✅ WireframeEditor provides context from parsed HTML
+- ✅ Tools execute and manipulate DOM
+- ✅ Screenshots captured when tool requests
+- ✅ Supporting lenses integrate correctly
+- ✅ Lens system works end-to-end
+
+**Lines:** ~3,000
+**Status:** Todo
+
+---
+
+## Milestone 5: WireframeDesign Routine (MVP Complete!)
+
+**Goal:** End-to-end wireframe design with phases
+
+**Why This Scope:**
+- All dependencies satisfied (M2-M4)
+- Final integration piece
+- Completes MVP functionality
+
+**Components:**
+- [ ] **WireframeDesign Routine** (~600 lines)
+  - [ ] Port from Flo (10KB original)
+  - [ ] Phase definitions:
+    - [ ] Discovery (requirements gathering)
+    - [ ] Structure (HTML/CSS layout)
+    - [ ] Behavior (JavaScript/interactivity)
+    - [ ] Polish (visual design)
+  - [ ] Phase transitions
+  - [ ] Uses WireframeEditor lens
+  - [ ] Uses all supporting lenses
+
+- [ ] **HTML Upload** (~200 lines)
+  - [ ] File upload component
+  - [ ] Parse uploaded HTML
+  - [ ] Initialize routine with HTML
+
+- [ ] **Full Integration** (~200 lines)
+  - [ ] Wire everything together
+  - [ ] Complete workflow test
+  - [ ] Error handling
+
+**Dependencies:** M2-M4 (everything)
+
+**Test Criteria:**
+- ✅ Can start session with blank wireframe
+- ✅ Can upload HTML wireframe
+- ✅ AI guides through all phases
+- ✅ Can make changes to wireframe
+- ✅ Preview updates in real-time
+- ✅ Screenshots work throughout
+- ✅ Complete session works end-to-end
+
+**MVP COMPLETE** ✅
+
+**Lines:** ~1,000
+**Status:** Todo
+
+---
+
+## Milestone 6: Polish & Production-Ready
+
+**Goal:** Ship production-ready MVP!
+
+**Why This Scope:**
+- MVP complete from M5, now make it production-worthy
+- UX polish for real users
+- Deployment infrastructure
+- Complete documentation
+
+**Components:**
+- [ ] **UI Polish** (~200 lines)
+  - [ ] Landing page (start session, upload wireframe)
+  - [ ] Loading states (LLM thinking, file upload)
+  - [ ] Error handling (graceful failures, network errors)
   - [ ] Smooth transitions
-  - [ ] Better upload UX (already improved!)
-- [ ] Test: Good UX, no rough edges
 
----
+- [ ] **Logging & Monitoring** (~100 lines)
+  - [ ] Make debug logging configurable
+  - [ ] Clean up excessive logs
+  - [ ] Production-level logging
+  - [ ] Error tracking setup
 
-## Milestone 5: Release
+- [ ] **Docker & Deployment** (~200 lines)
+  - [ ] Dockerfile (multi-stage build)
+  - [ ] docker-compose.yml (easy local dev)
+  - [ ] Environment configuration (.env.example)
+  - [ ] Deploy to Fly.io
 
-**Goal:** Package and ship
-
-### Todo
-- [ ] Create Dockerfile
-  - [ ] Multi-stage build
-  - [ ] Asset compilation
-  - [ ] Minimal runtime image
-- [ ] Create docker-compose.yml
-  - [ ] Easy local development
-  - [ ] Volume mounts for development
-- [ ] Environment configuration
-  - [ ] .env.example file
-  - [ ] Runtime.exs configuration
-  - [ ] Secrets management guide
-- [ ] Build and publish container
-  - [ ] GitHub Container Registry
-  - [ ] Version tagging
-  - [ ] Latest tag
-- [ ] Documentation
+- [ ] **Documentation** (update existing docs)
   - [ ] README with quick start
-  - [ ] ARCHITECTURE.md (system design)
+  - [ ] CONTRIBUTING.md (branch workflow)
   - [ ] DEPLOYMENT.md (how to deploy)
-  - [ ] CONTRIBUTING.md (for future)
-- [ ] Test deployment
-  - [ ] Local Docker
-  - [ ] Fly.io deployment
-- [ ] Test: Can deploy and run in < 5 minutes
+  - [ ] Update ARCHITECTURE.md
+
+**Dependencies:** M5 (complete MVP)
+
+**Test Criteria:**
+- ✅ Landing page looks professional
+- ✅ No rough edges in UX
+- ✅ Can deploy in < 5 minutes
+- ✅ Docker container works
+- ✅ Deployed app works in production
+- ✅ Documentation is clear and complete
+
+**SHIP IT!** 🚀
+
+**Lines:** ~500
+**Status:** Todo
 
 ---
 

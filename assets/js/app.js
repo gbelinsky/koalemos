@@ -22,10 +22,98 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
+// LiveView Hooks
+const Hooks = {}
+
+// Auto-scroll messages to bottom when new messages arrive
+Hooks.ScrollToBottom = {
+  mounted() {
+    // Always scroll to bottom on initial load
+    this.scrollToBottom()
+    this.setupScrollButton()
+  },
+  updated() {
+    const container = this.el.closest('.overflow-y-auto')
+    if (!container) return
+
+    // Check if user was at bottom BEFORE the update
+    // (we track this from scroll events)
+    if (this.wasAtBottom !== false) {  // Default to true on first update
+      this.scrollToBottom()
+      this.hideScrollButton()
+    } else {
+      // User scrolled up - show button to jump to bottom
+      this.showScrollButton()
+    }
+  },
+  setupScrollButton() {
+    const container = this.el.closest('.overflow-y-auto')
+    if (!container) return
+
+    // Track scroll position to know if user scrolled up
+    container.addEventListener('scroll', () => {
+      this.wasAtBottom = this.isAtBottom(container)
+      if (this.wasAtBottom) {
+        this.hideScrollButton()
+      }
+    })
+
+    // Create scroll-to-bottom button
+    this.scrollBtn = document.createElement('button')
+    this.scrollBtn.className = 'fixed bottom-24 right-8 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-indigo-700 transition-all z-10 hidden items-center space-x-2'
+    this.scrollBtn.innerHTML = '<span>New messages</span><span>↓</span>'
+    this.scrollBtn.onclick = () => {
+      this.scrollToBottom()
+      this.wasAtBottom = true
+      this.hideScrollButton()
+    }
+    container.parentElement.appendChild(this.scrollBtn)
+  },
+  showScrollButton() {
+    if (this.scrollBtn) {
+      this.scrollBtn.classList.remove('hidden')
+      this.scrollBtn.classList.add('flex')
+    }
+  },
+  hideScrollButton() {
+    if (this.scrollBtn) {
+      this.scrollBtn.classList.add('hidden')
+      this.scrollBtn.classList.remove('flex')
+    }
+  },
+  isAtBottom(container) {
+    // Consider "at bottom" if within 100px of bottom (allows for some slack)
+    const threshold = 100
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold
+  },
+  scrollToBottom() {
+    // Find the scrollable parent container
+    const container = this.el.closest('.overflow-y-auto')
+    if (container) {
+      container.scrollTop = container.scrollHeight
+    }
+  },
+  destroyed() {
+    // Clean up button when component is destroyed
+    if (this.scrollBtn && this.scrollBtn.parentElement) {
+      this.scrollBtn.parentElement.removeChild(this.scrollBtn)
+    }
+  }
+}
+
+// Auto-focus input field on page load
+Hooks.AutoFocus = {
+  mounted() {
+    // Focus the element after a brief delay to ensure LiveView is ready
+    setTimeout(() => this.el.focus(), 100)
+  }
+}
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {_csrf_token: csrfToken}
+  params: {_csrf_token: csrfToken},
+  hooks: Hooks
 })
 
 // Show progress bar on live navigation and form submits

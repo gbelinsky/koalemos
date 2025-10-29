@@ -17,7 +17,9 @@ defmodule KoalemosWeb.Router do
   scope "/", KoalemosWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", HomeLive
+    live "/chat/:routine_id", RoutineChatLive
+    live "/samples", SamplesLive
   end
 
   # Other scopes may use custom stacks.

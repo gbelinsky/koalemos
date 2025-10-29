@@ -15,18 +15,18 @@ Koalemos is an AI-powered wireframe design tool built on Phoenix LiveView and a 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         User Browser                         │
-│  ┌──────────────────┐              ┌───────────────────┐    │
-│  │ WireframeEditor  │◄───LiveView──►│ WireframePreview  │    │
-│  │   (Main UI)      │              │    (iframe)       │    │
-│  └──────────────────┘              └───────────────────┘    │
+│                         User Browser                        │
+│  ┌──────────────────┐               ┌───────────────────┐   │
+│  │ WireframeEditor  │◄───LiveView──►│ WireframePreview  │   │
+│  │   (Main UI)      │               │    (iframe)       │   │
+│  └──────────────────┘               └───────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                            │
                     WebSocket (Phoenix)
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Phoenix LiveView Layer                    │
+│                    Phoenix LiveView Layer                   │
 │  - WireframeEditorLive: Main UI, session management         │
 │  - WireframePreviewLive: Wireframe rendering                │
 │  - PubSub: Real-time event broadcasting                     │
@@ -34,7 +34,7 @@ Koalemos is an AI-powered wireframe design tool built on Phoenix LiveView and a 
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      Koalemos.Engine                         │
+│                      Koalemos.Engine                        │
 │  ┌──────────────┬──────────────┬─────────────────────────┐  │
 │  │ Orchestrator │   Observer   │       Registry          │  │
 │  │ (State mgmt) │   (Events)   │   (Process tracking)    │  │
@@ -43,13 +43,13 @@ Koalemos is an AI-powered wireframe design tool built on Phoenix LiveView and a 
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   Routines & Subroutines                     │
+│                   Routines & Subroutines                    │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │            WireframeDesign Routine                   │    │
+│  │            WireframeDesign Routine                  │    │
 │  │  ┌───────────┬───────────┬──────────┬────────────┐  │    │
 │  │  │ Discovery │ Structure │ Behavior │   Polish   │  │    │
 │  │  └───────────┴───────────┴──────────┴────────────┘  │    │
-│  │                Uses: TemplatedSemanticAgent          │    │
+│  │                Uses: TemplatedSemanticAgent         │    │
 │  └─────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────┘
                            │

@@ -212,7 +212,7 @@ defmodule Koalemos.OpenAIFormatConverter do
       "system"
   """
   def build_system_message(lens_contexts) do
-    base_text = "You are Claude Code, Anthropic's official CLI for Claude."
+    base_text = ""
 
     lens_text =
       lens_contexts

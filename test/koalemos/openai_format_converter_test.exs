@@ -163,7 +163,8 @@ defmodule Koalemos.OpenAIFormatConverterTest do
       result = OpenAIFormatConverter.build_system_message(lens_contexts)
 
       assert result["role"] == "system"
-      assert result["content"] == "You are Claude Code, Anthropic's official CLI for Claude."
+      # Base text is empty for OpenAI/Ollama (only Anthropic needs Claude Code identity)
+      assert result["content"] == ""
     end
 
     test "builds system message with lens contexts" do
@@ -175,7 +176,6 @@ defmodule Koalemos.OpenAIFormatConverterTest do
       result = OpenAIFormatConverter.build_system_message(lens_contexts)
 
       assert result["role"] == "system"
-      assert result["content"] =~ "You are Claude Code"
       assert result["content"] =~ "Additional context 1"
       assert result["content"] =~ "Additional context 2"
     end
@@ -189,8 +189,8 @@ defmodule Koalemos.OpenAIFormatConverterTest do
       result = OpenAIFormatConverter.build_system_message(lens_contexts)
 
       assert result["role"] == "system"
-      # Should only have base text (empty contexts are filtered out)
-      assert result["content"] == "You are Claude Code, Anthropic's official CLI for Claude."
+      # Empty contexts are filtered out, should return empty string
+      assert result["content"] == ""
     end
   end
 
