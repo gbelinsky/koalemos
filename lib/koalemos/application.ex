@@ -15,7 +15,9 @@ defmodule Koalemos.Application do
       # Routine Registry - for looking up Engine processes by routine_id
       {Registry, keys: :unique, name: Koalemos.RoutineRegistry},
       # Observer - for recording routine events
-      Koalemos.Engine.Observer
+      Koalemos.Engine.Observer,
+      # ScreenshotCache - for storing wireframe screenshots
+      Koalemos.Caches.ScreenshotCache
     ]
 
     # Add credential manager only in non-test environments
