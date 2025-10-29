@@ -4,29 +4,90 @@ defmodule KoalemosWeb.RoutineChatLive do
 
   Displays the ChatPanel component and manages the routine lifecycle.
 
-  ## Sprint 5 (Current)
-  - Displays routine_id from URL
-  - Shows "ready" status
-  - ChatPanel works with mock responses
-
-  ## Sprint 6 (Future)
+  ## Sprint 6 (Current)
   - Start routine via EngineManager
   - Subscribe to routine events via PubSub
   - Handle real AI messages
   - Display routine status (running, completed, error)
   """
   use KoalemosWeb, :live_view
+  require Logger
 
   alias KoalemosWeb.ChatPanel
+  alias Koalemos.{EngineManager, Engine}
+  alias Koalemos.Routines.TestChatRoutine
 
   @impl true
-  def mount(%{"routine_id" => routine_id}, _session, socket) do
+  def mount(_params, _session, socket) do
     {:ok,
      assign(socket,
        page_title: "Chat",
-       routine_id: routine_id,
-       status: :ready
+       routine_id: nil,
+       status: :running,
+       messages: [],
+       current_step: nil,
+       last_error: nil,
+       config: %{llm_provider: "anthropic", model: "claude-haiku-4-5"},
+       recent_events: [],
+       show_debug: true
      )}
+  end
+
+  @impl true
+  def handle_params(%{"routine_id" => routine_id} = params, uri, socket) do
+    Logger.info("=== HANDLE_PARAMS DEBUG ===")
+    Logger.info("Full params: #{inspect(params)}")
+    Logger.info("URI: #{uri}")
+
+    # Get provider and model from URL query params (defaults if not provided)
+    provider = Map.get(params, "provider", "anthropic")
+    model = Map.get(params, "model", "claude-haiku-4-5")
+
+    Logger.info("Extracted: provider=#{provider}, model=#{model}")
+    Logger.info("=== END DEBUG ===")
+
+    # Subscribe to routine events and load state (only once)
+    socket = if connected?(socket) && socket.assigns.routine_id == nil do
+      Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
+      Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
+
+      # Try to start the routine (will return existing pid if already running)
+      initial_context = TestChatRoutine.initial_context(%{
+        llm_provider: provider,
+        llm_model: model
+      })
+
+      case EngineManager.start_routine(routine_id, TestChatRoutine, initial_context) do
+        {:ok, _pid} ->
+          Logger.info("Started routine #{routine_id} with #{provider}/#{model}")
+        {:error, reason} ->
+          Logger.error("Failed to start routine #{routine_id}: #{inspect(reason)}")
+      end
+
+      # Load existing messages if routine was already running
+      case EngineManager.get_routine(routine_id) do
+        {:ok, routine_info} ->
+          Logger.info("Loaded #{length(routine_info.messages)} existing messages from routine")
+          assign(socket, messages: routine_info.messages)
+        {:error, _} ->
+          socket
+      end
+    else
+      socket
+    end
+
+    config = %{
+      llm_provider: provider,
+      model: model,
+      max_tokens: 2000,
+      temperature: 0.7
+    }
+
+    {:noreply,
+     socket
+     |> assign(routine_id: routine_id)
+     |> assign(config: config)
+    }
   end
 
   @impl true
@@ -47,12 +108,84 @@ defmodule KoalemosWeb.RoutineChatLive do
 
   @impl true
   def handle_info({:user_input_submitted, %{text: text, images: images}}, socket) do
-    require Logger
-    Logger.info("User input submitted in RoutineChatLive: text=#{text}, images=#{length(images)}")
+    Logger.info("User input submitted: text=#{text}, images=#{length(images)}")
 
-    # In Sprint 5: just log it
-    # In Sprint 6: will send to routine via EngineManager
+    # Send user input to routine
+    data = %{text: text, images: images}
+    Engine.send_external_event(socket.assigns.routine_id, :user_input, data)
+
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:new_messages, new_messages}, socket) do
+    Logger.debug("Received #{length(new_messages)} new message(s)")
+
+    # Append new messages to existing messages
+    updated_messages = socket.assigns.messages ++ new_messages
+
+    {:noreply, assign(socket, messages: updated_messages)}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "routine_completed"} = event}, socket) do
+    Logger.info("Routine completed")
+
+    error = get_in(event, [:metadata, :final_context, :error])
+
+    socket = socket
+    |> assign(status: :completed)
+    |> assign(last_error: error)
+    |> add_event("routine_completed", %{error: error})
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "error_occurred"} = event}, socket) do
+    error_msg = get_in(event, [:metadata, :reason]) || "Unknown error"
+    Logger.error("Routine error: #{error_msg}")
+
+    socket = socket
+    |> assign(status: :error, last_error: error_msg)
+    |> add_event("error", %{message: error_msg})
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "step_started"} = event}, socket) do
+    step = event.step_id
+    step_module = get_in(event, [:metadata, :step_module])
+
+    socket = socket
+    |> assign(current_step: step)
+    |> add_event("step_started", %{step: step, module: step_module})
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "step_completed"} = event}, socket) do
+    step = event.step_id
+
+    socket = add_event(socket, "step_completed", %{step: step})
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:routine_event, _event}, socket) do
+    # Ignore other routine events
+    {:noreply, socket}
+  end
+
+  defp add_event(socket, event_type, details) do
+    timestamp = DateTime.utc_now() |> DateTime.to_iso8601()
+    event = %{type: event_type, details: details, time: timestamp}
+
+    recent = [event | socket.assigns.recent_events] |> Enum.take(20)
+    assign(socket, recent_events: recent)
   end
 
   @impl true
@@ -76,11 +209,24 @@ defmodule KoalemosWeb.RoutineChatLive do
             <h1 class="text-xl font-semibold text-slate-800">koalemos chat</h1>
           </div>
           <div class="flex items-center gap-3">
-            <!-- Status Badge -->
-            <div class="flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded-full">
-              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span class="text-sm text-green-700"><%= status_text(@status) %></span>
+            <!-- Status Badge (fixed width) -->
+            <div class={[
+              "flex items-center gap-2 px-3 py-1 border rounded-full w-28",
+              status_class(@status)
+            ]}>
+              <div class={["w-2 h-2 rounded-full flex-shrink-0", status_dot_class(@status)]}></div>
+              <span class={["text-sm flex-1 text-center", status_text_class(@status)]}>
+                <%= status_text(@status) %>
+              </span>
             </div>
+            <!-- Current Step (fixed width) -->
+            <%= if @current_step do %>
+              <div class="text-xs text-slate-500 font-mono w-32 text-right">
+                step: <%= @current_step %>
+              </div>
+            <% else %>
+              <div class="w-32"></div>
+            <% end %>
             <!-- Routine ID (small, subtle) -->
             <div class="text-xs text-slate-400 font-mono">
               <%= @routine_id %>
@@ -88,6 +234,57 @@ defmodule KoalemosWeb.RoutineChatLive do
           </div>
         </div>
       </div>
+
+      <!-- Debug Panel (collapsible) -->
+      <%= if @show_debug do %>
+        <div class="bg-slate-800 text-white border-b border-slate-700">
+          <div class="max-w-6xl mx-auto px-4 py-2">
+            <div class="flex items-start justify-between gap-4">
+              <!-- Config Info -->
+              <div class="flex-1">
+                <div class="text-xs font-bold text-slate-300 mb-1">CONFIGURATION</div>
+                <div class="text-xs space-y-1">
+                  <div>
+                    <span class="text-slate-400">Provider:</span>
+                    <span class="text-green-400 font-mono"><%= @config.llm_provider %></span>
+                  </div>
+                  <div>
+                    <span class="text-slate-400">Model:</span>
+                    <span class="text-green-400 font-mono"><%= @config.model %></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Error Display -->
+              <%= if @last_error do %>
+                <div class="flex-1">
+                  <div class="text-xs font-bold text-red-400 mb-1">LAST ERROR</div>
+                  <div class="text-xs text-red-300 bg-red-900/30 px-2 py-1 rounded">
+                    <%= @last_error %>
+                  </div>
+                </div>
+              <% end %>
+
+              <!-- Recent Events -->
+              <div class="flex-1">
+                <div class="text-xs font-bold text-slate-300 mb-1">RECENT EVENTS</div>
+                <div class="text-xs space-y-1 max-h-20 overflow-y-auto">
+                  <%= for event <- Enum.take(@recent_events, 5) do %>
+                    <div class="flex gap-2">
+                      <span class="text-slate-500"><%= format_time(event.time) %></span>
+                      <span class="text-blue-400"><%= event.type %></span>
+                      <%= if event.details[:step] do %>
+                        <span class="text-slate-400">→ <%= event.details.step %></span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
       <!-- Chat Panel (fills remaining space) -->
       <div class="flex-1 overflow-hidden">
         <div class="max-w-6xl mx-auto h-full">
@@ -95,7 +292,8 @@ defmodule KoalemosWeb.RoutineChatLive do
             module={ChatPanel}
             id="chat-panel"
             routine_id={@routine_id}
-            mock_responses={true}
+            messages={@messages}
+            mock_responses={false}
           />
         </div>
       </div>
@@ -110,4 +308,26 @@ defmodule KoalemosWeb.RoutineChatLive do
   defp status_text(:completed), do: "completed"
   defp status_text(:error), do: "error"
   defp status_text(_), do: "unknown"
+
+  defp status_class(:running), do: "bg-blue-50 border-blue-200"
+  defp status_class(:completed), do: "bg-gray-50 border-gray-200"
+  defp status_class(:error), do: "bg-red-50 border-red-200"
+  defp status_class(_), do: "bg-green-50 border-green-200"
+
+  defp status_dot_class(:running), do: "bg-blue-500 animate-pulse"
+  defp status_dot_class(:completed), do: "bg-gray-500"
+  defp status_dot_class(:error), do: "bg-red-500 animate-pulse"
+  defp status_dot_class(_), do: "bg-green-500"
+
+  defp status_text_class(:running), do: "text-blue-700"
+  defp status_text_class(:completed), do: "text-gray-700"
+  defp status_text_class(:error), do: "text-red-700"
+  defp status_text_class(_), do: "text-green-700"
+
+  defp format_time(iso_string) do
+    case DateTime.from_iso8601(iso_string) do
+      {:ok, dt, _} -> Calendar.strftime(dt, "%H:%M:%S")
+      _ -> "??:??:??"
+    end
+  end
 end

@@ -114,7 +114,7 @@ defmodule Koalemos.LLMProviders.Anthropic do
            ) do
         {:ok, %{status: 200} = response} ->
           Logger.info("[Anthropic] Request succeeded (attempt #{attempt})")
-          {:ok, [{:add, %{llm_response: response.body}}]}
+          {:ok, [{:add_or_update, %{llm_response: response.body}}]}
 
         {:ok, %{status: status} = _response}
         when status in [429, 500, 502, 503, 504, 529] and remaining_timeouts != [] ->
@@ -203,6 +203,23 @@ defmodule Koalemos.LLMProviders.Anthropic do
       text: "You are Claude Code, Anthropic's official CLI for Claude."
     }
 
-    [base_content | lens_contexts]
+    # Convert lens contexts to proper format (handle both strings and already-formatted maps)
+    formatted_lens_contexts = Enum.map(lens_contexts, fn context ->
+      case context do
+        # Already formatted correctly
+        %{"type" => "text", "text" => text} when is_binary(text) ->
+          %{type: "text", text: text}
+        %{type: "text", text: text} when is_binary(text) ->
+          %{type: "text", text: text}
+        # Plain string
+        text when is_binary(text) ->
+          %{type: "text", text: text}
+        # Fallback for unexpected formats
+        _ ->
+          %{type: "text", text: inspect(context)}
+      end
+    end)
+
+    [base_content | formatted_lens_contexts]
   end
 end

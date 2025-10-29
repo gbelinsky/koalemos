@@ -119,7 +119,7 @@ defmodule Koalemos.LLMProviders.OpenAI do
           # Convert OpenAI response to Anthropic format
           case OpenAIFormatConverter.convert_response_to_anthropic(response.body) do
             {:ok, anthropic_response} ->
-              {:ok, [{:add, %{llm_response: anthropic_response}}]}
+              {:ok, [{:add_or_update, %{llm_response: anthropic_response}}]}
 
             {:error, reason} ->
               {:error, "Failed to convert OpenAI response: #{reason}"}

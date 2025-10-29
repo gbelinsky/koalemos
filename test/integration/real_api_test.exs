@@ -49,7 +49,7 @@ defmodule Koalemos.Integration.RealAPITest do
                 %{role: "user", content: [%{type: "text", text: "Say hello in exactly 3 words"}]}
               ],
               llm_provider: "anthropic",
-              model: "claude-3-5-haiku-20241022",
+              llm_model: "claude-3-5-haiku-20241022",
               max_tokens: 100,
               temperature: 0.1,
               lens_text_contexts: [],
@@ -97,7 +97,7 @@ defmodule Koalemos.Integration.RealAPITest do
                 %{role: "user", content: [%{type: "text", text: "Use the echo tool to echo: test123"}]}
               ],
               llm_provider: "anthropic",
-              model: "claude-3-5-haiku-20241022",
+              llm_model: "claude-3-5-haiku-20241022",
               max_tokens: 200,
               temperature: 0.1,
               lens_text_contexts: [],
@@ -155,7 +155,7 @@ defmodule Koalemos.Integration.RealAPITest do
               %{role: "user", content: [%{type: "text", text: "Say hi in one word"}]}
             ],
             llm_provider: "ollama",
-            model: "qwen3",
+            llm_model: "qwen3",
             max_tokens: 50,
             temperature: 0.1,
             lens_text_contexts: [],
@@ -199,7 +199,7 @@ defmodule Koalemos.Integration.RealAPITest do
                 %{role: "user", content: [%{type: "text", text: "What context do you have?"}]}
               ],
               llm_provider: "anthropic",
-              model: "claude-3-5-haiku-20241022",
+              llm_model: "claude-3-5-haiku-20241022",
               max_tokens: 200,
               temperature: 0.1,
               lens_text_contexts: text_contexts,

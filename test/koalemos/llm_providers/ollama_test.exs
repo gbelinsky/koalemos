@@ -13,7 +13,7 @@ defmodule Koalemos.LLMProviders.OllamaTest do
   end
 
   # Helper to extract llm_response from diff format
-  defp extract_response([{:add, %{llm_response: response}}]), do: response
+  defp extract_response([{:add_or_update, %{llm_response: response}}]), do: response
   defp extract_response(_), do: nil
 
   describe "call/6 - basic functionality" do
