@@ -295,10 +295,11 @@
 
 **Strategy:** Sequential bottom-up (Screenshots → Parsing → UX)
 
-- [ ] **Sprint 1: Screenshot Foundation** (~350 lines)
-  - [ ] ScreenshotCache GenServer
-  - [ ] JavaScript hook scaffold
-  - [ ] Supervision tree integration
+- [x] **Sprint 1: Screenshot Foundation** (~220 lines) ✅ Oct 29
+  - [x] ScreenshotCache GenServer (`lib/koalemos/caches/`)
+  - [x] JavaScript hook scaffold (`assets/js/wireframe_hooks.js`)
+  - [x] Supervision tree integration
+  - [x] 15 tests, all passing
 
 - [ ] **Sprint 2: Screenshot Capture** (~400 lines)
   - [ ] Canvas-based capture
@@ -340,7 +341,7 @@
 **See docs/milestones/M3.md for detailed sprint plans**
 
 **Lines:** ~3,000 (8 sprints)
-**Status:** Sprint 1 Starting
+**Status:** Sprint 1 Complete ✅ → Sprint 2 Ready
 
 ---
 
