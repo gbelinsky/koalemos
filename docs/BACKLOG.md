@@ -169,9 +169,11 @@
 
 ---
 
-## Milestone 2: UI Foundation + Simple Agent Loop
+## Milestone 2: UI Foundation + Simple Agent Loop ✅ COMPLETE
 
 **Goal:** Chat with AI works (text-only, no screenshots)
+
+**Status:** Completed October 29, 2025
 
 **Why This Scope:**
 - Proves complete architecture flow without screenshot complexity
@@ -184,13 +186,13 @@
 **Detailed Planning:** See [docs/milestones/M2.md](./milestones/M2.md) for sprint breakdown and component architecture.
 
 **High-Level Components:**
-- [ ] **Foundation** - Layouts, core components, minimal app.js
-- [ ] **Message Cards** - UserCard, AssistantCard, ErrorCard, ImageGallery (break down monolith)
-- [ ] **Input & Feed** - UserInputComponent (port), MessageFeed (new)
-- [ ] **Chat Panel** - Combine feed + input
-- [ ] **Pages** - HomePage, StartSessionModal, RoutineChatLive
-- [ ] **Backend** - TemplatedSemanticAgent (port), TestLens (update)
-- [ ] **Integration** - Tests, polish, error handling
+- [x] **Foundation** - Layouts, core components, minimal app.js
+- [x] **Message Cards** - UserCard, AssistantCard, ErrorCard, ImageGallery (break down monolith)
+- [x] **Input & Feed** - UserInputComponent (port), MessageFeed (new)
+- [x] **Chat Panel** - Combine feed + input
+- [x] **Pages** - HomePage, StartSessionModal, RoutineChatLive
+- [x] **Backend** - TestChatRoutine (simple agent loop), TestLens
+- [x] **Integration** - Loading states, autofocus, debug cleanup
 
 **Dependencies:** M1 only
 
@@ -217,6 +219,74 @@
 - Both are infrastructure needed by M4
 - Can be tested separately (no interdependency)
 - Large milestone but two independent tracks (could parallelize)
+
+### M3 UX Improvements (Deferred from M2)
+
+**Goal:** Polish chat interface and provider configuration
+
+**Components:**
+
+- [ ] **Compact Config Display**
+  - Move provider/model info next to title (2 lines, small text)
+  - Show actual routine config (not URL params) ✅ Fixed in M2
+  - Keep unobtrusive, doesn't increase header height
+  - Remove debug panel from production
+
+- [ ] **Provider-Specific Configuration Panels**
+  - **Ollama:**
+    - Fetch available models from `/api/tags` endpoint
+    - Display model list in dropdown
+    - Show model size/parameters info
+    - Real-time availability check
+  - **Anthropic:**
+    - Update API key UI
+    - Show current key status (valid/invalid/missing)
+    - OAuth token refresh status
+  - **OpenAI:**
+    - Update API key UI
+    - Model selection with descriptions
+    - Organization ID support (optional)
+
+- [ ] **Enhanced Start Session Modal**
+  - Provider-specific configuration UI
+  - Model selection based on provider
+  - Persist last-used configuration
+  - Configuration validation before starting
+
+- [ ] **Better Error Handling**
+  - User-friendly error messages
+  - Retry mechanisms for transient failures
+  - Network status indicators
+  - Model availability warnings
+
+**Dependencies:** M2 (chat interface complete)
+**Lines:** ~400-600 (mostly UI components)
+**Status:** Deferred - Will plan during M3
+
+---
+
+### Code Quality & Coverage Review (Future Task)
+
+**Goal:** Audit codebase for unused code and coverage gaps
+
+**Observations:**
+- Some ported components may not be used and lowering overall coverage
+- Some actively used components are under-tested
+- Need systematic review to identify:
+  - Dead code to remove
+  - Under-tested critical paths
+  - Over-tested trivial code
+
+**Tasks:**
+- [ ] Run coverage report with detailed line-by-line analysis
+- [ ] Identify unused modules/functions
+- [ ] Identify coverage gaps in critical paths
+- [ ] Create cleanup/testing plan
+- [ ] Execute in focused sprint
+
+**Status:** Future - Will schedule after M3 or M4
+
+---
 
 ### Part A: Screenshot System (~1,000 lines)
 

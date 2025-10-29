@@ -66,6 +66,7 @@ defmodule KoalemosWeb.ChatPanel do
       |> assign(assigns)
       |> assign_new(:messages, fn -> Map.get(assigns, :initial_messages, []) end)
       |> assign_new(:mock_responses, fn -> Map.get(assigns, :mock_responses, false) end)
+      |> assign_new(:current_step, fn -> nil end)
 
     {:ok, socket}
   end
@@ -80,6 +81,7 @@ defmodule KoalemosWeb.ChatPanel do
           module={MessageFeed}
           id={"#{@id}-feed"}
           messages={@messages}
+          current_step={@current_step}
         />
       </div>
       <!-- User Input (flexible height at bottom, max 50% of container) -->

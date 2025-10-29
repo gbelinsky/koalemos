@@ -101,6 +101,14 @@ Hooks.ScrollToBottom = {
   }
 }
 
+// Auto-focus input field on page load
+Hooks.AutoFocus = {
+  mounted() {
+    // Focus the element after a brief delay to ensure LiveView is ready
+    setTimeout(() => this.el.focus(), 100)
+  }
+}
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
