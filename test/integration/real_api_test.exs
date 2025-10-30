@@ -185,7 +185,7 @@ defmodule Koalemos.Integration.RealAPITest do
         :ok ->
           # Use TestLens to provide context
           lens_state = %{context: %{}}
-          lens_contexts = Koalemos.TestLens.provide_context(lens_state)
+          lens_contexts = Koalemos.Lenses.TestLensScreenshot.provide_context(lens_state)
 
           # Separate into text and images
           text_contexts = Enum.filter(lens_contexts, fn block ->

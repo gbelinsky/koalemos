@@ -59,8 +59,8 @@ defmodule KoalemosWeb.HomeLive do
         </button>
         <!-- Footer -->
         <div class="mt-16 text-sm text-slate-400">
-          <a href="/samples" class="hover:text-slate-600 transition-colors">
-            view component samples
+          <a href="/test" class="hover:text-slate-600 transition-colors">
+            view test pages
           </a>
         </div>
       </div>

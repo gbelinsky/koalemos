@@ -49,10 +49,11 @@ defmodule KoalemosWeb.UserInputComponent do
 
   ```elixir
   @impl true
-  def handle_info({:user_input_submitted, %{text: text, images: images}}, socket) do
-    # Process the input and images
+  def handle_info({:user_input_submitted, %{text: text, images: images, include_screenshot: include_screenshot}}, socket) do
+    # Process the input, images, and screenshot flag
     # text: string
     # images: list of %{base64: string, media_type: string, filename: string, size: integer}
+    # include_screenshot: boolean
     {:noreply, socket}
   end
   ```
@@ -235,7 +236,7 @@ defmodule KoalemosWeb.UserInputComponent do
               <% end %>
             </div>
 
-          <!-- Text Input with inline buttons -->
+          <!-- Text Input with send controls -->
           <div class="flex items-end gap-2 relative">
             <!-- Text Input -->
             <div class="flex-1">
@@ -251,30 +252,60 @@ defmodule KoalemosWeb.UserInputComponent do
                 phx-hook="AutoFocus"
               ><%= @current_input %></textarea>
             </div>
-            <!-- Send Button -->
-            <div class="flex items-center relative">
-              <button
-                type="button"
-                phx-click="send_input"
-                phx-target={@myself}
-                class="px-4 py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-[2px_2px_8px_-2px_rgba(59,130,246,0.3)] hover:shadow-[3px_3px_12px_-2px_rgba(59,130,246,0.4)] border-r-[3px] border-b-[2px] border-t border-blue-400/30 text-sm tracking-wide"
-                disabled={@current_input == "" and length(@uploaded_images) == 0}
-                title="Send message"
-              >
-                send
-              </button>
-              <!-- Sent Feedback (absolute positioned over button area) -->
-              <%= if @just_sent do %>
-                <div class="absolute inset-0 flex items-center justify-center bg-green-500 rounded-xl pointer-events-none">
-                  <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fill-rule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clip-rule="evenodd"
+
+            <!-- Right side: Screenshot checkbox (optional) and Send button stacked -->
+            <div class="flex flex-col gap-2">
+              <!-- Screenshot Checkbox (conditional) -->
+              <%= if @show_screenshot_checkbox do %>
+                <div class="flex justify-end">
+                  <label class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={@include_screenshot}
+                      phx-click="toggle_screenshot"
+                      phx-target={@myself}
+                      class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 focus:ring-2"
                     />
-                  </svg>
+                    <span class="text-xs text-slate-600 flex items-center gap-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      screenshot
+                    </span>
+                  </label>
                 </div>
               <% end %>
+
+              <!-- Send Button -->
+              <div class="flex items-center relative">
+                <button
+                  type="button"
+                  phx-click="send_input"
+                  phx-target={@myself}
+                  class="px-4 py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-[2px_2px_8px_-2px_rgba(59,130,246,0.3)] hover:shadow-[3px_3px_12px_-2px_rgba(59,130,246,0.4)] border-r-[3px] border-b-[2px] border-t border-blue-400/30 text-sm tracking-wide"
+                  disabled={@current_input == "" and length(@uploaded_images) == 0 and not @include_screenshot}
+                  title="Send message"
+                >
+                  send
+                </button>
+                <!-- Sent Feedback (absolute positioned over button area) -->
+                <%= if @just_sent do %>
+                  <div class="absolute inset-0 flex items-center justify-center bg-green-500 rounded-xl pointer-events-none">
+                    <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                <% end %>
+              </div>
             </div>
           </div>
         </div>
@@ -291,6 +322,8 @@ defmodule KoalemosWeb.UserInputComponent do
       |> assign(:uploaded_images, [])
       |> assign(:just_sent, false)
       |> assign(:images_drawer_open, false)
+      |> assign(:include_screenshot, false)
+      |> assign(:show_screenshot_checkbox, false)
       |> allow_upload(:image_files,
         accept: ~w(.jpg .jpeg .png .gif .webp),
         max_entries: 5,
@@ -384,6 +417,10 @@ defmodule KoalemosWeb.UserInputComponent do
     {:noreply, assign(socket, :images_drawer_open, !socket.assigns.images_drawer_open)}
   end
 
+  def handle_event("toggle_screenshot", _params, socket) do
+    {:noreply, assign(socket, :include_screenshot, !socket.assigns.include_screenshot)}
+  end
+
   def handle_event("auto-upload", params, socket) do
     # This gets triggered when auto-upload completes
     require Logger
@@ -423,10 +460,11 @@ defmodule KoalemosWeb.UserInputComponent do
   defp send_input_event(socket) do
     text = socket.assigns.current_input
     images = socket.assigns.uploaded_images
+    include_screenshot = socket.assigns.include_screenshot
 
-    if text != "" or length(images) > 0 do
+    if text != "" or length(images) > 0 or include_screenshot do
       # Send the input data to the parent LiveView
-      send(self(), {:user_input_submitted, %{text: text, images: images}})
+      send(self(), {:user_input_submitted, %{text: text, images: images, include_screenshot: include_screenshot}})
 
       # Schedule clearing the feedback
       Process.send_after(self(), {:clear_sent_feedback, socket.assigns.id}, 2000)
@@ -436,6 +474,7 @@ defmodule KoalemosWeb.UserInputComponent do
         socket
         |> assign(:current_input, "")
         |> assign(:uploaded_images, [])
+        |> assign(:include_screenshot, false)
         |> assign(:just_sent, true)
 
       {:noreply, socket}

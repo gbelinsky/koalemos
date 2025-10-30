@@ -571,6 +571,150 @@ The Observer has minimal logging in the Koalemos port (removed excessive TRACE l
 - Add structured logging with log levels
 - Consider using telemetry events instead of logs
 
+### Screenshot System Simplification
+**Status:** Deferred (M3 Sprint 3 implemented October 30, 2025)
+
+The current screenshot system works but has complexity that could be simplified:
+
+**Current architecture:**
+- JavaScript hook captures DOM via html2canvas
+- WebSocket events: LiveView → JS (trigger) and JS → LiveView (result)
+- PubSub messages: Lens → LiveView (request) and LiveView → Lens (notification)
+- ScreenshotCache stores Base64 PNG data
+- Helper module coordinates the flow with timeout
+
+**Works well:**
+- Easy to use from lenses: `ScreenshotCapture.capture(routine_id)`
+- Clean abstraction - comprehensive documentation
+- Tested independently of tool execution
+- Ready for M4 WireframeEditor lens
+
+**Potential simplifications to consider:**
+- Could the PubSub/WebSocket coordination be simplified?
+- Is the timeout approach the best way to synchronize?
+- Could we use a more direct LiveView → Lens callback?
+- Is Base64 in-memory cache the right storage approach?
+
+**Why deferred:**
+- System works correctly and is well-tested
+- Simple API for lenses (one function call)
+- Need to use it in M4 to understand usage patterns
+- Premature to optimize before seeing real-world usage
+
+**Future considerations:**
+- After M4 WireframeEditor implementation, revisit the flow
+- Consider alternative coordination mechanisms
+- Evaluate if complexity is justified by functionality
+- Document any pain points discovered during M4
+
+### UI-to-Lens Communication Pattern
+**Status:** Design needed (identified October 30, 2025)
+
+**Problem:**
+Currently, there's no clean pattern for UI elements (buttons, controls) to directly interact with lenses. All communication goes through the full agent loop (UI → Engine → Routine → Steps → Agent → Lens). For testing and direct UI controls (like "take screenshot" button), we need a more direct path.
+
+**Current workarounds:**
+- External events that routines must explicitly handle
+- Requires routine modification for each lens action
+- No standard pattern or abstraction
+
+**Design goals:**
+1. UI should be able to trigger lens-specific actions
+2. Pattern should be reusable across lenses
+3. Should integrate cleanly with existing architecture
+4. Should support both immediate actions and state updates
+
+**Potential patterns:**
+
+**Option A: Lens-Scoped External Events**
+```elixir
+# UI sends lens-scoped event
+Engine.send_lens_event(routine_id, lens_module, :action, data)
+
+# Lens implements optional callback
+@callback handle_lens_event(action :: atom, data :: term, state :: map) ::
+  {:ok, keyword()} | {:error, term()}
+
+def handle_lens_event(:request_screenshot, _data, _state) do
+  {:ok, lens_updates: [request_screenshot: true], trigger_turn: true}
+end
+```
+
+**Option B: Lens Control API**
+```elixir
+# Dedicated lens control module
+LensController.update_state(routine_id, TestLens, %{request_screenshot: true})
+LensController.trigger_action(routine_id, TestLens, :capture_screenshot)
+
+# Lenses declare supported actions
+def supported_actions do
+  [
+    {:request_screenshot, "Capture and include screenshot in next context"}
+  ]
+end
+```
+
+**Option C: Enhanced External Events with Lens Routing**
+```elixir
+# Routine declares lens event handlers
+external_events: [
+  {:lens_action, TestLens, :request_screenshot,
+    fn context -> {context, lens_updates: [request_screenshot: true]} end}
+]
+
+# UI sends generic lens action event
+Engine.send_external_event(routine_id, :lens_action,
+  %{lens: TestLens, action: :request_screenshot})
+```
+
+**Trade-offs:**
+- Option A: Most lens-centric, but adds new Engine API
+- Option B: Explicit control layer, clear separation of concerns
+- Option C: Leverages existing external events, minimal new APIs
+
+**Why deferred:**
+- Need to use pattern in multiple contexts to evaluate
+- Current external events work but are verbose
+- Should emerge from real usage patterns
+- M4 WireframeEditor will provide more use cases
+
+**Future work:**
+- Implement in M4 with WireframeEditor lens
+- Consider standardizing lens action declarations
+- Evaluate integration with tool system
+- Document best practices
+
+### Test Routine Progression
+**Status:** Architecture pattern identified October 30, 2025
+
+As capabilities are added to the system, test routines should follow a logical progression:
+
+**Progression levels:**
+1. **Chat only** - Basic message exchange (not needed - covered by unit tests)
+2. **Chat with context** - TestChatRoutine + TestLens ✅ (M2, current)
+   - Lens provides text context
+   - Lens provides image context (including screenshots)
+   - No tool execution
+3. **Chat with context and tools** - AgentTestRoutine (future)
+   - Full agent loop with tool execution
+   - Tool lookup and execution steps
+   - Lens updates from tools
+4. **Multi-phase workflows** - Future test routines
+   - Phase transitions
+   - Sub-routine management
+   - Complex state management
+
+**Current status:**
+- M2-M3: Using TestChatRoutine (level 2 - chat with context)
+- TestLens provides context but doesn't execute tools
+- Screenshot testing uses direct flag setting (no tool execution needed)
+- Echo tool enhancement in TestLens is for manual testing only
+
+**Future work:**
+- Create AgentTestRoutine when tool execution needs testing
+- Keep progression clear: each level builds on previous
+- Don't conflate testing levels (e.g., screenshot tests don't need tools)
+
 ### Orchestrator Refactoring
 **Status:** Ported as-is in Phase 4, consider splitting later
 
@@ -641,6 +785,75 @@ EventRecorder.record_event(state, "step_started", %{metadata: %{}})
 - After porting all engine components, evaluate which pattern fits best
 - Consider if the abstraction is even needed - maybe Observer should handle state directly
 - Telemetry events might be a better fit than custom event recording
+
+### ContextManager Nested Updates
+**Status:** Tech debt identified (October 30, 2025)
+
+**Problem:**
+Currently, ContextManager only supports top-level updates. When updating nested maps (like `lens_state`), steps must manually read the existing value, merge changes, and replace the entire map. This is error-prone and verbose.
+
+**Current pattern (error-prone):**
+```elixir
+# Must manually merge to preserve existing keys
+existing_lens_state = state.context[:lens_state] || %{}
+updated_lens_state = Map.put(existing_lens_state, :request_screenshot, true)
+
+diff = [add_or_update: %{lens_state: updated_lens_state}]
+```
+
+**Desired pattern:**
+```elixir
+# Direct nested update with put_in semantics
+diff = [put_in: %{lens_state: %{request_screenshot: true}}]
+
+# Or even deeper nesting
+diff = [put_in: %{config: %{ui: %{theme: "dark"}}}]
+```
+
+**Why it matters:**
+- Common pattern across steps (ChatUserInput, ToolExecution, etc.)
+- Easy to accidentally replace instead of merge
+- Verbose boilerplate in every step
+- `lens_state` specifically designed for cross-turn state merging
+- Similar issues with other nested context keys
+
+**Potential implementations:**
+
+**Option A: New `put_in` operation**
+```elixir
+@type diff_operation ::
+  {:add, map()}
+  | {:update, map()}
+  | {:add_or_update, map()}
+  | {:append_to, map()}
+  | {:remove, list()}
+  | {:put_in, map()}  # NEW: Nested merge
+
+# Semantics: Deep merge - creates parent keys if needed, merges nested maps
+```
+
+**Option B: Enhanced `add_or_update` with deep merge option**
+```elixir
+{:add_or_update, map(), deep: true}
+```
+
+**Option C: Separate `merge_nested` operation**
+```elixir
+{:merge_nested, %{lens_state: %{request_screenshot: true}}}
+```
+
+**Why deferred:**
+- Current manual merge works but is repetitive
+- Need to consider semantics carefully (how deep? conflict handling?)
+- Should evaluate common patterns across all steps first
+- Want to avoid over-engineering before we understand all use cases
+
+**Future considerations:**
+- Audit all context updates to find common patterns
+- Consider if this is specific to `lens_state` or general need
+- Think about conflict resolution for deep merges
+- Consider JSON Patch-style operations for flexibility
+- May want different semantics for different keys (some replace, some merge)
 
 ---
 
