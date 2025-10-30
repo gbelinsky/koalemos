@@ -43,6 +43,8 @@ defmodule KoalemosWeb.RoutineChatLive do
     socket = if connected?(socket) && socket.assigns.routine_id == nil do
       Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
       Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
+      # M3 Sprint 3: Subscribe to screenshot requests
+      Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:request:#{routine_id}")
 
       # Try to start the routine (will return existing pid if already running)
       initial_context = TestChatRoutine.initial_context(%{
@@ -91,6 +93,43 @@ defmodule KoalemosWeb.RoutineChatLive do
   end
 
   @impl true
+  def handle_event("screenshot_captured", screenshot_data, socket) do
+    # M3 Sprint 3: Handle screenshot data from JavaScript hook
+    routine_id = socket.assigns.routine_id
+    data = screenshot_data["data"]
+
+    Logger.info("[RoutineChatLive] Screenshot captured for #{routine_id}, #{byte_size(data)} bytes")
+
+    # Store in ScreenshotCache
+    case Koalemos.Caches.ScreenshotCache.put(routine_id, data) do
+      :ok ->
+        Logger.info("[RoutineChatLive] Screenshot stored in cache")
+
+        # Broadcast ready notification via PubSub
+        Phoenix.PubSub.broadcast(
+          Koalemos.PubSub,
+          "screenshot:response:#{routine_id}",
+          {:screenshot_ready, routine_id}
+        )
+        Logger.debug("[RoutineChatLive] Broadcast screenshot_ready notification")
+
+      error ->
+        Logger.error("[RoutineChatLive] Failed to store screenshot: #{inspect(error)}")
+    end
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("screenshot_failed", error_data, socket) do
+    # M3 Sprint 3: Handle screenshot capture failure
+    error_msg = error_data["error"] || "Unknown error"
+    Logger.error("[RoutineChatLive] Screenshot capture failed: #{error_msg}")
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info(:check_uploads, socket) do
     # Forward to nested UserInputComponent (inside ChatPanel)
     alias KoalemosWeb.UserInputComponent
@@ -107,11 +146,11 @@ defmodule KoalemosWeb.RoutineChatLive do
   end
 
   @impl true
-  def handle_info({:user_input_submitted, %{text: text, images: images}}, socket) do
-    Logger.info("User input submitted: text=#{text}, images=#{length(images)}")
+  def handle_info({:user_input_submitted, %{text: text, images: images, include_screenshot: include_screenshot}}, socket) do
+    Logger.info("User input submitted: text=#{text}, images=#{length(images)}, screenshot=#{include_screenshot}")
 
     # Send user input to routine
-    data = %{text: text, images: images}
+    data = %{text: text, images: images, include_screenshot: include_screenshot}
     Engine.send_external_event(socket.assigns.routine_id, :user_input, data)
 
     {:noreply, socket}
@@ -172,6 +211,20 @@ defmodule KoalemosWeb.RoutineChatLive do
     socket = add_event(socket, "step_completed", %{step: step})
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:screenshot_request, %{routine_id: requested_id}}, socket) do
+    # M3 Sprint 3: Handle screenshot capture request from TestLens
+    Logger.info("[RoutineChatLive] Screenshot request received for #{requested_id}")
+
+    if socket.assigns.routine_id == requested_id do
+      # Trigger screenshot capture via JavaScript hook
+      {:noreply, push_event(socket, "trigger_screenshot_capture", %{})}
+    else
+      Logger.warning("[RoutineChatLive] Screenshot request for wrong routine: #{requested_id} (current: #{socket.assigns.routine_id})")
+      {:noreply, socket}
+    end
   end
 
   @impl true
@@ -286,7 +339,12 @@ defmodule KoalemosWeb.RoutineChatLive do
       <% end %>
 
       <!-- Chat Panel (fills remaining space) -->
-      <div class="flex-1 overflow-hidden">
+      <!-- M3 Sprint 3: ScreenshotCapture hook wraps chat panel -->
+      <div
+        id="chat-screenshot-target"
+        phx-hook="ScreenshotCapture"
+        class="flex-1 overflow-hidden"
+      >
         <div class="max-w-6xl mx-auto h-full">
           <.live_component
             module={ChatPanel}

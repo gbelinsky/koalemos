@@ -56,7 +56,8 @@ defmodule KoalemosWeb.ChatPanel do
     {:ok,
      socket
      |> assign(:messages, [])
-     |> assign(:mock_responses, false)}
+     |> assign(:mock_responses, false)
+     |> assign(:show_screenshot_checkbox, false)}
   end
 
   @impl true
@@ -67,6 +68,7 @@ defmodule KoalemosWeb.ChatPanel do
       |> assign_new(:messages, fn -> Map.get(assigns, :initial_messages, []) end)
       |> assign_new(:mock_responses, fn -> Map.get(assigns, :mock_responses, false) end)
       |> assign_new(:current_step, fn -> nil end)
+      |> assign_new(:show_screenshot_checkbox, fn -> Map.get(assigns, :show_screenshot_checkbox, false) end)
 
     {:ok, socket}
   end
@@ -90,6 +92,7 @@ defmodule KoalemosWeb.ChatPanel do
           module={UserInputComponent}
           id={"#{@id}-input"}
           placeholder="type your message..."
+          show_screenshot_checkbox={@show_screenshot_checkbox}
         />
       </div>
     </div>

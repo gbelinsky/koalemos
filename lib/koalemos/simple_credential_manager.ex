@@ -109,11 +109,50 @@ defmodule Koalemos.SimpleCredentialManager do
 
   @impl true
   def handle_info(:do_refresh, state) do
+    # Debug: Log what we're about to use for refresh
+    Logger.debug("[Credential Refresh] Starting refresh with cached refresh_token: #{String.slice(state.credentials.refresh_token, 0..15)}...")
+
+    # Debug: Log what's currently on disk
+    if state.file_path do
+      case File.read(state.file_path) do
+        {:ok, content} ->
+          case Jason.decode(content) do
+            {:ok, data} ->
+              disk_token = get_in(data, ["claudeAiOauth", "refreshToken"])
+              Logger.debug("[Credential Refresh] Disk file has refresh_token: #{String.slice(disk_token || "nil", 0..15)}...")
+            _ ->
+              Logger.debug("[Credential Refresh] Could not decode disk file")
+          end
+        _ ->
+          Logger.debug("[Credential Refresh] Could not read disk file")
+      end
+    else
+      Logger.warning("[Credential Refresh] No file_path in state - refreshed tokens won't be saved!")
+    end
+
     case refresh_token(state.credentials) do
       {:ok, new_credentials} ->
+        Logger.info("[Credential Refresh] Successfully refreshed token, new refresh_token: #{String.slice(new_credentials.refresh_token, 0..15)}...")
+
         # Save to file
         case save_credentials_to_file(new_credentials, state.file_path) do
           :ok ->
+            Logger.info("[Credential Refresh] Successfully saved refreshed tokens to file: #{state.file_path}")
+
+            # Verify what was written
+            case File.read(state.file_path) do
+              {:ok, content} ->
+                case Jason.decode(content) do
+                  {:ok, data} ->
+                    saved_token = get_in(data, ["claudeAiOauth", "refreshToken"])
+                    Logger.debug("[Credential Refresh] Verified disk now has refresh_token: #{String.slice(saved_token || "nil", 0..15)}...")
+                  _ ->
+                    Logger.warning("[Credential Refresh] Could not decode file after save")
+                end
+              _ ->
+                Logger.warning("[Credential Refresh] Could not read file after save")
+            end
+
             # Reply to all waiting callers with the new token
             Enum.each(state.waiting_callers, fn caller ->
               GenServer.reply(caller, {:ok, new_credentials.access_token})
@@ -125,11 +164,14 @@ defmodule Koalemos.SimpleCredentialManager do
               waiting_callers: []
             }
 
-            Logger.info("Successfully refreshed and saved OAuth token")
+            Logger.info("[Credential Refresh] Updated in-memory cache with new tokens")
             {:noreply, new_state}
 
           {:error, reason} ->
-            Logger.error("Failed to save refreshed credentials: #{reason}")
+            Logger.error("[Credential Refresh] CRITICAL: Failed to save refreshed credentials to file: #{reason}")
+            Logger.error("[Credential Refresh] File path: #{inspect(state.file_path)}")
+            Logger.error("[Credential Refresh] Tokens updated in cache but NOT on disk - server restart will load stale tokens!")
+
             # Still reply with the token even if save failed
             Enum.each(state.waiting_callers, fn caller ->
               GenServer.reply(caller, {:ok, new_credentials.access_token})
@@ -145,7 +187,8 @@ defmodule Koalemos.SimpleCredentialManager do
         end
 
       {:error, reason} ->
-        Logger.error("Failed to refresh token: #{reason}")
+        Logger.error("[Credential Refresh] Failed to refresh token from OAuth API: #{reason}")
+        Logger.error("[Credential Refresh] Attempted with refresh_token: #{String.slice(state.credentials.refresh_token, 0..15)}...")
 
         # Reply to all waiting callers with error
         Enum.each(state.waiting_callers, fn caller ->

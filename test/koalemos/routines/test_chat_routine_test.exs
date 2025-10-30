@@ -49,7 +49,7 @@ defmodule Koalemos.Routines.TestChatRoutineTest do
       context = TestChatRoutine.initial_context()
 
       assert context.messages == []
-      assert context.active_lenses == ["Koalemos.Lenses.TestLens"]
+      assert context.active_lenses == ["Koalemos.Lenses.TestLensScreenshot"]
       assert context.llm_provider == "anthropic"
       assert context.llm_model == "claude-haiku-4-5"
       assert context.max_tokens == 2000
@@ -73,7 +73,7 @@ defmodule Koalemos.Routines.TestChatRoutineTest do
       assert context.custom_field == "custom_value"
 
       # Defaults are still present for non-overridden fields
-      assert context.active_lenses == ["Koalemos.Lenses.TestLens"]
+      assert context.active_lenses == ["Koalemos.Lenses.TestLensScreenshot"]
       assert context.llm_provider == "anthropic"
       assert context.llm_model == "claude-haiku-4-5"
       assert context.max_tokens == 2000
