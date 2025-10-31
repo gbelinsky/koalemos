@@ -786,6 +786,48 @@ EventRecorder.record_event(state, "step_started", %{metadata: %{}})
 - Consider if the abstraction is even needed - maybe Observer should handle state directly
 - Telemetry events might be a better fit than custom event recording
 
+### JavaScript Parser Unit Tests
+**Status:** Deferred (October 31, 2025)
+
+**Problem:**
+Currently, `priv/nodejs/js_parser.js` (241 lines) has no JavaScript-level unit tests. We only test it indirectly through 28 Elixir integration tests in `javascript_parser_test.exs`. While this validates the integration path, it makes debugging JavaScript-specific issues more difficult.
+
+**Current approach:**
+- 28 Elixir tests call the Elixir wrapper which calls the JS parser
+- Tests cover all parsing scenarios (variables, functions, handlers, DOMContentLoaded unwrapping)
+- Matches Flo's approach (also no JS unit tests)
+- Works well for integration testing
+
+**Desired approach:**
+- Add JavaScript unit tests with Jest
+- Test `js_parser.js` functions directly at the JavaScript level
+- Better unit-level granularity for debugging
+- Standard Node.js best practice
+- Keep Elixir integration tests (Option C: both)
+
+**Benefits of adding Jest tests:**
+- ✅ Easier to debug AST transformation issues
+- ✅ Faster test execution for JS-only changes
+- ✅ Better coverage of edge cases
+- ✅ Standard Node.js development practice
+
+**Implementation:**
+- Add Jest to `priv/nodejs/package.json`
+- Create `priv/nodejs/js_parser.test.js`
+- Test individual functions: `extractHandlerInfo`, `walkAndTransform`, `unwrapAllDOMContentLoaded`
+- Keep existing Elixir tests for integration validation
+
+**Why deferred:**
+- Current integration tests are comprehensive
+- Simple to maintain (no Jest setup needed)
+- Need to evaluate debugging pain points first
+- Can add later without affecting functionality
+
+**Future considerations:**
+- Add Jest tests if debugging becomes difficult
+- Consider test coverage for individual helper functions
+- May want both unit (Jest) and integration (ExUnit) tests
+
 ### ContextManager Nested Updates
 **Status:** Tech debt identified (October 30, 2025)
 
@@ -854,6 +896,56 @@ diff = [put_in: %{config: %{ui: %{theme: "dark"}}}]
 - Think about conflict resolution for deep merges
 - Consider JSON Patch-style operations for flexibility
 - May want different semantics for different keys (some replace, some merge)
+
+---
+
+## Known Test Failures
+
+### Test Failure: engine_manager_test "list_routines/0 returns empty list"
+**Status:** Pre-existing, parallel test execution issue (identified October 31, 2025)
+**File:** `test/koalemos/engine_manager_test.exs:113`
+
+**Problem:**
+Test expects empty routine list, but finds routines from other tests running in parallel. ExUnit runs tests in parallel by default (async: true), and routines from other test cases are still registered when this test runs.
+
+**Test code:**
+```elixir
+test "list_routines/0 returns empty list when no routines" do
+  assert EngineManager.list_routines() == []
+end
+```
+
+**Typical failure:**
+```
+left:  [
+  %Koalemos.EngineManager.RoutineInfo{
+    id: "routine-test-4549", ...
+  },
+  %Koalemos.EngineManager.RoutineInfo{
+    id: "screenshot-test-5059", ...
+  }
+]
+right: []
+```
+
+**Root cause:**
+- Tests use shared Registry (Koalemos.RoutineRegistry)
+- Parallel tests register routines at overlapping times
+- Registry cleanup isn't instantaneous
+
+**Options:**
+1. **Make test non-async** - Run sequentially (slow, doesn't fix race conditions)
+2. **Add test-specific registry** - Each test gets its own Registry (complex)
+3. **Use setup/cleanup properly** - Ensure cleanup happens before assertion (may not work due to timing)
+4. **Change assertion** - Test that list contains expected routines, not that it's empty
+5. **Skip the test** - Mark as known flaky test
+
+**Recommendation:** Option 4 - Change the test to be more realistic. In a real system, we care about finding specific routines, not that the list is empty. Or option 2 - use test-specific registries for better isolation.
+
+**Future work:**
+- Audit all EngineManager tests for parallel safety
+- Consider test-specific Registry per test (via start_supervised)
+- Document testing patterns for stateful systems
 
 ---
 
