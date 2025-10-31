@@ -16,8 +16,11 @@ defmodule Koalemos.Application do
       {Registry, keys: :unique, name: Koalemos.RoutineRegistry},
       # Observer - for recording routine events
       Koalemos.Engine.Observer,
-      # ScreenshotCache - for storing wireframe screenshots
-      Koalemos.Caches.ScreenshotCache,
+      # Cache GenServers - for storing wireframe runtime state
+      Koalemos.Caches.ScreenshotCache,      # Screenshot images
+      Koalemos.Caches.DOMStateCache,        # Live DOM trees
+      Koalemos.Caches.ConsoleCache,         # Console messages with rate limiting
+      Koalemos.Caches.VariableStateCache,   # Runtime variable values
       # NodeJS Supervisor - for JavaScript parsing
       {NodeJS.Supervisor, [path: Path.join([:code.priv_dir(:koalemos), "nodejs"]), pool_size: 4]}
     ]
