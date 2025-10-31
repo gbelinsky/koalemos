@@ -17,11 +17,11 @@ defmodule KoalemosWeb.HomeLiveTest do
     assert response =~ "start chat session"
   end
 
-  test "has link to samples page", %{conn: conn} do
+  test "has link to test pages", %{conn: conn} do
     conn = get(conn, ~p"/")
     response = html_response(conn, 200)
 
-    assert response =~ "view component samples"
-    assert response =~ "/samples"
+    assert response =~ "view test pages"
+    assert response =~ "/test"
   end
 end

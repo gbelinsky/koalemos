@@ -17,7 +17,9 @@ defmodule Koalemos.Application do
       # Observer - for recording routine events
       Koalemos.Engine.Observer,
       # ScreenshotCache - for storing wireframe screenshots
-      Koalemos.Caches.ScreenshotCache
+      Koalemos.Caches.ScreenshotCache,
+      # NodeJS Supervisor - for JavaScript parsing
+      {NodeJS.Supervisor, [path: Path.join([:code.priv_dir(:koalemos), "nodejs"]), pool_size: 4]}
     ]
 
     # Add credential manager only in non-test environments

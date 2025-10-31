@@ -1,0 +1,10 @@
+{
+  "name": "koalemos-js-parser",
+  "version": "1.0.0",
+  "description": "JavaScript parser for Koalemos wireframe editor",
+  "main": "js_parser.js",
+  "dependencies": {
+    "esprima": "^4.0.1",
+    "escodegen": "^2.1.0"
+  }
+}
