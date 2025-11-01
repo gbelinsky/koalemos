@@ -58,8 +58,11 @@ defmodule Koalemos.Parsers.HTMLParser do
         # Extract body content for the DOM tree, or use entire tree if no body
         body_content = extract_body_content(floki_tree)
 
+        # Remove script/style/link elements from DOM tree (already extracted above)
+        cleaned_content = filter_extracted_elements(body_content)
+
         # Convert to DOM tree with unique IDs
-        {dom_tree, _counter, _used_ids} = convert_to_dom_tree(body_content, 1, MapSet.new())
+        {dom_tree, _counter, _used_ids} = convert_to_dom_tree(cleaned_content, 1, MapSet.new())
 
         result = %{
           dom_tree: dom_tree,
@@ -80,8 +83,38 @@ defmodule Koalemos.Parsers.HTMLParser do
     case Floki.find(floki_tree, "body") do
       [{"body", _attrs, children}] -> children
       [] -> floki_tree  # No body tag, use entire tree
+      _ -> floki_tree  # Multiple bodies or unexpected structure, use entire tree
     end
   end
+
+  # Remove script, style, and link[rel=stylesheet] elements from tree
+  # These have already been extracted and shouldn't appear in the DOM tree
+  defp filter_extracted_elements(floki_nodes) when is_list(floki_nodes) do
+    floki_nodes
+    |> Enum.filter(&keep_element?/1)
+    |> Enum.map(&filter_children/1)
+  end
+
+  defp filter_extracted_elements(node), do: filter_children(node)
+
+  # Check if element should be kept (not script/style/link)
+  defp keep_element?({"script", _attrs, _children}), do: false
+  defp keep_element?({"style", _attrs, _children}), do: false
+  defp keep_element?({"link", attrs, _children}) do
+    # Remove link elements with rel="stylesheet"
+    case Enum.find(attrs, fn {k, _v} -> k == "rel" end) do
+      {"rel", "stylesheet"} -> false
+      _ -> true
+    end
+  end
+  defp keep_element?(_), do: true
+
+  # Recursively filter children of an element
+  defp filter_children({tag, attrs, children}) when is_list(children) do
+    filtered_children = filter_extracted_elements(children)
+    {tag, attrs, filtered_children}
+  end
+  defp filter_children(node), do: node
 
   @doc """
   Parse HTML from file path.

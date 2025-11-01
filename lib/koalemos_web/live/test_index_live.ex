@@ -86,6 +86,67 @@ defmodule KoalemosWeb.TestIndexLive do
             </div>
           </a>
 
+          <!-- Parsing Integration Test Page -->
+          <a
+            href="/test/parsing"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                  />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">
+                  Parsing Integration
+                </h2>
+                <p class="text-slate-600 mb-3">
+                  Test HTML/JavaScript parsing pipeline. Upload or paste HTML wireframes to see DOM extraction, variable parsing, function detection, and event handler mapping. Sprint 6 & 7 integration demo.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                    HTMLParser
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    JavaScriptParser
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Caches
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded">
+                    Handlers
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
           <!-- Sample Page -->
           <a
             href="/test/sample"
