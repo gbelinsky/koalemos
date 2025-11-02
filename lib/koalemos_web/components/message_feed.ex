@@ -88,6 +88,31 @@ defmodule KoalemosWeb.MessageFeed do
               <span class="text-sm text-indigo-600/80 font-medium">thinking...</span>
             </div>
           <% end %>
+          <!-- Error card at bottom (full width) -->
+          <%= if @last_error do %>
+            <ErrorCard.render error_message={@last_error} card_id="routine-error" />
+          <% end %>
+          <!-- Completion card at bottom (full width) -->
+          <%= if @status == :completed && !@last_error do %>
+            <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 shadow-sm">
+              <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                  <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-sm font-semibold text-green-800 mb-1">Routine Completed</h3>
+                  <p class="text-sm text-green-700">The conversation has ended successfully.</p>
+                </div>
+              </div>
+            </div>
+          <% end %>
         <% end %>
       </div>
     </div>
@@ -101,7 +126,9 @@ defmodule KoalemosWeb.MessageFeed do
        expanded_images: MapSet.new(),
        messages: [],
        deduplicated_messages: [],
-       current_step: nil
+       current_step: nil,
+       status: :running,
+       last_error: nil
      )}
   end
 
@@ -113,12 +140,16 @@ defmodule KoalemosWeb.MessageFeed do
     messages = Map.get(assigns, :messages, [])
     deduplicated = deduplicate_messages(messages)
     current_step = Map.get(assigns, :current_step)
+    status = Map.get(assigns, :status, :running)
+    last_error = Map.get(assigns, :last_error)
 
     {:ok,
      assign(socket,
        messages: messages,
        deduplicated_messages: deduplicated,
-       current_step: current_step
+       current_step: current_step,
+       status: status,
+       last_error: last_error
      )}
   end
 
