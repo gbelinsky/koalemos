@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complex Wireframe</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            gap: 2rem;
+        }
+
+        nav a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: #667eea;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        .sidebar-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-section h3 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 0.5rem;
+            margin-bottom: 0.25rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .sidebar-menu li:hover,
+        .sidebar-menu li.active {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h3 {
+            margin: 0 0 0.5rem 0;
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-change {
+            font-size: 0.9rem;
+            color: #10b981;
+            margin-top: 0.5rem;
+        }
+
+        .stat-change.negative {
+            color: #ef4444;
+        }
+
+        .content-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            color: #333;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab:hover,
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .data-table th {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .data-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .button.secondary {
+            background: #6b7280;
+        }
+
+        .button.secondary:hover {
+            background: #4b5563;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo">Complex Dashboard</div>
+                <nav>
+                    <ul>
+                        <li><a href="#overview">Overview</a></li>
+                        <li><a href="#analytics">Analytics</a></li>
+                        <li><a href="#reports">Reports</a></li>
+                        <li><a href="#settings">Settings</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>Main Menu</h3>
+                    <ul class="sidebar-menu">
+                        <li class="active" data-view="dashboard">Dashboard</li>
+                        <li data-view="projects">Projects</li>
+                        <li data-view="tasks">Tasks</li>
+                        <li data-view="team">Team</li>
+                    </ul>
+                </div>
+                <div class="sidebar-section">
+                    <h3>Quick Actions</h3>
+                    <ul class="sidebar-menu">
+                        <li id="new-project-btn">New Project</li>
+                        <li id="new-task-btn">New Task</li>
+                        <li id="invite-btn">Invite Member</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <div class="main-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Projects</h3>
+                        <div class="stat-value" id="total-projects">24</div>
+                        <div class="stat-change">+3 this month</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Active Tasks</h3>
+                        <div class="stat-value" id="active-tasks">156</div>
+                        <div class="stat-change">+12 this week</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Team Members</h3>
+                        <div class="stat-value" id="team-members">8</div>
+                        <div class="stat-change">+1 this month</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Completion Rate</h3>
+                        <div class="stat-value" id="completion-rate">87%</div>
+                        <div class="stat-change negative">-2% this week</div>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="card-header">
+                        <h2>Project Overview</h2>
+                        <button class="button" id="refresh-btn">Refresh Data</button>
+                    </div>
+
+                    <div class="tabs">
+                        <button class="tab active" data-tab="all">All Projects</button>
+                        <button class="tab" data-tab="active">Active</button>
+                        <button class="tab" data-tab="completed">Completed</button>
+                        <button class="tab" data-tab="archived">Archived</button>
+                    </div>
+
+                    <div class="tab-content active" id="tab-all">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Project Name</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Due Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projects-table">
+                                <tr>
+                                    <td>Website Redesign</td>
+                                    <td>Active</td>
+                                    <td>75%</td>
+                                    <td>2025-12-15</td>
+                                    <td><button class="button secondary">View</button></td>
+                                </tr>
+                                <tr>
+                                    <td>Mobile App</td>
+                                    <td>Active</td>
+                                    <td>45%</td>
+                                    <td>2026-01-30</td>
+                                    <td><button class="button secondary">View</button></td>
+                                </tr>
+                                <tr>
+                                    <td>API Integration</td>
+                                    <td>Completed</td>
+                                    <td>100%</td>
+                                    <td>2025-11-01</td>
+                                    <td><button class="button secondary">View</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="tab-content" id="tab-active">
+                        <p>Active projects will be displayed here.</p>
+                    </div>
+
+                    <div class="tab-content" id="tab-completed">
+                        <p>Completed projects will be displayed here.</p>
+                    </div>
+
+                    <div class="tab-content" id="tab-archived">
+                        <p>Archived projects will be displayed here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="project-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Project</h2>
+                <button class="close-button" id="close-modal">&times;</button>
+            </div>
+            <form id="project-form">
+                <div class="form-group">
+                    <label for="project-name">Project Name</label>
+                    <input type="text" id="project-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="project-status">Status</label>
+                    <select id="project-status">
+                        <option value="planning">Planning</option>
+                        <option value="active">Active</option>
+                        <option value="on-hold">On Hold</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="project-description">Description</label>
+                    <textarea id="project-description" rows="4"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="button secondary" id="cancel-btn">Cancel</button>
+                    <button type="submit" class="button">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab;
+
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update active content
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `tab-${targetTab}`) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        // Modal functionality
+        const modal = document.getElementById('project-modal');
+        const newProjectBtn = document.getElementById('new-project-btn');
+        const closeModalBtn = document.getElementById('close-modal');
+        const cancelBtn = document.getElementById('cancel-btn');
+
+        function openModal() {
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            modal.classList.remove('show');
+        }
+
+        newProjectBtn.addEventListener('click', openModal);
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Form submission
+        const projectForm = document.getElementById('project-form');
+        projectForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const projectName = document.getElementById('project-name').value;
+            const projectStatus = document.getElementById('project-status').value;
+            const projectDescription = document.getElementById('project-description').value;
+
+            console.log('New project:', { projectName, projectStatus, projectDescription });
+
+            // Add to table (simplified - in real app would save to backend)
+            const table = document.getElementById('projects-table');
+            const newRow = table.insertRow(0);
+            newRow.innerHTML = `
+                <td>${projectName}</td>
+                <td>${projectStatus}</td>
+                <td>0%</td>
+                <td>TBD</td>
+                <td><button class="button secondary">View</button></td>
+            `;
+
+            // Update stats
+            const totalProjects = document.getElementById('total-projects');
+            totalProjects.textContent = parseInt(totalProjects.textContent) + 1;
+
+            // Close modal and reset form
+            closeModal();
+            projectForm.reset();
+        });
+
+        // Refresh button
+        const refreshBtn = document.getElementById('refresh-btn');
+        refreshBtn.addEventListener('click', () => {
+            console.log('Refreshing data...');
+            refreshBtn.textContent = 'Refreshing...';
+
+            setTimeout(() => {
+                refreshBtn.textContent = 'Refresh Data';
+                console.log('Data refreshed');
+            }, 1000);
+        });
+
+        // Sidebar menu
+        const sidebarMenuItems = document.querySelectorAll('.sidebar-menu li[data-view]');
+        sidebarMenuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                sidebarMenuItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+
+                const view = item.dataset.view;
+                console.log('Switching to view:', view);
+            });
+        });
+
+        // Initialize
+        console.log('Complex wireframe loaded successfully');
+    </script>
+</body>
+</html>
