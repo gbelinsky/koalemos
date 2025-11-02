@@ -19,7 +19,12 @@ defmodule KoalemosWeb.Router do
 
     live "/", HomeLive
     live "/chat/:routine_id", RoutineChatLive
-    live "/samples", SamplesLive
+
+    # Test pages
+    live "/test", TestIndexLive
+    live "/test/sample", SamplesLive
+    live "/test/screenshot", ScreenshotTestLive
+    live "/test/parsing", ParsingTestLive
   end
 
   # Other scopes may use custom stacks.

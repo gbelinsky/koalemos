@@ -109,6 +109,13 @@ Hooks.AutoFocus = {
   }
 }
 
+// Import wireframe-specific hooks (M3 Sprint 2)
+import WireframeHooks from "./wireframe_hooks.js"
+
+// Merge wireframe hooks into global hooks
+// These hooks only activate on elements with phx-hook="HookName"
+Object.assign(Hooks, WireframeHooks)
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,

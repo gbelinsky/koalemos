@@ -1,6 +1,6 @@
 # Koalemos - Development Backlog
 
-**Last Updated:** October 28, 2025
+**Last Updated:** November 2, 2025
 
 ---
 
@@ -207,11 +207,15 @@
 - ✅ No errors, smooth flow
 
 **Lines:** ~2,250 (7 sprints, ~300 lines each)
-**Status:** Planning → Sprint 1 Ready
+**Status:** ✅ **COMPLETE** (October 29, 2025)
 
 ---
 
-## Milestone 3: Infrastructure Layer
+## Milestone 3: Infrastructure Layer ✅ COMPLETE
+
+**Status:** All 8 Sprints Complete
+**Started:** October 29, 2025
+**Completed:** November 2, 2025
 
 **Goal:** Screenshot capture + HTML parsing work independently
 
@@ -220,48 +224,49 @@
 - Can be tested separately (no interdependency)
 - Large milestone but two independent tracks (could parallelize)
 
-### M3 UX Improvements (Deferred from M2)
+### M3 UX Improvements (Completed in Sprint 8)
 
 **Goal:** Polish chat interface and provider configuration
 
 **Components:**
 
-- [ ] **Compact Config Display**
-  - Move provider/model info next to title (2 lines, small text)
-  - Show actual routine config (not URL params) ✅ Fixed in M2
-  - Keep unobtrusive, doesn't increase header height
-  - Remove debug panel from production
+- [x] **Compact Config Display** ✅
+  - Show provider/model info in header (small text)
+  - Shows actual routine config from context
+  - Unobtrusive, doesn't increase header height
+  - Chat panel displays configuration
 
-- [ ] **Provider-Specific Configuration Panels**
+- [x] **Provider-Specific Configuration Panels** ✅
   - **Ollama:**
-    - Fetch available models from `/api/tags` endpoint
-    - Display model list in dropdown
-    - Show model size/parameters info
-    - Real-time availability check
+    - ✅ OllamaClient fetches models from `/api/tags` endpoint
+    - ✅ Auto-populates model dropdown on connection
+    - ✅ Real-time connection check (connected/error states)
+    - ✅ Shows connection errors with helpful messages
   - **Anthropic:**
-    - Update API key UI
-    - Show current key status (valid/invalid/missing)
-    - OAuth token refresh status
+    - ✅ API key input in StartSessionModal
+    - ✅ OAuth support (uses existing SimpleCredentialManager)
+    - ✅ Model selection via text input
   - **OpenAI:**
-    - Update API key UI
-    - Model selection with descriptions
-    - Organization ID support (optional)
+    - ✅ API key input in StartSessionModal
+    - ✅ Model selection via text input
 
-- [ ] **Enhanced Start Session Modal**
-  - Provider-specific configuration UI
-  - Model selection based on provider
-  - Persist last-used configuration
-  - Configuration validation before starting
+- [x] **Enhanced Start Session Modal** ✅
+  - ✅ Provider selection dropdown (Anthropic/OpenAI/Ollama)
+  - ✅ Provider-specific configuration UI
+  - ✅ Model selection based on provider
+  - ✅ Persist configuration via DemoCredentialStore
+  - ✅ Button validation (disabled until config valid)
+  - ✅ Comprehensive test coverage (56.1%)
 
-- [ ] **Better Error Handling**
-  - User-friendly error messages
-  - Retry mechanisms for transient failures
-  - Network status indicators
-  - Model availability warnings
+- [x] **Better Error Handling** ✅
+  - ✅ User-friendly Ollama connection errors
+  - ✅ Graceful GenServer failure handling
+  - ✅ Model availability checking
+  - ✅ Error states displayed in modal
 
 **Dependencies:** M2 (chat interface complete)
-**Lines:** ~400-600 (mostly UI components)
-**Status:** Deferred - Will plan during M3
+**Lines:** ~900 (Sprint 8)
+**Status:** ✅ Complete (November 2, 2025)
 
 ---
 
@@ -288,70 +293,63 @@
 
 ---
 
-### Part A: Screenshot System (~1,000 lines)
+### Sprint Structure (8 sprints, ~3,000 lines)
 
-**Components:**
-- [ ] **JavaScript Hooks** (~500 lines)
-  - [ ] Extract WireframeScriptHook from Flo (screenshot parts only)
-  - [ ] Canvas-based screenshot capture
-  - [ ] PubSub communication with Elixir
-  - [ ] Debouncing/throttling
+**Strategy:** Sequential bottom-up (Screenshots → Parsing → UX)
 
-- [ ] **ScreenshotCache** (~150 lines)
-  - [ ] GenServer for in-memory image storage
-  - [ ] Store base64 encoded images
-  - [ ] get/put/clear operations
-  - [ ] Supervision tree integration
+- [x] **Sprint 1: Screenshot Foundation** (~220 lines) ✅ Oct 29
+  - [x] ScreenshotCache GenServer (`lib/koalemos/caches/`)
+  - [x] JavaScript hook scaffold (`assets/js/wireframe_hooks.js`)
+  - [x] Supervision tree integration
+  - [x] 15 tests, all passing
 
-- [ ] **Screenshot Tool** (~100 lines)
-  - [ ] Tool definition in test lens
-  - [ ] Requests screenshot via PubSub
-  - [ ] Returns image in tool result (Phase 6c-refactor format)
-  - [ ] Proper error handling
+- [x] **Sprint 2: Screenshot Capture** (~470 lines) ✅ Oct 29
+  - [x] JavaScript capture with html2canvas
+  - [x] Test page at `/test/screenshot`
+  - [x] PubSub communication (pushEvent)
+  - [x] LiveView event handlers
+  - [x] 9 tests, all passing
 
-- [ ] **Integration** (~250 lines)
-  - [ ] Wire JavaScript hooks to LiveView
-  - [ ] PubSub channels for coordination
-  - [ ] Test workflow: request → capture → store → retrieve
+- [ ] **Sprint 3: Screenshot Tool** (~200 lines)
+  - [ ] Tool in TestLens
+  - [ ] Request → Capture → Retrieve
+  - [ ] Integration tests
 
-### Part B: Parsing System (~1,500 lines)
+- [ ] **Sprint 4: HTML Parser** (~500 lines)
+  - [ ] Semantic structure extraction
+  - [ ] Use Floki (simplified from Flo)
+  - [ ] Metadata extraction
 
-**Components:**
-- [ ] **HTMLParser** (~800 lines, simplified first version)
-  - [ ] Port from Flo (38KB original - simplify for MVP)
-  - [ ] Extract semantic structure (headings, forms, buttons, etc.)
-  - [ ] Extract metadata (ids, classes, data attributes)
-  - [ ] Basic error handling
-
-- [ ] **JavaScriptExtractor** (~200 lines)
+- [ ] **Sprint 5: JavaScript Extractor** (~200 lines)
   - [ ] Extract inline scripts
   - [ ] Extract event handlers
-  - [ ] List functions defined
+  - [ ] List functions
 
-- [ ] **Caches** (~400 lines total)
-  - [ ] DOMStateCache - Store parsed DOM structure
-  - [ ] ConsoleCache - Store console logs
-  - [ ] VariableStateCache - Store variable snapshots
-  - [ ] All GenServers, supervised
+- [ ] **Sprint 6: Cache GenServers** (~500 lines)
+  - [ ] DOMStateCache
+  - [ ] ConsoleCache
+  - [ ] VariableStateCache
+  - [ ] Supervision
 
-- [ ] **Integration** (~100 lines)
-  - [ ] Parse HTML on preview load
-  - [ ] Store results in caches
-  - [ ] Test data flow
+- [ ] **Sprint 7: Parsing Integration** (~250 lines)
+  - [ ] Parser → Caches
+  - [ ] Integration tests
+  - [ ] Data flow verification
 
-**Dependencies:**
-- M2 (LiveView for JavaScript context)
-- Part B independent of Part A
+- [x] **Sprint 8: UX Polish & Testing** (~900 lines) ✅ Nov 2
+  - [x] OllamaClient module (111 lines, 42.8% coverage, 11 tests)
+  - [x] Compact config display (show provider/model in header)
+  - [x] Enhanced StartSessionModal with provider selection
+  - [x] Ollama integration (auto-fetch models, connection check)
+  - [x] API key management (Anthropic, OpenAI)
+  - [x] Comprehensive test suite (23 new tests)
+  - [x] Coverage improvements (StartSessionModal: 8.5% → 56.1%)
+  - [x] Error handling improvements (graceful GenServer failures)
 
-**Test Criteria:**
-- ✅ Can capture screenshot from preview iframe
-- ✅ Screenshot stored in cache and retrievable
-- ✅ Can parse HTML and extract metadata
-- ✅ Caches store/retrieve data correctly
-- ✅ Both systems work independently
+**See docs/milestones/M3.md for detailed sprint plans**
 
-**Lines:** ~2,500
-**Status:** Todo
+**Lines:** ~3,000 (8 sprints)
+**Status:** ✅ **MILESTONE 3 COMPLETE** (November 2, 2025)
 
 ---
 
@@ -579,6 +577,150 @@ The Observer has minimal logging in the Koalemos port (removed excessive TRACE l
 - Add structured logging with log levels
 - Consider using telemetry events instead of logs
 
+### Screenshot System Simplification
+**Status:** Deferred (M3 Sprint 3 implemented October 30, 2025)
+
+The current screenshot system works but has complexity that could be simplified:
+
+**Current architecture:**
+- JavaScript hook captures DOM via html2canvas
+- WebSocket events: LiveView → JS (trigger) and JS → LiveView (result)
+- PubSub messages: Lens → LiveView (request) and LiveView → Lens (notification)
+- ScreenshotCache stores Base64 PNG data
+- Helper module coordinates the flow with timeout
+
+**Works well:**
+- Easy to use from lenses: `ScreenshotCapture.capture(routine_id)`
+- Clean abstraction - comprehensive documentation
+- Tested independently of tool execution
+- Ready for M4 WireframeEditor lens
+
+**Potential simplifications to consider:**
+- Could the PubSub/WebSocket coordination be simplified?
+- Is the timeout approach the best way to synchronize?
+- Could we use a more direct LiveView → Lens callback?
+- Is Base64 in-memory cache the right storage approach?
+
+**Why deferred:**
+- System works correctly and is well-tested
+- Simple API for lenses (one function call)
+- Need to use it in M4 to understand usage patterns
+- Premature to optimize before seeing real-world usage
+
+**Future considerations:**
+- After M4 WireframeEditor implementation, revisit the flow
+- Consider alternative coordination mechanisms
+- Evaluate if complexity is justified by functionality
+- Document any pain points discovered during M4
+
+### UI-to-Lens Communication Pattern
+**Status:** Design needed (identified October 30, 2025)
+
+**Problem:**
+Currently, there's no clean pattern for UI elements (buttons, controls) to directly interact with lenses. All communication goes through the full agent loop (UI → Engine → Routine → Steps → Agent → Lens). For testing and direct UI controls (like "take screenshot" button), we need a more direct path.
+
+**Current workarounds:**
+- External events that routines must explicitly handle
+- Requires routine modification for each lens action
+- No standard pattern or abstraction
+
+**Design goals:**
+1. UI should be able to trigger lens-specific actions
+2. Pattern should be reusable across lenses
+3. Should integrate cleanly with existing architecture
+4. Should support both immediate actions and state updates
+
+**Potential patterns:**
+
+**Option A: Lens-Scoped External Events**
+```elixir
+# UI sends lens-scoped event
+Engine.send_lens_event(routine_id, lens_module, :action, data)
+
+# Lens implements optional callback
+@callback handle_lens_event(action :: atom, data :: term, state :: map) ::
+  {:ok, keyword()} | {:error, term()}
+
+def handle_lens_event(:request_screenshot, _data, _state) do
+  {:ok, lens_updates: [request_screenshot: true], trigger_turn: true}
+end
+```
+
+**Option B: Lens Control API**
+```elixir
+# Dedicated lens control module
+LensController.update_state(routine_id, TestLens, %{request_screenshot: true})
+LensController.trigger_action(routine_id, TestLens, :capture_screenshot)
+
+# Lenses declare supported actions
+def supported_actions do
+  [
+    {:request_screenshot, "Capture and include screenshot in next context"}
+  ]
+end
+```
+
+**Option C: Enhanced External Events with Lens Routing**
+```elixir
+# Routine declares lens event handlers
+external_events: [
+  {:lens_action, TestLens, :request_screenshot,
+    fn context -> {context, lens_updates: [request_screenshot: true]} end}
+]
+
+# UI sends generic lens action event
+Engine.send_external_event(routine_id, :lens_action,
+  %{lens: TestLens, action: :request_screenshot})
+```
+
+**Trade-offs:**
+- Option A: Most lens-centric, but adds new Engine API
+- Option B: Explicit control layer, clear separation of concerns
+- Option C: Leverages existing external events, minimal new APIs
+
+**Why deferred:**
+- Need to use pattern in multiple contexts to evaluate
+- Current external events work but are verbose
+- Should emerge from real usage patterns
+- M4 WireframeEditor will provide more use cases
+
+**Future work:**
+- Implement in M4 with WireframeEditor lens
+- Consider standardizing lens action declarations
+- Evaluate integration with tool system
+- Document best practices
+
+### Test Routine Progression
+**Status:** Architecture pattern identified October 30, 2025
+
+As capabilities are added to the system, test routines should follow a logical progression:
+
+**Progression levels:**
+1. **Chat only** - Basic message exchange (not needed - covered by unit tests)
+2. **Chat with context** - TestChatRoutine + TestLens ✅ (M2, current)
+   - Lens provides text context
+   - Lens provides image context (including screenshots)
+   - No tool execution
+3. **Chat with context and tools** - AgentTestRoutine (future)
+   - Full agent loop with tool execution
+   - Tool lookup and execution steps
+   - Lens updates from tools
+4. **Multi-phase workflows** - Future test routines
+   - Phase transitions
+   - Sub-routine management
+   - Complex state management
+
+**Current status:**
+- M2-M3: Using TestChatRoutine (level 2 - chat with context)
+- TestLens provides context but doesn't execute tools
+- Screenshot testing uses direct flag setting (no tool execution needed)
+- Echo tool enhancement in TestLens is for manual testing only
+
+**Future work:**
+- Create AgentTestRoutine when tool execution needs testing
+- Keep progression clear: each level builds on previous
+- Don't conflate testing levels (e.g., screenshot tests don't need tools)
+
 ### Orchestrator Refactoring
 **Status:** Ported as-is in Phase 4, consider splitting later
 
@@ -649,6 +791,210 @@ EventRecorder.record_event(state, "step_started", %{metadata: %{}})
 - After porting all engine components, evaluate which pattern fits best
 - Consider if the abstraction is even needed - maybe Observer should handle state directly
 - Telemetry events might be a better fit than custom event recording
+
+### JavaScript Parser Unit Tests
+**Status:** Deferred (October 31, 2025)
+
+**Problem:**
+Currently, `priv/nodejs/js_parser.js` (241 lines) has no JavaScript-level unit tests. We only test it indirectly through 28 Elixir integration tests in `javascript_parser_test.exs`. While this validates the integration path, it makes debugging JavaScript-specific issues more difficult.
+
+**Current approach:**
+- 28 Elixir tests call the Elixir wrapper which calls the JS parser
+- Tests cover all parsing scenarios (variables, functions, handlers, DOMContentLoaded unwrapping)
+- Matches Flo's approach (also no JS unit tests)
+- Works well for integration testing
+
+**Desired approach:**
+- Add JavaScript unit tests with Jest
+- Test `js_parser.js` functions directly at the JavaScript level
+- Better unit-level granularity for debugging
+- Standard Node.js best practice
+- Keep Elixir integration tests (Option C: both)
+
+**Benefits of adding Jest tests:**
+- ✅ Easier to debug AST transformation issues
+- ✅ Faster test execution for JS-only changes
+- ✅ Better coverage of edge cases
+- ✅ Standard Node.js development practice
+
+**Implementation:**
+- Add Jest to `priv/nodejs/package.json`
+- Create `priv/nodejs/js_parser.test.js`
+- Test individual functions: `extractHandlerInfo`, `walkAndTransform`, `unwrapAllDOMContentLoaded`
+- Keep existing Elixir tests for integration validation
+
+**Why deferred:**
+- Current integration tests are comprehensive
+- Simple to maintain (no Jest setup needed)
+- Need to evaluate debugging pain points first
+- Can add later without affecting functionality
+
+**Future considerations:**
+- Add Jest tests if debugging becomes difficult
+- Consider test coverage for individual helper functions
+- May want both unit (Jest) and integration (ExUnit) tests
+
+### ContextManager Nested Updates
+**Status:** Tech debt identified (October 30, 2025)
+
+**Problem:**
+Currently, ContextManager only supports top-level updates. When updating nested maps (like `lens_state`), steps must manually read the existing value, merge changes, and replace the entire map. This is error-prone and verbose.
+
+**Current pattern (error-prone):**
+```elixir
+# Must manually merge to preserve existing keys
+existing_lens_state = state.context[:lens_state] || %{}
+updated_lens_state = Map.put(existing_lens_state, :request_screenshot, true)
+
+diff = [add_or_update: %{lens_state: updated_lens_state}]
+```
+
+**Desired pattern:**
+```elixir
+# Direct nested update with put_in semantics
+diff = [put_in: %{lens_state: %{request_screenshot: true}}]
+
+# Or even deeper nesting
+diff = [put_in: %{config: %{ui: %{theme: "dark"}}}]
+```
+
+**Why it matters:**
+- Common pattern across steps (ChatUserInput, ToolExecution, etc.)
+- Easy to accidentally replace instead of merge
+- Verbose boilerplate in every step
+- `lens_state` specifically designed for cross-turn state merging
+- Similar issues with other nested context keys
+
+**Potential implementations:**
+
+**Option A: New `put_in` operation**
+```elixir
+@type diff_operation ::
+  {:add, map()}
+  | {:update, map()}
+  | {:add_or_update, map()}
+  | {:append_to, map()}
+  | {:remove, list()}
+  | {:put_in, map()}  # NEW: Nested merge
+
+# Semantics: Deep merge - creates parent keys if needed, merges nested maps
+```
+
+**Option B: Enhanced `add_or_update` with deep merge option**
+```elixir
+{:add_or_update, map(), deep: true}
+```
+
+**Option C: Separate `merge_nested` operation**
+```elixir
+{:merge_nested, %{lens_state: %{request_screenshot: true}}}
+```
+
+**Why deferred:**
+- Current manual merge works but is repetitive
+- Need to consider semantics carefully (how deep? conflict handling?)
+- Should evaluate common patterns across all steps first
+- Want to avoid over-engineering before we understand all use cases
+
+**Future considerations:**
+- Audit all context updates to find common patterns
+- Consider if this is specific to `lens_state` or general need
+- Think about conflict resolution for deep merges
+- Consider JSON Patch-style operations for flexibility
+- May want different semantics for different keys (some replace, some merge)
+
+---
+
+## Known Test Failures
+
+### Test Failure: engine_manager_test "list_routines/0 returns empty list"
+**Status:** Pre-existing, parallel test execution issue (identified October 31, 2025)
+**File:** `test/koalemos/engine_manager_test.exs:113`
+
+**Problem:**
+Test expects empty routine list, but finds routines from other tests running in parallel. ExUnit runs tests in parallel by default (async: true), and routines from other test cases are still registered when this test runs.
+
+**Test code:**
+```elixir
+test "list_routines/0 returns empty list when no routines" do
+  assert EngineManager.list_routines() == []
+end
+```
+
+**Typical failure:**
+```
+left:  [
+  %Koalemos.EngineManager.RoutineInfo{
+    id: "routine-test-4549", ...
+  },
+  %Koalemos.EngineManager.RoutineInfo{
+    id: "screenshot-test-5059", ...
+  }
+]
+right: []
+```
+
+**Root cause:**
+- Tests use shared Registry (Koalemos.RoutineRegistry)
+- Parallel tests register routines at overlapping times
+- Registry cleanup isn't instantaneous
+
+**Options:**
+1. **Make test non-async** - Run sequentially (slow, doesn't fix race conditions)
+2. **Add test-specific registry** - Each test gets its own Registry (complex)
+3. **Use setup/cleanup properly** - Ensure cleanup happens before assertion (may not work due to timing)
+4. **Change assertion** - Test that list contains expected routines, not that it's empty
+5. **Skip the test** - Mark as known flaky test
+
+**Recommendation:** Option 4 - Change the test to be more realistic. In a real system, we care about finding specific routines, not that the list is empty. Or option 2 - use test-specific registries for better isolation.
+
+**Future work:**
+- Audit all EngineManager tests for parallel safety
+- Consider test-specific Registry per test (via start_supervised)
+- Document testing patterns for stateful systems
+
+### Test Failures: Flaky Observer Tests
+**Status:** Intermittent, timing-dependent (identified November 2, 2025)
+**Files:** `test/koalemos/engine/observer_test.exs`
+
+**Problem:**
+Two ObserverTest tests occasionally fail depending on test execution order and timing:
+
+1. **"record_event/1 - basic functionality handles events without routine_id"**
+   - Expected event type: "global_event"
+   - Received: "step_started" (from parallel test)
+   - Tests share Observer GenServer state
+
+2. **"serialization handles complex nested structures"**
+   - Expected specific complex structure
+   - Receives different routine event (integration-test-7818)
+   - Race condition with integration tests
+
+**Root cause:**
+- Tests use shared Observer GenServer
+- Parallel test execution causes event interleaving
+- Observer receives events from other tests
+- Event ordering is non-deterministic
+
+**Test behavior:**
+- Usually pass (0 failures with seed 99999)
+- Sometimes fail (1-2 failures with seed 12345)
+- Flakiness depends on test execution order
+
+**Options:**
+1. **Make tests non-async** - Run sequentially (slow, doesn't fully fix timing issues)
+2. **Isolate Observer per test** - Each test gets its own Observer instance
+3. **Use test-specific routine IDs** - Filter events by test-specific IDs
+4. **Mock Observer** - Don't use real GenServer in unit tests
+5. **Accept flakiness** - Document and monitor
+
+**Recommendation:** Option 2 - Use `start_supervised/1` to create test-specific Observer instances with unique names. This provides true isolation without sacrificing integration testing.
+
+**Future work:**
+- Refactor ObserverTest to use isolated Observer instances
+- Consider pattern for all stateful GenServer tests
+- Document best practices for testing stateful systems
+- Add test isolation guide to CONTRIBUTING.md
 
 ---
 

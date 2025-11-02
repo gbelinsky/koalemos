@@ -56,7 +56,8 @@ defmodule KoalemosWeb.ChatPanel do
     {:ok,
      socket
      |> assign(:messages, [])
-     |> assign(:mock_responses, false)}
+     |> assign(:mock_responses, false)
+     |> assign(:show_screenshot_checkbox, false)}
   end
 
   @impl true
@@ -67,6 +68,10 @@ defmodule KoalemosWeb.ChatPanel do
       |> assign_new(:messages, fn -> Map.get(assigns, :initial_messages, []) end)
       |> assign_new(:mock_responses, fn -> Map.get(assigns, :mock_responses, false) end)
       |> assign_new(:current_step, fn -> nil end)
+      |> assign_new(:show_screenshot_checkbox, fn -> Map.get(assigns, :show_screenshot_checkbox, false) end)
+      |> assign_new(:disabled, fn -> Map.get(assigns, :disabled, false) end)
+      |> assign_new(:status, fn -> :running end)
+      |> assign_new(:last_error, fn -> nil end)
 
     {:ok, socket}
   end
@@ -82,6 +87,8 @@ defmodule KoalemosWeb.ChatPanel do
           id={"#{@id}-feed"}
           messages={@messages}
           current_step={@current_step}
+          status={@status}
+          last_error={@last_error}
         />
       </div>
       <!-- User Input (flexible height at bottom, max 50% of container) -->
@@ -90,6 +97,8 @@ defmodule KoalemosWeb.ChatPanel do
           module={UserInputComponent}
           id={"#{@id}-input"}
           placeholder="type your message..."
+          show_screenshot_checkbox={@show_screenshot_checkbox}
+          disabled={@disabled}
         />
       </div>
     </div>

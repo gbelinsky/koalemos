@@ -61,7 +61,13 @@ defmodule Koalemos.Integration.ChatWorkflowTest do
       # TestLens should have provided context
       assert length(lens_contexts) > 0
       assert Enum.any?(lens_contexts, fn context ->
-        String.contains?(context, "Koalemos")
+        # Context blocks are now maps with type and text fields
+        case context do
+          %{type: "text", text: text} -> String.contains?(text, "TestLens")
+          %{text: text} -> String.contains?(text, "TestLens")
+          text when is_binary(text) -> String.contains?(text, "TestLens")
+          _ -> false
+        end
       end)
     end
 

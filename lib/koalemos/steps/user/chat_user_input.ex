@@ -61,6 +61,9 @@ defmodule Koalemos.Steps.User.ChatUserInput do
 
   This is called by the Engine when a :user_input event is received while
   execute/2 is waiting.
+
+  If the input includes `include_screenshot: true`, sets the lens_state flag
+  so the next lens rendering will capture a screenshot.
   """
   def handle_event(:user_input, data, state) do
     case format_user_input(data, state.routine_id) do
@@ -68,7 +71,23 @@ defmodule Koalemos.Steps.User.ChatUserInput do
         msg_id = get_in(formatted_message, [:metadata, :id])
         Logger.info("[ChatUserInput] User message formatted (id: #{msg_id}), appending")
 
-        {:ok, [append_to: %{messages: [formatted_message]}]}
+        # Check if screenshot was requested (only for map input)
+        diff = if is_map(data) and Map.get(data, :include_screenshot, false) do
+          Logger.info("[ChatUserInput] Screenshot requested, setting lens_state flag")
+
+          # Merge into existing lens_state to preserve other keys
+          existing_lens_state = state.context[:lens_state] || %{}
+          updated_lens_state = Map.put(existing_lens_state, :request_screenshot, true)
+
+          [
+            append_to: %{messages: [formatted_message]},
+            add_or_update: %{lens_state: updated_lens_state}
+          ]
+        else
+          [append_to: %{messages: [formatted_message]}]
+        end
+
+        {:ok, diff}
 
       {:error, reason} ->
         Logger.error("[ChatUserInput] Failed to format user input: #{reason}")
@@ -90,13 +109,22 @@ defmodule Koalemos.Steps.User.ChatUserInput do
     {:ok, MessageBuilder.build_user_message(text, opts)}
   end
 
-  # Text with images
+  # Text with images (or text only, or images only)
   defp format_user_input(%{text: text, images: images}, routine_id)
       when is_binary(text) and is_list(images) do
-    content_parts = [
-      {:text, text} |
-      Enum.map(images, fn img -> {:image, img.base64, img.media_type} end)
-    ]
+    # Only include text if non-empty (BUG-002 fix)
+    text_parts = if text != "", do: [{:text, text}], else: []
+    image_parts = Enum.map(images, fn img -> {:image, img.base64, img.media_type} end)
+    content_parts = text_parts ++ image_parts
+
+    # If both are empty, this must be a screenshot-only request
+    # Create a minimal placeholder message
+    content_parts = if content_parts == [] do
+      [{:text, "(screenshot requested)"}]
+    else
+      content_parts
+    end
+
     opts = [source: :user, routine_id: routine_id]
     {:ok, MessageBuilder.build_user_message_with_content(content_parts, opts)}
   end

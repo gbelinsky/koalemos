@@ -1,0 +1,227 @@
+defmodule KoalemosWeb.TestIndexLive do
+  @moduledoc """
+  Index page for all manual test pages.
+
+  Lists available test pages with descriptions.
+  """
+  use KoalemosWeb, :live_view
+
+  @impl true
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, page_title: "Test Pages")}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <div class="max-w-4xl mx-auto px-4 py-12">
+        <!-- Header -->
+        <div class="text-center mb-12">
+          <h1 class="text-4xl font-bold text-slate-800 mb-3">
+            koalemos test pages
+          </h1>
+          <p class="text-lg text-slate-600">
+            Manual testing and demonstration pages
+          </p>
+        </div>
+
+        <!-- Test Pages List -->
+        <div class="space-y-4">
+          <!-- Screenshot Test Page -->
+          <a
+            href="/test/screenshot"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-indigo-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">
+                  Screenshot Integration
+                </h2>
+                <p class="text-slate-600 mb-3">
+                  Interactive chat with AI that can capture screenshots. Test the full M3 Sprint 3 screenshot flow with real JavaScript execution.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
+                    Chat
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Screenshots
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                    TestLens
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
+          <!-- Parsing Integration Test Page -->
+          <a
+            href="/test/parsing"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                  />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">
+                  Parsing Integration
+                </h2>
+                <p class="text-slate-600 mb-3">
+                  Test HTML/JavaScript parsing pipeline. Upload or paste HTML wireframes to see DOM extraction, variable parsing, function detection, and event handler mapping. Sprint 6 & 7 integration demo.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                    HTMLParser
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    JavaScriptParser
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Caches
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded">
+                    Handlers
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
+          <!-- Sample Page -->
+          <a
+            href="/test/sample"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-slate-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">
+                  Sample Components
+                </h2>
+                <p class="text-slate-600 mb-3">
+                  Basic LiveView component examples and UI patterns.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded">
+                    Components
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded">
+                    Examples
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+        </div>
+
+        <!-- Back to Home -->
+        <div class="mt-12 text-center">
+          <a
+            href="/"
+            class="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            Back to Home
+          </a>
+        </div>
+      </div>
+    </div>
+    """
+  end
+end
