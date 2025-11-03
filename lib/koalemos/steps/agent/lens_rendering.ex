@@ -5,10 +5,20 @@ defmodule Koalemos.Steps.Agent.LensRendering do
   Takes lens configs and calls provide_context/1 on each lens module to get
   the context blocks. Lenses can return both text and image blocks.
 
+  ## Hybrid Lens Configuration
+
+  This step implements the hybrid config pattern:
+  - Base lenses from `context[:lenses]` (set at routine initialization)
+  - Config lenses from `config_sources` (per-step overrides/additions)
+  - Merged locally for this step only (doesn't modify context)
+
   ## Input Context
   - lenses: List of lens configs in format:
     - "ModuleName" (string for no config)
     - ["ModuleName", config] (list with config)
+
+  ## Input Config
+  - lenses: Optional list of lenses to add or override for this step
 
   ## Output Context
   - lens_text_contexts: List of text blocks for LLM system prompt
@@ -24,12 +34,19 @@ defmodule Koalemos.Steps.Agent.LensRendering do
   prepended to the messages array as user messages (not saved to history).
   """
 
-  def execute(_config, state) do
-    lenses_config = state.context[:active_lenses] || state.context[:lenses] || []
+  alias Koalemos.ConfigMerge
+
+  def execute(config_sources, state) do
+    # Hybrid pattern: base lenses from context + config lenses
+    base_lenses = state.context[:lenses] || []
+    config_lenses = ConfigMerge.get_key(config_sources, :lenses, [])
+
+    # Merge lenses (config overrides base for same module)
+    active_lenses = ConfigMerge.merge_lenses(base_lenses, config_lenses)
 
     try do
       # Collect all context blocks from all lens modules
-      all_context_blocks = collect_context_from_lens_configs(lenses_config, state)
+      all_context_blocks = collect_context_from_lens_configs(active_lenses, state)
 
       # Separate text and image blocks
       {text_blocks, image_blocks} = separate_context_blocks(all_context_blocks)

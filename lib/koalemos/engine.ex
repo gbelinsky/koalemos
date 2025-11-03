@@ -211,13 +211,19 @@ defmodule Koalemos.Engine do
     try do
       initial_definition = routine_module.routine_definition()
 
+      # Auto-call routine's initial_context/0 if it exists
+      default_context = StepUtils.safe_call(routine_module, :initial_context, []) || %{}
+
+      # User-provided context overrides defaults
+      merged_context = Map.merge(default_context, initial_context)
+
       state = %{
         routine_id: routine_id,
         module: routine_module,
         routine_definitions: %{routine_module => initial_definition},
         current_routine_module: routine_module,
         current_step: StepUtils.safe_call(routine_module, :start, []) || :start,
-        context: initial_context,
+        context: merged_context,
         routine_status: :running,
         auto_execute: auto_execute,
         event_buffer: EventBuffer.new(),
@@ -225,7 +231,7 @@ defmodule Koalemos.Engine do
         execution_stack: []
       }
 
-      routine_config = initial_context[:routine_config] || %{}
+      routine_config = merged_context[:routine_config] || %{}
 
       state_after_setup =
         StepUtils.call_step_function_if_exists(routine_module, :setup, [routine_config], state)

@@ -30,13 +30,13 @@ defmodule KoalemosWeb.ScreenshotTestLive do
         Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:request:#{routine_id}")
 
         # Start routine with TestLens
-        initial_context =
-          TestChatRoutine.initial_context(%{
-            llm_provider: "anthropic",
-            llm_model: "claude-haiku-4-5"
-          })
+        # Engine auto-calls initial_context/0 and merges with user context
+        user_context = %{
+          llm_provider: "anthropic",
+          llm_model: "claude-haiku-4-5"
+        }
 
-        case EngineManager.start_routine(routine_id, TestChatRoutine, initial_context) do
+        case EngineManager.start_routine(routine_id, TestChatRoutine, user_context) do
           {:ok, _pid} ->
             Logger.info("[ScreenshotTestLive] Started test routine #{routine_id}")
 

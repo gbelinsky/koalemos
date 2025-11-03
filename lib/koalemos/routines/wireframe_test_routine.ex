@@ -92,17 +92,17 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
 
   @doc """
   Returns default initial context for the routine.
-  Merges provided context with defaults.
+  Engine will auto-call this and merge with user-provided context.
 
-  Optional parameters in user_context:
+  User can provide in their context:
   - wireframe_sample: Load a sample HTML file ("simple", "medium", "complex")
   - wireframe_html: Directly provide HTML content
-  - active_lenses: List of lens module names (default: none yet, will add WireframeEditor in Sprint 4)
+  - lenses: List of lens module names (default: none yet, will add WireframeEditor in Sprint 4)
   """
-  def initial_context(user_context \\ %{}) do
-    defaults = %{
+  def initial_context do
+    %{
       messages: [],
-      active_lenses: [],  # Will add WireframeEditor lens in Sprint 4+
+      lenses: [],  # Will add WireframeEditor lens in Sprint 4+
       llm_provider: "anthropic",
       llm_model: "claude-haiku-4-5",
       max_tokens: 2000,
@@ -110,13 +110,17 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
       wireframe_html: nil,
       wireframe_sample: nil
     }
+  end
 
-    merged = Map.merge(defaults, user_context)
+  @doc """
+  Setup function called by Engine after context is merged.
+  Loads sample HTML if wireframe_sample is specified.
+  """
+  def setup(_routine_config, state) do
+    # Load sample HTML if specified in context
+    updated_context = maybe_load_sample(state.context)
 
-    # Load sample HTML if specified
-    merged = maybe_load_sample(merged)
-
-    merged
+    %{state | context: updated_context}
   end
 
   # Private Helpers

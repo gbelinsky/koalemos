@@ -48,12 +48,13 @@ defmodule KoalemosWeb.RoutineChatLive do
       Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:request:#{routine_id}")
 
       # Try to start the routine (will return existing pid if already running)
-      initial_context = TestChatRoutine.initial_context(%{
+      # Engine auto-calls initial_context/0 and merges with user context
+      user_context = %{
         llm_provider: provider,
         llm_model: model
-      })
+      }
 
-      case EngineManager.start_routine(routine_id, TestChatRoutine, initial_context) do
+      case EngineManager.start_routine(routine_id, TestChatRoutine, user_context) do
         {:ok, _pid} ->
           Logger.info("Started routine #{routine_id} with #{provider}/#{model}")
         {:error, reason} ->

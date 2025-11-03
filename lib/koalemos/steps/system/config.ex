@@ -30,8 +30,13 @@ defmodule Koalemos.Steps.System.Config do
   - context.llm_model = "claude-sonnet-4-20250514"
   """
 
-  def execute(config, _state) do
-    # Simply add all config values to context
-    {:ok, [add_or_update: config]}
+  alias Koalemos.ConfigMerge
+
+  def execute(config_sources, _state) do
+    # Merge config sources (runtime overrides static)
+    merged_config = ConfigMerge.runtime_priority(config_sources)
+
+    # Add all merged config values to context
+    {:ok, [add_or_update: merged_config]}
   end
 end
