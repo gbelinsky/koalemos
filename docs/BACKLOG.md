@@ -353,46 +353,87 @@
 
 ---
 
-## Milestone 4: WireframeEditor Lens + Supporting Lenses
+## Milestone 4: Advanced Lens System 🔄 IN PROGRESS
 
-**Goal:** Full lens system with rich context and tools
+**Status:** Sprint 1 of 8 Complete
+**Started:** November 2, 2025
+**Goal:** Build three advanced lenses (PersonaLens, SequentialThinking, WireframeEditor) with comprehensive test infrastructure and modular architecture
 
 **Why This Scope:**
-- All infrastructure ready (M2 UI, M3 screenshots/parsers)
-- Focus purely on lens logic and tools
-- Supporting lenses are small and straightforward
+- Test infrastructure first prevents debugging nightmares
+- Modular WireframeEditor architecture (no 1500-line monoliths)
+- Tool execution infrastructure for lens tools
+- Agent-as-node pattern for complex operations
+- Complex wireframe as validation target throughout
 
-**Components:**
-- [ ] **WireframeEditor Lens** (~2,000 lines)
-  - [ ] Port from Flo (1,986 lines - may need adjustments)
-  - [ ] Context generation (uses HTMLParser, caches)
-  - [ ] Tool definitions (DOM manipulation, analysis)
-  - [ ] Screenshot integration (uses M3 screenshot tool)
-  - [ ] State management
+**Detailed Plan:** See `docs/milestones/M4.md` for complete sprint breakdown
 
-- [ ] **Supporting Lenses** (~600 lines total)
-  - [ ] PersonaLens (~200 lines) - Agent personality/instructions
-  - [ ] Scratchpad (~100 lines) - Working memory
-  - [ ] SequentialThinking (~250 lines) - Step-by-step reasoning
-  - [ ] Workflow (~50 lines) - Phase management
+### Completed
 
-- [ ] **Integration** (~400 lines)
-  - [ ] Wire all lenses to test routine
-  - [ ] Test tool execution
-  - [ ] Test context generation
-  - [ ] Verify screenshot flow
+- [x] **Sprint 1: Test Infrastructure Foundation** (~400 lines) ✅ Nov 2
+  - [x] Sample HTML files (simple, medium, complex wireframes)
+  - [x] WireframeTestLive - Interactive test page at `/test/wireframe`
+  - [x] WireframeTestRoutine - Test routine with sample loading
+  - [x] Manual validation checklist
+  - [x] Complex wireframe as validation target documented
+
+### In Progress / Todo
+
+- [ ] **Sprint 2: PersonaLens** (~450 lines)
+  - [ ] Dynamic persona adoption
+  - [ ] Persona definitions and custom creation
+  - [ ] Tools: adopt_persona, create_custom_persona, list_personas
+
+- [ ] **Sprint 3: SequentialThinking** (~500 lines)
+  - [ ] Port from MCP server (with attribution)
+  - [ ] Step-by-step reasoning with visible thought process
+  - [ ] Tools: start_thinking, add_thinking_step, revise_thinking, conclude_thinking
+
+- [ ] **Sprint 4: WireframeEditor Core + DOM** (~700 lines)
+  - [ ] Modular architecture: Core module + DOM handler
+  - [ ] Tools: query_element, add_element, remove_element, update_attributes, get_structure
+
+- [ ] **Sprint 5: WireframeEditor JavaScript** (~650 lines)
+  - [ ] JavaScript handler module
+  - [ ] Tools: query_javascript, add_event_listener, modify_function, add_script
+
+- [ ] **Sprint 6: WireframeEditor CSS** (~650 lines)
+  - [ ] CSS handler module
+  - [ ] Tools: query_styles, add_style_rule, modify_style, remove_style, add_class
+
+- [ ] **Sprint 7: Testing + Context + Tool Execution** (~700 lines)
+  - [ ] Testing and context modules for WireframeEditor
+  - [ ] **Tool Execution Infrastructure**:
+    - [ ] Direct tool execution for simple tools
+    - [ ] Agent-as-node pattern for complex multi-step operations
+    - [ ] Inspired by flo's TemplatedSemanticAgent
+  - [ ] Integration tests with tool chains
+
+- [ ] **Sprint 8: Integration & Documentation** (~250 lines)
+  - [ ] All lenses working together
+  - [ ] Complete documentation
+  - [ ] Demo on complex wireframe
+  - [ ] M4 tagged and complete
 
 **Dependencies:** M2 (LiveView), M3 (screenshots + parsers)
 
-**Test Criteria:**
-- ✅ WireframeEditor provides context from parsed HTML
-- ✅ Tools execute and manipulate DOM
-- ✅ Screenshots captured when tool requests
-- ✅ Supporting lenses integrate correctly
-- ✅ Lens system works end-to-end
+**Key Decisions:**
+- **Modular WireframeEditor:** 5 separate modules (Core, DOM, JavaScript, CSS, Testing, Context) instead of monolithic file
+- **Tool Execution:** Two-tier approach - direct execution for simple tools, agent-as-node sub-routine for complex tool chains
+- **Validation Target:** Complex wireframe used throughout development as demo showcase
+- **Attribution:** SequentialThinking ported from MCP server (details TBD)
 
-**Lines:** ~3,000
-**Status:** Todo
+**Test Criteria:**
+- ✅ All 3 lenses fully functional
+- ✅ Lenses work independently and together
+- ✅ Tool execution infrastructure handles simple and complex operations
+- ✅ Agent-as-node pattern enables multi-step tool orchestration
+- ✅ Complex wireframe fully parsed and editable
+- ✅ Test coverage ≥ 80% for new code
+- ✅ Manual validation successful for all scenarios
+
+**Lines:** ~4,300 lines (includes tool execution infrastructure)
+**Status:** Sprint 1 Complete, Sprint 2-8 Todo
 
 ---
 

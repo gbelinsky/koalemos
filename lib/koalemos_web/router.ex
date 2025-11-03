@@ -25,6 +25,7 @@ defmodule KoalemosWeb.Router do
     live "/test/sample", SamplesLive
     live "/test/screenshot", ScreenshotTestLive
     live "/test/parsing", ParsingTestLive
+    live "/test/wireframe", WireframeTestLive
   end
 
   # Other scopes may use custom stacks.
