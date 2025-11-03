@@ -74,16 +74,18 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
     Enum.flat_map(lenses_config, fn
       # String format: "ModuleName"
       module_name when is_binary(module_name) ->
-        get_tools_from_module_name(module_name)
+        get_tools_from_module_name(module_name, %{})
 
       # List format: ["ModuleName", config]
-      [module_name, _config] when is_binary(module_name) ->
-        get_tools_from_module_name(module_name)
+      [module_name, config] when is_binary(module_name) ->
+        get_tools_from_module_name(module_name, config)
     end)
   end
 
   # Get tools from a module name with proper error checking
-  defp get_tools_from_module_name(module_name) do
+  # Config parameter is extracted but not used yet - reserved for future
+  # where lenses might conditionally expose tools based on config
+  defp get_tools_from_module_name(module_name, _config) do
     try do
       module = Module.safe_concat([module_name])
 

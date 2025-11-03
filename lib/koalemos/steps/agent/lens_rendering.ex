@@ -66,27 +66,33 @@ defmodule Koalemos.Steps.Agent.LensRendering do
     Enum.flat_map(lenses_config, fn
       # String format: "ModuleName"
       module_name when is_binary(module_name) ->
-        get_context_from_module_name(module_name, state)
+        get_context_from_module_name(module_name, %{}, state)
 
       # List format: ["ModuleName", config]
-      [module_name, _config] when is_binary(module_name) ->
-        get_context_from_module_name(module_name, state)
+      [module_name, config] when is_binary(module_name) ->
+        get_context_from_module_name(module_name, config, state)
     end)
   end
 
   # Get context blocks from a module name with proper error checking
-  defp get_context_from_module_name(module_name, state) do
+  defp get_context_from_module_name(module_name, config, state) do
     try do
       module = Module.safe_concat([module_name])
 
       # Check if module exists and is loaded
       case Code.ensure_loaded(module) do
         {:module, ^module} ->
-          if function_exported?(module, :provide_context, 1) do
-            module.provide_context(state)
-          else
-            # Module exists but doesn't implement provide_context
-            []
+          # Try new 2-param signature first, fall back to 1-param for backward compat
+          cond do
+            function_exported?(module, :provide_context, 2) ->
+              module.provide_context(state, config)
+
+            function_exported?(module, :provide_context, 1) ->
+              module.provide_context(state)
+
+            true ->
+              # Module exists but doesn't implement provide_context
+              []
           end
 
         {:error, _reason} ->
