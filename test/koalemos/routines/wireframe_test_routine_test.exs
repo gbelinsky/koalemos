@@ -46,12 +46,12 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
     end
   end
 
-  describe "initial_context/1" do
+  describe "initial_context/0" do
     test "returns default context with required fields" do
       context = WireframeTestRoutine.initial_context()
 
       assert context.messages == []
-      assert context.active_lenses == []
+      assert context.lenses == []
       assert context.llm_provider == "anthropic"
       assert context.llm_model == "claude-haiku-4-5"
       assert context.max_tokens == 2000
@@ -59,87 +59,101 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
       assert context.wireframe_html == nil
       assert context.wireframe_sample == nil
     end
+  end
 
-    test "merges user context with defaults" do
-      user_context = %{
-        messages: [%{role: "user", content: "test"}],
-        temperature: 0.9,
-        custom_field: "custom_value"
+  describe "setup/2" do
+    test "loads simple wireframe when wireframe_sample is in context" do
+      state = %{
+        context: %{
+          wireframe_sample: "simple",
+          wireframe_html: nil
+        }
       }
 
-      context = WireframeTestRoutine.initial_context(user_context)
+      updated_state = WireframeTestRoutine.setup(%{}, state)
 
-      # User values override defaults
-      assert context.messages == [%{role: "user", content: "test"}]
-      assert context.temperature == 0.9
-
-      # Custom fields are included
-      assert context.custom_field == "custom_value"
-
-      # Defaults are still present for non-overridden fields
-      assert context.active_lenses == []
-      assert context.llm_provider == "anthropic"
-      assert context.llm_model == "claude-haiku-4-5"
-      assert context.max_tokens == 2000
+      assert is_binary(updated_state.context.wireframe_html)
+      assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
+      assert updated_state.context.wireframe_html =~ "Simple Wireframe"
     end
 
-    test "loads simple wireframe when wireframe_sample is provided" do
-      context = WireframeTestRoutine.initial_context(%{wireframe_sample: "simple"})
+    test "loads medium wireframe when wireframe_sample is in context" do
+      state = %{
+        context: %{
+          wireframe_sample: "medium",
+          wireframe_html: nil
+        }
+      }
 
-      assert is_binary(context.wireframe_html)
-      assert context.wireframe_html =~ "<!DOCTYPE html>"
-      assert context.wireframe_html =~ "Simple Wireframe"
+      updated_state = WireframeTestRoutine.setup(%{}, state)
+
+      assert is_binary(updated_state.context.wireframe_html)
+      assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
+      assert updated_state.context.wireframe_html =~ "Medium"
+      assert updated_state.context.wireframe_html =~ "<style>"
     end
 
-    test "loads medium wireframe when wireframe_sample is provided" do
-      context = WireframeTestRoutine.initial_context(%{wireframe_sample: "medium"})
+    test "loads complex wireframe when wireframe_sample is in context" do
+      state = %{
+        context: %{
+          wireframe_sample: "complex",
+          wireframe_html: nil
+        }
+      }
 
-      assert is_binary(context.wireframe_html)
-      assert context.wireframe_html =~ "<!DOCTYPE html>"
-      assert context.wireframe_html =~ "Medium"
-      assert context.wireframe_html =~ "<style>"
-    end
+      updated_state = WireframeTestRoutine.setup(%{}, state)
 
-    test "loads complex wireframe when wireframe_sample is provided" do
-      context = WireframeTestRoutine.initial_context(%{wireframe_sample: "complex"})
-
-      assert is_binary(context.wireframe_html)
-      assert context.wireframe_html =~ "<!DOCTYPE html>"
-      assert context.wireframe_html =~ "Complex"
-      assert context.wireframe_html =~ "<style>"
-      assert context.wireframe_html =~ "<script>"
-      assert context.wireframe_html =~ "addEventListener"
+      assert is_binary(updated_state.context.wireframe_html)
+      assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
+      assert updated_state.context.wireframe_html =~ "Complex"
+      assert updated_state.context.wireframe_html =~ "<style>"
+      assert updated_state.context.wireframe_html =~ "<script>"
+      assert updated_state.context.wireframe_html =~ "addEventListener"
     end
 
     test "handles invalid sample gracefully" do
-      context = WireframeTestRoutine.initial_context(%{wireframe_sample: "nonexistent"})
+      state = %{
+        context: %{
+          wireframe_sample: "nonexistent",
+          wireframe_html: nil
+        }
+      }
+
+      updated_state = WireframeTestRoutine.setup(%{}, state)
 
       # Should not crash, just leave wireframe_html as nil
-      assert context.wireframe_html == nil
-      assert context.wireframe_sample == "nonexistent"
+      assert updated_state.context.wireframe_html == nil
+      assert updated_state.context.wireframe_sample == "nonexistent"
     end
 
-    test "allows custom wireframe_html to be provided directly" do
+    test "preserves existing wireframe_html when no sample specified" do
       custom_html = "<html><body>Custom wireframe</body></html>"
-      context = WireframeTestRoutine.initial_context(%{wireframe_html: custom_html})
+      state = %{
+        context: %{
+          wireframe_html: custom_html
+        }
+      }
 
-      assert context.wireframe_html == custom_html
+      updated_state = WireframeTestRoutine.setup(%{}, state)
+
+      assert updated_state.context.wireframe_html == custom_html
     end
 
-    test "wireframe_sample does not override manually provided wireframe_html" do
+    test "wireframe_sample overrides existing wireframe_html" do
       custom_html = "<html><body>Custom wireframe</body></html>"
 
-      context =
-        WireframeTestRoutine.initial_context(%{
+      state = %{
+        context: %{
           wireframe_html: custom_html,
           wireframe_sample: "simple"
-        })
+        }
+      }
 
-      # Sample should load and override the nil wireframe_html from defaults
-      # but since we explicitly provided wireframe_html, it gets overridden by the merge
-      # Actually, the merge happens first, then sample loading
-      # So the sample will override
-      assert context.wireframe_html =~ "Simple Wireframe"
+      updated_state = WireframeTestRoutine.setup(%{}, state)
+
+      # Sample should load and override the existing wireframe_html
+      assert updated_state.context.wireframe_html =~ "Simple Wireframe"
+      refute updated_state.context.wireframe_html == custom_html
     end
   end
 
@@ -152,13 +166,14 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
 
     test "all sample files contain valid HTML" do
       for sample <- ["simple", "medium", "complex"] do
-        context = WireframeTestRoutine.initial_context(%{wireframe_sample: sample})
+        state = %{context: %{wireframe_sample: sample, wireframe_html: nil}}
+        updated_state = WireframeTestRoutine.setup(%{}, state)
 
-        assert context.wireframe_html =~ "<!DOCTYPE html>"
-        assert context.wireframe_html =~ "<html"
-        assert context.wireframe_html =~ "</html>"
-        assert context.wireframe_html =~ "<body"
-        assert context.wireframe_html =~ "</body>"
+        assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
+        assert updated_state.context.wireframe_html =~ "<html"
+        assert updated_state.context.wireframe_html =~ "</html>"
+        assert updated_state.context.wireframe_html =~ "<body"
+        assert updated_state.context.wireframe_html =~ "</body>"
       end
     end
   end
@@ -181,17 +196,17 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
 
     test "no active lenses by default (to be added in Sprint 4)" do
       context = WireframeTestRoutine.initial_context()
-      assert context.active_lenses == []
+      assert context.lenses == []
     end
 
     test "ready for WireframeEditor lens integration" do
-      # Can manually add lenses via user context
-      context =
-        WireframeTestRoutine.initial_context(%{
-          active_lenses: ["Koalemos.Lenses.WireframeEditor"]
-        })
+      # Engine merges user context with defaults
+      # This test validates that the default initial_context supports lenses
+      defaults = WireframeTestRoutine.initial_context()
+      user_overrides = %{lenses: ["Koalemos.Lenses.WireframeEditor"]}
+      merged = Map.merge(defaults, user_overrides)
 
-      assert context.active_lenses == ["Koalemos.Lenses.WireframeEditor"]
+      assert merged.lenses == ["Koalemos.Lenses.WireframeEditor"]
     end
   end
 end

@@ -355,7 +355,7 @@
 
 ## Milestone 4: Advanced Lens System 🔄 IN PROGRESS
 
-**Status:** Sprint 1 of 8 Complete
+**Status:** Sprint 2 of 8 Complete
 **Started:** November 2, 2025
 **Goal:** Build three advanced lenses (PersonaLens, SequentialThinking, WireframeEditor) with comprehensive test infrastructure and modular architecture
 
@@ -377,12 +377,14 @@
   - [x] Manual validation checklist
   - [x] Complex wireframe as validation target documented
 
-### In Progress / Todo
+- [x] **Sprint 2: PersonaLens** (~290 lines) ✅ Nov 3
+  - [x] Context-only lens (following flo's pattern - simpler than planned)
+  - [x] 5 hardcoded personas: professional, casual, technical, creative, empathetic
+  - [x] PersonaTestRoutine for manual testing
+  - [x] Full test coverage (42 tests)
+  - [x] No tools needed - works through system prompt injection
 
-- [ ] **Sprint 2: PersonaLens** (~450 lines)
-  - [ ] Dynamic persona adoption
-  - [ ] Persona definitions and custom creation
-  - [ ] Tools: adopt_persona, create_custom_persona, list_personas
+### In Progress / Todo
 
 - [ ] **Sprint 3: SequentialThinking** (~500 lines)
   - [ ] Port from MCP server (with attribution)

@@ -43,71 +43,86 @@ defmodule Koalemos.Steps.System.ActionTest do
 
   describe "execute/2" do
     test "calls routine handle_action and returns result" do
-      config = %{action: :initialize}
+      config_sources = %{static: %{action: :initialize}, runtime: %{}}
       state = %{
         current_routine_module: TestRoutine,
         context: %{}
       }
 
-      assert {:ok, diff} = Action.execute(config, state)
+      assert {:ok, diff} = Action.execute(config_sources, state)
       assert diff == [add: %{initialized: true}]
     end
 
     test "passes state to handle_action" do
-      config = %{action: :set_value}
+      config_sources = %{static: %{action: :set_value}, runtime: %{}}
       state = %{
         current_routine_module: TestRoutine,
         context: %{value: 10}
       }
 
-      assert {:ok, diff} = Action.execute(config, state)
+      assert {:ok, diff} = Action.execute(config_sources, state)
+      assert diff == [add: %{result: 20}]
+    end
+
+    test "runtime config overrides static config for action" do
+      config_sources = %{
+        static: %{action: :initialize},
+        runtime: %{action: :set_value}
+      }
+      state = %{
+        current_routine_module: TestRoutine,
+        context: %{value: 10}
+      }
+
+      # Runtime action (:set_value) should override static (:initialize)
+      assert {:ok, diff} = Action.execute(config_sources, state)
       assert diff == [add: %{result: 20}]
     end
 
     test "returns error when action not defined" do
-      config = %{action: :nonexistent_action}
+      config_sources = %{static: %{action: :nonexistent_action}, runtime: %{}}
       state = %{
         current_routine_module: RoutineWithoutActions,
         context: %{}
       }
 
-      assert {:error, error_msg} = Action.execute(config, state)
+      assert {:error, error_msg} = Action.execute(config_sources, state)
       assert error_msg =~ "Action nonexistent_action not defined"
       assert error_msg =~ "RoutineWithoutActions"
     end
 
     test "returns error when action has invalid arguments" do
-      config = %{action: :wrong_action}
+      config_sources = %{static: %{action: :wrong_action}, runtime: %{}}
       state = %{
         current_routine_module: RoutineWithInvalidClause,
         context: %{}
       }
 
-      assert {:error, error_msg} = Action.execute(config, state)
+      assert {:error, error_msg} = Action.execute(config_sources, state)
       assert error_msg =~ "Action wrong_action has invalid arguments"
       assert error_msg =~ "RoutineWithInvalidClause"
     end
 
     test "returns error when action raises exception" do
-      config = %{action: :fail_with_error}
+      config_sources = %{static: %{action: :fail_with_error}, runtime: %{}}
       state = %{
         current_routine_module: TestRoutine,
         context: %{}
       }
 
-      assert {:error, error_msg} = Action.execute(config, state)
+      assert {:error, error_msg} = Action.execute(config_sources, state)
       assert error_msg =~ "Action fail_with_error failed"
       assert error_msg =~ "Intentional error"
     end
 
     test "includes routine module in error messages" do
-      config = %{action: :missing}
+      config_sources = %{static: %{action: :missing}, runtime: %{}}
       state = %{
         current_routine_module: TestRoutine,
         context: %{}
       }
 
-      assert {:error, error_msg} = Action.execute(config, state)
+      assert {:error, error_msg} = Action.execute(config_sources, state)
       assert error_msg =~ "TestRoutine"
     end
   end

@@ -24,8 +24,13 @@ defmodule Koalemos.Lenses.TestLensScreenshot do
   - Waits for capture to complete (5 second timeout)
   - Retrieves from ScreenshotCache
   - Includes screenshot as image content block
+
+  ## Config parameter
+
+  Config is not used by this lens (context-only lens with no configuration).
+  Added for compatibility with new 2-param lens interface.
   """
-  def provide_context(state) do
+  def provide_context(state, _config \\ %{}) do
     text_blocks = [
       %{type: "text", text: "Test context from TestLens"}
     ]
