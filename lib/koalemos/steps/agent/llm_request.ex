@@ -80,6 +80,7 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
 
                 # Delegate to provider
                 Logger.info("LLMRequest: Routing to #{provider_name} provider")
+                Logger.debug("LLMRequest: #{length(tool_descriptions)} tools available, #{length(messages)} messages")
                 provider_module.call(
                   messages,
                   credentials,
