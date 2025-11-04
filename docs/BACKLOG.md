@@ -355,7 +355,7 @@
 
 ## Milestone 4: Advanced Lens System 🔄 IN PROGRESS
 
-**Status:** Sprint 2 of 8 Complete
+**Status:** Sprint 3 of 8 Complete
 **Started:** November 2, 2025
 **Goal:** Build three advanced lenses (PersonaLens, SequentialThinking, WireframeEditor) with comprehensive test infrastructure and modular architecture
 
@@ -384,12 +384,20 @@
   - [x] Full test coverage (42 tests)
   - [x] No tools needed - works through system prompt injection
 
-### In Progress / Todo
+- [x] **Sprint 3: SequentialThinking** (~300 lines) ✅ Nov 4
+  - [x] Ported from MCP server with full MIT license attribution
+  - [x] Adapted to Koalemos lens interface (provide_context, execute_tool)
+  - [x] Step-by-step reasoning with dynamic thought progression
+  - [x] Single tool: sequential_thinking (4 required + 5 optional parameters)
+  - [x] Context shows only current chain (replaces previous chain on reset)
+  - [x] Brief tool results (no thought echo to reduce redundancy)
+  - [x] State management: thought_history and branches in lens_state
+  - [x] Support for revisions and branching (advanced features)
+  - [x] ThinkingTestRoutine for manual testing
+  - [x] Full test coverage (19 tests, 100% coverage)
+  - [x] Future architecture documented in BACKLOG (request/result pairs)
 
-- [ ] **Sprint 3: SequentialThinking** (~500 lines)
-  - [ ] Port from MCP server (with attribution)
-  - [ ] Step-by-step reasoning with visible thought process
-  - [ ] Tools: start_thinking, add_thinking_step, revise_thinking, conclude_thinking
+### In Progress / Todo
 
 - [ ] **Sprint 4: WireframeEditor Core + DOM** (~700 lines)
   - [ ] Modular architecture: Core module + DOM handler
@@ -1038,6 +1046,116 @@ Two ObserverTest tests occasionally fail depending on test execution order and t
 - Consider pattern for all stateful GenServer tests
 - Document best practices for testing stateful systems
 - Add test isolation guide to CONTRIBUTING.md
+
+### Lens Tool Execution Request/Result Pairs
+**Status:** Deferred (identified during M4 Sprint 3 - SequentialThinking, November 2025)
+
+**Problem:**
+When lenses provide both context and tools, there's redundancy in the message array. Tool calls contain full argument details (e.g., complete thought text in `sequential_thinking` tool), and then the same information appears in context provided by the lens. This creates duplicate information in the message history.
+
+**Current approach (MVP):**
+- Tool calls stored in message array with full arguments
+- Lens provides context showing current reasoning chain
+- Tool results are brief JSON (status, metadata only)
+- Accept redundancy for simplicity - ship fast, iterate later
+
+**Example redundancy:**
+```elixir
+# Message array contains full tool call
+%{
+  role: "assistant",
+  content: [
+    %{
+      type: "tool_use",
+      name: "sequential_thinking",
+      input: %{
+        "thought" => "Breaking down the problem into steps...",  # FULL TEXT
+        "thought_number" => 1,
+        "total_thoughts" => 3
+      }
+    }
+  ]
+}
+
+# Context also shows the thought text
+## Current Thinking Chain
+1. Breaking down the problem into steps...  # DUPLICATE
+```
+
+**Future architecture: Request/Result Pairs**
+
+Change lens tool execution semantics to return both a stripped request and result:
+
+```elixir
+# Current signature
+@callback execute_tool(name :: String.t(), args :: map(), state :: map()) ::
+  {:ok, result :: term(), lens_updates :: keyword()} | {:error, term()}
+
+# Future signature
+@callback execute_tool(name :: String.t(), args :: map(), state :: map()) ::
+  {:ok, {request_summary :: map(), result :: term()}, lens_updates :: keyword()}
+  | {:error, term()}
+```
+
+**How it works:**
+
+1. **Lens knows its context** - Since the lens provides context, it knows what information is redundant
+2. **Return stripped request** - Lens returns summary of request without redundant details
+3. **Return full result** - Result can be as detailed as needed
+4. **Store pair in messages** - Message array stores the {request_summary, result} pair
+
+**Example implementation:**
+```elixir
+def execute_tool("sequential_thinking", args, state) do
+  # ... execute thinking logic ...
+
+  # Strip redundant thought text from request
+  request_summary = %{
+    tool: "sequential_thinking",
+    thought_number: args["thought_number"],
+    total_thoughts: args["total_thoughts"]
+    # Omit "thought" text - it's in context already
+  }
+
+  result = %{
+    status: "ok",
+    thought: args["thought_number"],
+    total: args["total_thoughts"],
+    continue: args["next_thought_needed"]
+  }
+
+  {:ok, {request_summary, result}, lens_updates}
+end
+```
+
+**Benefits:**
+- ✅ Eliminates redundancy between context and messages
+- ✅ Lens controls what's essential vs. what's already shown
+- ✅ Reduces message array size for long reasoning chains
+- ✅ Each lens optimizes for its own context strategy
+- ✅ Backward compatible - single result still works
+
+**Long-term vision: ToolLens**
+
+Eventually, tool request/result pairs could be:
+- Tracked separately from main message flow
+- Displayed via dedicated ToolLens (optional context)
+- Shown/hidden based on user preference
+- Aggregated/summarized for long tool chains
+
+**Why deferred:**
+- Current approach works for MVP
+- Need experience with multiple tool lenses first
+- Requires updating message handling throughout engine
+- Should understand common patterns before optimizing
+- Better to validate lens concept, then reduce redundancy
+
+**Future considerations:**
+- After implementing more tool lenses (M4 Sprint 4-7), evaluate patterns
+- Consider if all lenses need this or just stateful tool lenses
+- Think about UI for showing/hiding tool details
+- May want configurable verbosity (debug vs. production)
+- Integration with future observability/debugging tools
 
 ---
 

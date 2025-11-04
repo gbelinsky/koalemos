@@ -24,6 +24,7 @@ defmodule KoalemosWeb.Router do
     live "/test", TestIndexLive
     live "/test/sample", SamplesLive
     live "/test/screenshot", ScreenshotTestLive
+    live "/test/thinking", ThinkingTestLive
     live "/test/persona", PersonaTestLive
     live "/test/parsing", ParsingTestLive
     live "/test/wireframe", WireframeTestLive

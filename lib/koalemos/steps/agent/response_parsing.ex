@@ -49,6 +49,10 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
 
         Logger.debug("ResponseParsing: Assistant message built (id: #{get_in(assistant_message, [:metadata, :id])})")
 
+        # Log detailed content breakdown
+        content_summary = summarize_content(content)
+        Logger.info("[ResponseParsing] Content summary: #{content_summary}")
+
         # Log token usage for debugging
         if map_size(usage) > 0 do
           Logger.info("Tokens - Input: #{Map.get(usage, "input_tokens", 0)}, Output: #{Map.get(usage, "output_tokens", 0)}")
@@ -56,6 +60,13 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
 
         # Extract tool calls if any
         tool_calls = extract_tool_calls(content)
+
+        if length(tool_calls) > 0 do
+          tool_names = Enum.map(tool_calls, & &1.name) |> Enum.join(", ")
+          Logger.info("[ResponseParsing] Tool calls: #{length(tool_calls)} tools - #{tool_names}")
+        else
+          Logger.info("[ResponseParsing] No tool calls in response")
+        end
 
         # Build context diff using append_to for messages
         diff = [append_to: %{messages: [assistant_message]}]
@@ -90,5 +101,23 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
         input: Map.get(tool_block, "input", %{})
       }
     end)
+  end
+
+  # Summarize content blocks for logging
+  defp summarize_content(content) do
+    total = length(content)
+
+    # Count by type
+    type_counts = Enum.reduce(content, %{}, fn block, acc ->
+      type = Map.get(block, "type", "unknown")
+      Map.update(acc, type, 1, &(&1 + 1))
+    end)
+
+    # Format: "5 blocks (3 text, 2 tool_use)"
+    type_parts = Enum.map(type_counts, fn {type, count} ->
+      "#{count} #{type}"
+    end) |> Enum.join(", ")
+
+    "#{total} blocks (#{type_parts})"
   end
 end
