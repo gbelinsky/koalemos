@@ -140,5 +140,54 @@
     <footer>
         <p>&copy; 2025 Test Wireframe. All rights reserved.</p>
     </footer>
+
+    <script>
+        // Form state (using window.* for parseability)
+        window.formData = {
+            name: '',
+            email: '',
+            message: ''
+        };
+
+        // Update form data function
+        window.updateFormData = function(field, value) {
+            window.formData[field] = value;
+            console.log('Form updated:', window.formData);
+        };
+
+        // Handle form submission
+        window.handleSubmit = function(event) {
+            event.preventDefault();
+            console.log('Form submitted:', window.formData);
+            alert('Thank you for your message, ' + window.formData.name + '!');
+
+            // Reset form
+            document.getElementById('name').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('message').value = '';
+            window.formData = { name: '', email: '', message: '' };
+        };
+
+        // Attach event listeners (parseable pattern - direct attachment)
+        document.getElementById('name').addEventListener('input', function(e) {
+            window.updateFormData('name', e.target.value);
+        });
+
+        document.getElementById('email').addEventListener('input', function(e) {
+            window.updateFormData('email', e.target.value);
+        });
+
+        document.getElementById('message').addEventListener('input', function(e) {
+            window.updateFormData('message', e.target.value);
+        });
+
+        // Find the form and attach submit handler
+        var forms = document.querySelectorAll('form');
+        if (forms.length > 0) {
+            forms[0].addEventListener('submit', function(e) {
+                window.handleSubmit(e);
+            });
+        }
+    </script>
 </body>
 </html>

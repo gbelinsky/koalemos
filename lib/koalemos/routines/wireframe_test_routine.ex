@@ -1,51 +1,42 @@
 defmodule Koalemos.Routines.WireframeTestRoutine do
   @moduledoc """
-  Test routine for wireframe editor testing (M4 Sprint 1).
+  Test routine for wireframe editor testing (M4 Sprint 4).
 
-  This routine provides a foundation for testing the WireframeEditor lens
-  that will be built in later sprints. For now, it supports:
-  - Loading sample HTML files
-  - Basic HTML viewing and inspection
-  - Future: DOM manipulation, JavaScript handling, CSS modifications
+  Full agent loop with tool execution for WireframeEditor lens.
+  Agent can use 9 wireframe editing tools to modify wireframes.
 
-  Loop: ChatUserInput → LensRendering → LLMRequest → ResponseParsing → loop back
+  Loop: ChatUserInput → ToolSchema → LensRendering → LLMRequest → ResponseParsing
+    → (if tools) ToolLookup → ToolExecution → (back to ToolSchema for next iteration)
+    → (if no tools) back to start for next user message
 
-  ## Future Evolution (Sprints 4-8)
+  ## Features
 
-  This routine will be extended to support:
+  - Load sample wireframes (simple, medium, complex)
+  - Full WireframeEditor lens integration
+  - Tool execution infrastructure
+  - Designed vs running state tracking
+  - Console output monitoring
 
-  1. **Tool Execution**: WireframeEditor lens will provide tools (query_element,
-     add_element, modify_styles, etc.) that need to be executed as part of the loop.
+  ## Available Tools (9 total)
 
-  2. **Agent-as-Node Pattern**: Similar to flo's TemplatedSemanticAgent, we may add
-     a sub-routine step that manages a tool chain through an agent, allowing the
-     WireframeEditor to orchestrate complex multi-step operations (e.g., "add a
-     contact form" → query structure → generate HTML → insert element → apply styles).
+  Structure tools:
+  - modify_classes, modify_elements, manage_attributes
 
-  3. **Wireframe State Management**: Context will track parsed wireframe structure
-     and modifications, enabling undo/redo and validation workflows.
+  Behavior tools:
+  - manage_handlers, manage_functions, manage_variables, manage_css, manage_init_scripts
 
-  The basic loop will remain, but may include a ToolExecution step after LLMRequest
-  and before ResponseParsing, or a TemplatedAgent sub-routine node for complex operations.
-
-  The routine:
-  1. Waits for user input
-  2. Renders context from active lenses
-  3. Makes an LLM request
-  4. Parses the response
-  5. Loops back to wait for more user input
+  Testing tool:
+  - trigger_interaction (ephemeral - for testing only)
 
   Initial context should include:
-  - llm_provider (default: "anthropic")
-  - llm_model (default: "claude-haiku-4-5")
-  - max_tokens (default: 2000)
-  - temperature (default: 0.7)
-  - wireframe_html (optional: HTML content to work with)
-  - wireframe_sample (optional: "simple", "medium", or "complex")
+  - wireframe_sample: "simple", "medium", or "complex" (loads sample HTML)
+  - wireframe_html: Direct HTML content (overrides sample)
+  - llm_provider, llm_model, max_tokens, temperature
   """
 
   alias Koalemos.Steps.User.ChatUserInput
-  alias Koalemos.Steps.Agent.{LensRendering, LLMRequest, ResponseParsing}
+  alias Koalemos.Steps.Agent.{ToolSchema, LensRendering, LLMRequest, ResponseParsing, ToolLookup, ToolExecution}
+  alias Koalemos.Integrations.ParsingIntegration
 
   @fixtures_path "test/fixtures"
   @sample_files %{
@@ -55,23 +46,34 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   }
 
   @doc """
-  Returns the routine definition for the wireframe test workflow.
+  Returns the routine definition with tool execution infrastructure.
+
+  Full agent loop:
+  start (ChatUserInput) → build_tool_schema → render_lens → llm_request → parse_response
+    → (if tools) tool_lookup → tool_execution → (back to build_tool_schema)
+    → (if no tools) back to start for next user input
   """
   def routine_definition do
     %{
-      # Start by waiting for user input
+      # Wait for user input (main loop entry point)
       start: %{
         type: ChatUserInput,
+        transitions: [{:build_tool_schema, :always}]
+      },
+
+      # Build tool schema (runs each time before LLM request)
+      build_tool_schema: %{
+        type: ToolSchema,
         transitions: [{:render_lens, :always}]
       },
 
-      # Get context from lenses (will include WireframeEditor lens in future sprints)
+      # Get context from WireframeEditor lens
       render_lens: %{
         type: LensRendering,
         transitions: [{:llm_request, :always}]
       },
 
-      # Make LLM request with messages and lens context
+      # Make LLM request with messages, tools, and lens context
       llm_request: %{
         type: LLMRequest,
         transitions: [{:parse_response, :always}]
@@ -80,15 +82,53 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
       # Parse LLM response and add to messages
       parse_response: %{
         type: ResponseParsing,
-        transitions: [{:start, :always}]
+        transitions: [
+          {:tool_lookup, :when_has_tool_calls},
+          {:start, :when_no_tool_calls}
+        ]
+      },
+
+      # Resolve tool calls to executable format
+      tool_lookup: %{
+        type: ToolLookup,
+        transitions: [{:tool_execution, :always}]
+      },
+
+      # Execute tools one at a time
+      tool_execution: %{
+        type: ToolExecution,
+        transitions: [
+          {:tool_execution, :when_has_more_tools},
+          {:build_tool_schema, :when_tools_complete}
+        ]
       }
     }
   end
 
   @doc """
-  Simple condition that always returns true.
+  Condition check functions for routine transitions.
   """
   def check_condition(:always, _context), do: true
+
+  def check_condition(:when_has_tool_calls, context) do
+    tool_calls = Map.get(context, :tool_calls, [])
+    length(tool_calls) > 0
+  end
+
+  def check_condition(:when_no_tool_calls, context) do
+    tool_calls = Map.get(context, :tool_calls, [])
+    length(tool_calls) == 0
+  end
+
+  def check_condition(:when_has_more_tools, context) do
+    remaining = Map.get(context, :to_execute, [])
+    length(remaining) > 0
+  end
+
+  def check_condition(:when_tools_complete, context) do
+    remaining = Map.get(context, :to_execute, [])
+    length(remaining) == 0
+  end
 
   @doc """
   Returns default initial context for the routine.
@@ -97,15 +137,14 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   User can provide in their context:
   - wireframe_sample: Load a sample HTML file ("simple", "medium", "complex")
   - wireframe_html: Directly provide HTML content
-  - lenses: List of lens module names (default: none yet, will add WireframeEditor in Sprint 4)
   """
   def initial_context do
     %{
       messages: [],
-      lenses: [],  # Will add WireframeEditor lens in Sprint 4+
+      lenses: ["Koalemos.Lenses.WireframeEditor"],  # WireframeEditor lens
       llm_provider: "anthropic",
       llm_model: "claude-haiku-4-5",
-      max_tokens: 2000,
+      max_tokens: 64000,  # Higher token limit for wireframe context
       temperature: 0.7,
       wireframe_html: nil,
       wireframe_sample: nil
@@ -115,10 +154,13 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   @doc """
   Setup function called by Engine after context is merged.
   Loads sample HTML if wireframe_sample is specified.
+  Parses HTML and initializes lens_state.
   """
   def setup(_routine_config, state) do
     # Load sample HTML if specified in context
-    updated_context = maybe_load_sample(state.context)
+    updated_context = state.context
+      |> maybe_load_sample()
+      |> parse_and_initialize_lens_state()
 
     %{state | context: updated_context}
   end
@@ -153,5 +195,63 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
           {:error, reason} -> {:error, "File read error: #{inspect(reason)}"}
         end
     end
+  end
+
+  defp parse_and_initialize_lens_state(%{wireframe_html: html} = context) when is_binary(html) do
+    require Logger
+
+    # Generate a routine ID for cache storage (used by ParsingIntegration)
+    routine_id = Map.get(context, :routine_id, "wireframe-test-#{:erlang.unique_integer([:positive])}")
+
+    case ParsingIntegration.parse_wireframe(html, routine_id) do
+      {:ok, wireframe} ->
+        # Initialize lens_state with designed version from parsed wireframe
+        # ParsingIntegration extracts JavaScript and CSS automatically
+        lens_state = %{
+          designed: %{
+            dom_tree: wireframe.dom_tree,
+            style_elements: wireframe.styles,
+            script_elements: wireframe.scripts,
+            custom_css: extract_css_rules_as_map(wireframe.css_rules),
+            custom_functions: Map.get(wireframe.javascript, :functions, %{}),
+            custom_variables: Map.get(wireframe.javascript, :variables, %{}),
+            init_scripts: extract_init_scripts_as_map(wireframe.javascript.init_scripts),
+            handlers: Map.get(wireframe.javascript, :handlers, %{}),
+            metadata: wireframe.metadata
+          },
+          running: %{},
+          modifications: []
+        }
+
+        context
+        |> Map.put(:lens_state, lens_state)
+        |> Map.put(:routine_id, routine_id)
+
+      {:error, reason} ->
+        Logger.warning("[WireframeTestRoutine] Failed to parse HTML: #{reason}")
+        context
+    end
+  end
+
+  defp parse_and_initialize_lens_state(context), do: context
+
+  # Convert CSS rules list to map format (selector -> declarations)
+  defp extract_css_rules_as_map(css_rules) when is_list(css_rules) do
+    Enum.reduce(css_rules, %{}, fn rule, acc ->
+      Map.put(acc, rule.selector, rule.declarations)
+    end)
+  end
+
+  # Convert init scripts list to map with index keys
+  defp extract_init_scripts_as_map(init_scripts) when is_list(init_scripts) do
+    init_scripts
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {script, idx}, acc ->
+      if script != "" do
+        Map.put(acc, "init_#{idx}", script)
+      else
+        acc
+      end
+    end)
   end
 end

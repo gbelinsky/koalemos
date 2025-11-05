@@ -12,9 +12,26 @@
     <main>
         <p>This is a simple single-component wireframe for testing.</p>
         <button id="test-button">Click Me</button>
+        <p id="click-count">Clicks: 0</p>
     </main>
     <footer>
         <p>Footer text</p>
     </footer>
+
+    <script>
+        // Initialize counter (using window.* for parseability)
+        window.count = 0;
+
+        // Handler function (parseable pattern)
+        window.handleClick = function() {
+            window.count++;
+            document.getElementById('click-count').textContent = 'Clicks: ' + window.count;
+        };
+
+        // Attach handler (parseable pattern - direct attachment)
+        document.getElementById('test-button').addEventListener('click', function() {
+            window.handleClick();
+        });
+    </script>
 </body>
 </html>
