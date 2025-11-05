@@ -153,6 +153,18 @@ function parseJavaScript(code) {
         nodesToRemove.add(index);
       }
 
+      // Extract top-level function declarations (function name() { ... })
+      if (node.type === 'FunctionDeclaration' && node.id?.name) {
+        const name = node.id.name;
+        // Extract the full function code
+        const [funcStart, funcEnd] = node.range;
+        const functionCode = code.substring(funcStart, funcEnd);
+        functions[name] = functionCode;
+
+        // Mark this node for removal from init script
+        nodesToRemove.add(index);
+      }
+
     });
 
     // Transform the AST to remove handlers (this modifies the tree in place)

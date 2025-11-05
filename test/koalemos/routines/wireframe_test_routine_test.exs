@@ -22,11 +22,14 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
       assert definition.parse_response.type == Koalemos.Steps.Agent.ResponseParsing
     end
 
-    test "has correct transition flow: start -> lens -> llm -> parse -> start (loops)" do
+    test "has correct transition flow with tool execution support" do
       definition = WireframeTestRoutine.routine_definition()
 
-      # start -> render_lens
-      assert definition.start.transitions == [{:render_lens, :always}]
+      # start -> build_tool_schema (Sprint 4: tool execution added)
+      assert definition.start.transitions == [{:build_tool_schema, :always}]
+
+      # build_tool_schema -> render_lens
+      assert definition.build_tool_schema.transitions == [{:render_lens, :always}]
 
       # render_lens -> llm_request
       assert definition.render_lens.transitions == [{:llm_request, :always}]
@@ -34,8 +37,20 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
       # llm_request -> parse_response
       assert definition.llm_request.transitions == [{:parse_response, :always}]
 
-      # parse_response -> start (loops back)
-      assert definition.parse_response.transitions == [{:start, :always}]
+      # parse_response -> tool_lookup (if tools) OR start (if no tools)
+      assert definition.parse_response.transitions == [
+        {:tool_lookup, :when_has_tool_calls},
+        {:start, :when_no_tool_calls}
+      ]
+
+      # tool_lookup -> tool_execution
+      assert definition.tool_lookup.transitions == [{:tool_execution, :always}]
+
+      # tool_execution -> tool_execution (more tools) OR build_tool_schema (complete)
+      assert definition.tool_execution.transitions == [
+        {:tool_execution, :when_has_more_tools},
+        {:build_tool_schema, :when_tools_complete}
+      ]
     end
   end
 
@@ -51,10 +66,11 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
       context = WireframeTestRoutine.initial_context()
 
       assert context.messages == []
-      assert context.lenses == []
+      # Sprint 4: WireframeEditor lens now included by default
+      assert context.lenses == ["Koalemos.Lenses.WireframeEditor"]
       assert context.llm_provider == "anthropic"
       assert context.llm_model == "claude-haiku-4-5"
-      assert context.max_tokens == 2000
+      assert context.max_tokens == 64000  # Higher token limit for wireframe context
       assert context.temperature == 0.7
       assert context.wireframe_html == nil
       assert context.wireframe_sample == nil
@@ -179,34 +195,41 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
   end
 
   describe "routine characteristics" do
-    test "uses same agent loop pattern as TestChatRoutine" do
+    test "extends TestChatRoutine pattern with tool execution support" do
       wireframe_def = WireframeTestRoutine.routine_definition()
       test_chat_def = Koalemos.Routines.TestChatRoutine.routine_definition()
 
-      # Should have same step names
-      assert Map.keys(wireframe_def) |> Enum.sort() ==
-               Map.keys(test_chat_def) |> Enum.sort()
+      # Should have all TestChatRoutine steps plus tool execution steps
+      test_chat_steps = MapSet.new(Map.keys(test_chat_def))
+      wireframe_steps = MapSet.new(Map.keys(wireframe_def))
 
-      # Should have same step types
+      # All test_chat steps should be present in wireframe
+      assert MapSet.subset?(test_chat_steps, wireframe_steps)
+
+      # Wireframe should have additional tool execution steps
+      assert Map.has_key?(wireframe_def, :tool_lookup)
+      assert Map.has_key?(wireframe_def, :tool_execution)
+
+      # Should have same step types for shared steps
       assert wireframe_def.start.type == test_chat_def.start.type
       assert wireframe_def.render_lens.type == test_chat_def.render_lens.type
       assert wireframe_def.llm_request.type == test_chat_def.llm_request.type
       assert wireframe_def.parse_response.type == test_chat_def.parse_response.type
     end
 
-    test "no active lenses by default (to be added in Sprint 4)" do
+    test "includes WireframeEditor lens by default (Sprint 4 complete)" do
       context = WireframeTestRoutine.initial_context()
-      assert context.lenses == []
+      assert context.lenses == ["Koalemos.Lenses.WireframeEditor"]
     end
 
-    test "ready for WireframeEditor lens integration" do
+    test "supports lens overrides through context merging" do
       # Engine merges user context with defaults
-      # This test validates that the default initial_context supports lenses
+      # Users can override the default lens if needed
       defaults = WireframeTestRoutine.initial_context()
-      user_overrides = %{lenses: ["Koalemos.Lenses.WireframeEditor"]}
+      user_overrides = %{lenses: ["CustomLens"]}
       merged = Map.merge(defaults, user_overrides)
 
-      assert merged.lenses == ["Koalemos.Lenses.WireframeEditor"]
+      assert merged.lenses == ["CustomLens"]
     end
   end
 end

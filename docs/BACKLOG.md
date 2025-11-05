@@ -355,7 +355,7 @@
 
 ## Milestone 4: Advanced Lens System 🔄 IN PROGRESS
 
-**Status:** Sprint 3 of 8 Complete
+**Status:** Sprint 4 of 8 Complete
 **Started:** November 2, 2025
 **Goal:** Build three advanced lenses (PersonaLens, SequentialThinking, WireframeEditor) with comprehensive test infrastructure and modular architecture
 
@@ -397,29 +397,107 @@
   - [x] Full test coverage (19 tests, 100% coverage)
   - [x] Future architecture documented in BACKLOG (request/result pairs)
 
+- [x] **Sprint 4: WireframeEditor Preview Infrastructure** (~340 lines) ✅ Nov 5
+  - [x] **Pivoted from original plan** - Built infrastructure over DOM tools
+  - [x] WireframePreviewLive - LiveView in iframe (flo's architecture)
+  - [x] WireframeStateCache - ETS cache for lens_state by routine_id
+  - [x] WireframeTestLive updates - iframe src instead of srcdoc
+  - [x] WireframeTestRoutine - Tool execution infrastructure ready
+  - [x] Route for `/wireframe-preview/:routine_id`
+  - [x] PubSub broadcasting for DOM tree updates
+  - [x] HTML escaping fixes (Plug.HTML vs Phoenix.HTML)
+  - [x] Manual validation - All sample wireframes load and render
+  - [x] Context validation - `provide_context/2` shows complete DOM tree
+  - [x] 15 wireframe routine tests passing
+  - [x] **Deferred to Sprint 5:** Core module, DOM Handler, DOM tools
+
+### Lessons Learned (Sprint 4)
+
+**1. Validate Infrastructure Before Building Features**
+Building the preview system first helped us discover HTML escaping issues and timing problems early. This saved time compared to implementing tools without a way to test them visually.
+
+**2. Adopt Proven Patterns When Available**
+Using flo's LiveView-in-iframe architecture gave us confidence and a working reference. No need to design from scratch when a proven solution exists.
+
+**3. Test Pages Are Invaluable**
+The interactive test page at `/test/wireframe` made it easy to spot problems visually and validate fixes immediately. Manual validation complements automated testing.
+
+**4. Pivot When Reality Differs from Plan**
+Original Sprint 4 plan called for DOM tools, but infrastructure needs revealed themselves during implementation. Pivoting to build foundation first was the right decision.
+
+**5. Cache + PubSub Solves Timing Issues**
+Combining WireframeStateCache (for initial load) with PubSub (for updates) elegantly solved the iframe mount timing problem. Both patterns will be useful as the system grows.
+
 ### In Progress / Todo
 
-- [ ] **Sprint 4: WireframeEditor Core + DOM** (~700 lines)
-  - [ ] Modular architecture: Core module + DOM handler
-  - [ ] Tools: query_element, add_element, remove_element, update_attributes, get_structure
+- [ ] **Sprint 5: WireframeEditor Core + DOM Tools** (~550 lines)
+  - [ ] **Core Module** (~250 lines): Lens interface, handler coordination
+    - [ ] Two-version state management (designed vs running)
+    - [ ] Uses existing HTMLParser (don't reimplement parsing)
+    - [ ] Basic context builder (element count, state summary)
+    - [ ] Error handling pattern
+    - [ ] Integrate with WireframeStateCache
+  - [ ] **DOM Handler** (~250 lines): HTML manipulation
+    - [ ] Tools: query_element, add_element, remove_element, update_attributes, get_structure
+    - [ ] HTML serialization (AST → string for preview reload)
+    - [ ] Round-trip testing (parse → modify → serialize → parse)
+    - [ ] Integration with WireframePreviewLive via PubSub
+  - [ ] **Manual Verification Page** (~50 lines): Extend /test/wireframe
+    - [ ] Test controls for each DOM tool
+    - [ ] Show tool results and lens state updates
+    - [ ] Visual validation of changes in preview
+  - [ ] **Tests** (~100 lines): Core, DOM handler, tool execution, state management
+  - [ ] **Note:** Tool execution infrastructure already ready from Sprint 4
 
-- [ ] **Sprint 5: WireframeEditor JavaScript** (~650 lines)
-  - [ ] JavaScript handler module
-  - [ ] Tools: query_javascript, add_event_listener, modify_function, add_script
+- [ ] **Sprint 6: WireframeEditor JavaScript + Parser Improvements** (~550 lines)
+  - [ ] **JavaScript Handler** (~250 lines): JS manipulation
+    - [ ] Uses existing JavaScriptParser (don't reimplement parsing)
+    - [ ] Tools: query_javascript, add_event_listener, modify_function, add_script, remove_event_listener
+    - [ ] Integration with DOM handler
+    - [ ] Script serialization (AST → JS string)
+  - [ ] **JavaScriptParser Improvements** (~200 lines): **Fix complex wireframe extraction**
+    - [ ] Improve inline event handler parsing (onclick="...")
+    - [ ] Better function extraction from mixed HTML/JS
+    - [ ] Enhanced event listener detection
+    - [ ] Test with complex wireframe's actual structure
+  - [ ] **JavaScript Utilities** (~50 lines): AST helpers, event formatting
+  - [ ] **Manual Verification Page** (~50 lines): Add JS tool testing controls
+    - [ ] Show parsed event listeners from complex wireframe
+    - [ ] Display function list with modify buttons
+    - [ ] Live preview updates when JS changes
+  - [ ] **Tests** (~100 lines): Handler tests, parser improvement tests, integration tests
 
-- [ ] **Sprint 6: WireframeEditor CSS** (~650 lines)
-  - [ ] CSS handler module
-  - [ ] Tools: query_styles, add_style_rule, modify_style, remove_style, add_class
+- [ ] **Sprint 7: WireframeEditor CSS Handler** (~500 lines)
+  - [ ] **CSS Handler** (~250 lines): CSS manipulation
+    - [ ] Uses existing CSSParser (don't reimplement parsing)
+    - [ ] Tools: query_styles, add_style_rule, modify_style, remove_style, add_class, get_computed_style
+    - [ ] Handle inline styles, <style> tags, linked stylesheets
+    - [ ] Style merging and specificity handling
+    - [ ] Integration with DOM + JavaScript handlers
+  - [ ] **CSS Utilities** (~100 lines): Style merging, specificity, color/unit normalization
+  - [ ] **Manual Verification Page** (~50 lines): Add CSS tool testing controls
+    - [ ] Show all CSS rules from complex wireframe
+    - [ ] Style inspector for selected elements
+    - [ ] Live style editing with preview updates
+  - [ ] **Tests** (~100 lines): Handler tests, CSSParser integration, full-stack integration tests
 
-- [ ] **Sprint 7: Testing + Context + Tool Execution** (~700 lines)
-  - [ ] Testing and context modules for WireframeEditor
-  - [ ] **Tool Execution Infrastructure**:
-    - [ ] Direct tool execution for simple tools
-    - [ ] Agent-as-node pattern for complex multi-step operations
+- [ ] **Sprint 8: Testing + Context + Advanced Patterns** (~500 lines, down from 700)
+  - [ ] **Context Module** (~150 lines): Comprehensive context building
+    - [ ] Enhance basic context from Sprint 4
+    - [ ] Show DOM structure, scripts, styles summaries
+    - [ ] Display modifications history
+    - [ ] Provide context-aware suggestions
+  - [ ] **Testing Module** (~150 lines): Test utilities and fixtures
+    - [ ] Test helpers for wireframe manipulation
+    - [ ] Fixture management
+    - [ ] Assertion helpers
+  - [ ] **Agent-as-Node Pattern** (~200 lines): Complex multi-step operations
+    - [ ] Sub-routine pattern for complex tool chains
     - [ ] Inspired by flo's TemplatedSemanticAgent
-  - [ ] Integration tests with tool chains
+    - [ ] Enables multi-step operations (e.g., "add login form" → multiple tools)
+  - [ ] **Integration Tests**: Full workflow tests with all handlers working together
 
-- [ ] **Sprint 8: Integration & Documentation** (~250 lines)
+- [ ] **Sprint 9: Integration & Documentation** (~250 lines)
   - [ ] All lenses working together
   - [ ] Complete documentation
   - [ ] Demo on complex wireframe
@@ -429,21 +507,28 @@
 
 **Key Decisions:**
 - **Modular WireframeEditor:** 5 separate modules (Core, DOM, JavaScript, CSS, Testing, Context) instead of monolithic file
-- **Tool Execution:** Two-tier approach - direct execution for simple tools, agent-as-node sub-routine for complex tool chains
+- **Leverage Existing Parsers:** Use HTMLParser, JavaScriptParser, CSSParser - don't reimplement parsing
+- **Two-Version State Management:** Track designed source (being edited) vs running preview (live state)
+- **Tool Execution in Sprint 4:** Copy ThinkingTestRoutine pattern for immediate testing capability
+- **JavaScriptParser Improvements in Sprint 5:** Fix extraction issues revealed by complex wireframe
+- **Manual Verification Throughout:** Update test page each sprint, build reusable patterns
+- **Tool Execution Tiers:** Direct execution (Sprint 4), agent-as-node pattern (Sprint 7) for complex operations
 - **Validation Target:** Complex wireframe used throughout development as demo showcase
-- **Attribution:** SequentialThinking ported from MCP server (details TBD)
+- **Cache Integration:** Use DOMStateCache, ConsoleCache, VariableStateCache, ScreenshotCache for state snapshots
 
 **Test Criteria:**
-- ✅ All 3 lenses fully functional
-- ✅ Lenses work independently and together
-- ✅ Tool execution infrastructure handles simple and complex operations
-- ✅ Agent-as-node pattern enables multi-step tool orchestration
-- ✅ Complex wireframe fully parsed and editable
+- ✅ All 3 lenses fully functional (PersonaLens, SequentialThinking, WireframeEditor)
+- ✅ Tool execution works from Sprint 4 onward (not deferred to Sprint 7)
+- ✅ Two-version state management tracks designed vs running
+- ✅ JavaScriptParser can extract all content from complex wireframe
+- ✅ Agent-as-node pattern enables multi-step tool orchestration (Sprint 7)
+- ✅ Complex wireframe fully parsed and editable via all handlers
+- ✅ Manual verification page functional and updated each sprint
 - ✅ Test coverage ≥ 80% for new code
-- ✅ Manual validation successful for all scenarios
+- ✅ Round-trip fidelity (parse → modify → serialize → parse matches)
 
-**Lines:** ~4,300 lines (includes tool execution infrastructure)
-**Status:** Sprint 1 Complete, Sprint 2-8 Todo
+**Lines:** ~3,800 lines (reduced by 500 due to leveraging existing parsers)
+**Status:** Sprint 1-3 Complete, Sprint 4-8 Todo
 
 ---
 

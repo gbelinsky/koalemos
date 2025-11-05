@@ -139,6 +139,45 @@ defmodule Koalemos.Parsers.JavaScriptParserTest do
       assert Map.has_key?(result.functions, "func2")
       assert Map.has_key?(result.functions, "func3")
     end
+
+    test "extracts traditional function declarations" do
+      code = """
+      function openModal() {
+        console.log('Opening modal');
+        modal.classList.add('show');
+      }
+
+      function closeModal() {
+        console.log('Closing modal');
+        modal.classList.remove('show');
+      }
+      """
+
+      assert {:ok, result} = JavaScriptParser.parse(code)
+
+      assert Map.has_key?(result.functions, "openModal")
+      assert Map.has_key?(result.functions, "closeModal")
+      assert String.contains?(result.functions["openModal"], "Opening modal")
+      assert String.contains?(result.functions["closeModal"], "Closing modal")
+      assert result.init_script == ""
+    end
+
+    test "extracts mix of traditional and window functions" do
+      code = """
+      function traditionalFunc() {
+        return 'traditional';
+      }
+
+      window.arrowFunc = () => 'arrow';
+      """
+
+      assert {:ok, result} = JavaScriptParser.parse(code)
+
+      assert Map.has_key?(result.functions, "traditionalFunc")
+      assert Map.has_key?(result.functions, "arrowFunc")
+      assert String.contains?(result.functions["traditionalFunc"], "traditional")
+      assert result.init_script == ""
+    end
   end
 
   describe "parse/1 - handlers" do
