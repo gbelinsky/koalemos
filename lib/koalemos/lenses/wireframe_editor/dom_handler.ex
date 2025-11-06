@@ -27,12 +27,18 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     if is_nil(dom_tree) do
       {"Error: No wireframe loaded. Load a wireframe first.", []}
     else
-      results = Enum.map(elements, fn elem ->
+      # Thread updated tree through each modification using reduce
+      {final_tree, results} = Enum.reduce(elements, {dom_tree, []}, fn elem, {current_tree, acc_results} ->
         element_id = Map.get(elem, "element_id")
         add_classes = Map.get(elem, "add_classes", [])
         remove_classes = Map.get(elem, "remove_classes", [])
 
-        modify_element_classes(dom_tree, element_id, add_classes, remove_classes)
+        case modify_element_classes(current_tree, element_id, add_classes, remove_classes) do
+          {:ok, updated_tree} ->
+            {updated_tree, [{:ok, element_id} | acc_results]}
+          {:error, msg} ->
+            {current_tree, [{:error, msg} | acc_results]}
+        end
       end)
 
       errors = Enum.filter(results, &match?({:error, _}, &1))
@@ -41,8 +47,7 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
         error_messages = Enum.map_join(errors, "\n", fn {:error, msg} -> "- #{msg}" end)
         {"Errors modifying classes:\n#{error_messages}", []}
       else
-        # All successful, get updated tree from first result
-        {:ok, updated_tree} = hd(results)
+        updated_tree = final_tree
 
         # Track modification
         modification = %{
@@ -140,12 +145,18 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
       if has_class_attr do
         {"Error: Cannot set 'class' attribute. Use modify_classes tool instead.", []}
       else
-        results = Enum.map(elements, fn elem ->
+        # Thread updated tree through each modification using reduce
+        {final_tree, results} = Enum.reduce(elements, {dom_tree, []}, fn elem, {current_tree, acc_results} ->
           element_id = Map.get(elem, "element_id")
           set_attrs = Map.get(elem, "set", %{})
           remove_attrs = Map.get(elem, "remove", [])
 
-          modify_element_attributes(dom_tree, element_id, set_attrs, remove_attrs)
+          case modify_element_attributes(current_tree, element_id, set_attrs, remove_attrs) do
+            {:ok, updated_tree} ->
+              {updated_tree, [{:ok, element_id} | acc_results]}
+            {:error, msg} ->
+              {current_tree, [{:error, msg} | acc_results]}
+          end
         end)
 
         errors = Enum.filter(results, &match?({:error, _}, &1))
@@ -154,7 +165,7 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
           error_messages = Enum.map_join(errors, "\n", fn {:error, msg} -> "- #{msg}" end)
           {"Errors managing attributes:\n#{error_messages}", []}
         else
-          {:ok, updated_tree} = hd(results)
+          updated_tree = final_tree
 
           modification = %{
             type: :manage_attributes,
@@ -187,13 +198,19 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     if is_nil(dom_tree) do
       {"Error: No wireframe loaded. Load a wireframe first.", []}
     else
-      results = Enum.map(elements, fn elem ->
+      # Thread updated tree through each modification using reduce
+      {final_tree, results} = Enum.reduce(elements, {dom_tree, []}, fn elem, {current_tree, acc_results} ->
         element_id = Map.get(elem, "element_id")
         add_handlers = Map.get(elem, "add", %{})
         replace_handlers = Map.get(elem, "replace", %{})
         remove_events = Map.get(elem, "remove", [])
 
-        modify_element_handlers(dom_tree, element_id, add_handlers, replace_handlers, remove_events)
+        case modify_element_handlers(current_tree, element_id, add_handlers, replace_handlers, remove_events) do
+          {:ok, updated_tree} ->
+            {updated_tree, [{:ok, element_id} | acc_results]}
+          {:error, msg} ->
+            {current_tree, [{:error, msg} | acc_results]}
+        end
       end)
 
       errors = Enum.filter(results, &match?({:error, _}, &1))
@@ -202,7 +219,7 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
         error_messages = Enum.map_join(errors, "\n", fn {:error, msg} -> "- #{msg}" end)
         {"Errors managing handlers:\n#{error_messages}", []}
       else
-        {:ok, updated_tree} = hd(results)
+        updated_tree = final_tree
 
         modification = %{
           type: :manage_handlers,
@@ -456,58 +473,55 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
   end
 
   defp process_removals(tree, remove_ids) do
-    results = Enum.map(remove_ids, fn id ->
-      case remove_element(tree, id) do
-        {:ok, _updated_tree} ->
-          # TODO: accumulate changes for batch updates
-          {:ok, "Removed #{id}"}
+    {final_tree, results} = Enum.reduce(remove_ids, {tree, []}, fn id, {current_tree, acc_results} ->
+      case remove_element(current_tree, id) do
+        {:ok, updated_tree} ->
+          {updated_tree, [{:ok, "Removed #{id}"} | acc_results]}
         {:error, :not_found} ->
-          {:error, "Element '#{id}' not found"}
+          {current_tree, [{:error, "Element '#{id}' not found"} | acc_results]}
+        {:error, :cannot_remove_root} ->
+          {current_tree, [{:error, "Cannot remove root element"} | acc_results]}
       end
     end)
 
-    updated_tree = case Enum.find(results, &match?({:ok, _}, &1)) do
-      {:ok, _} -> tree
-      _ -> tree
-    end
-
-    {updated_tree, results}
+    {final_tree, Enum.reverse(results)}
   end
 
   defp process_replacements(tree, replacements) do
-    results = Enum.map(replacements, fn replacement ->
-      _element_id = Map.get(replacement, "element_id")
-      _new_element = Map.get(replacement, "new_element")
+    {final_tree, results} = Enum.reduce(replacements, {tree, []}, fn replacement, {current_tree, acc_results} ->
+      element_id = Map.get(replacement, "element_id")
+      new_element_spec = Map.get(replacement, "new_element")
+      new_element = build_element_from_spec(new_element_spec)
 
-      # TODO: Implement replace logic using element_id and new_element
-      {:error, "Replace not yet implemented"}
-    end)
-
-    {tree, results}
-  end
-
-  defp process_additions(tree, additions) do
-    results = Enum.map(additions, fn addition ->
-      parent_id = Map.get(addition, "parent_id")
-      new_element = build_element_from_spec(addition)
-
-      case add_element(tree, parent_id, new_element) do
-        {:ok, _updated_tree} ->
-          # TODO: accumulate changes for batch updates
-          {:ok, "Added #{new_element.id}"}
-        {:error, :parent_not_found} ->
-          {:error, "Parent element '#{parent_id}' not found"}
-        {:error, :duplicate_id} ->
-          {:error, "Element with ID '#{new_element.id}' already exists"}
+      case replace_element(current_tree, element_id, new_element) do
+        {:ok, updated_tree} ->
+          {updated_tree, [{:ok, "Replaced #{element_id}"} | acc_results]}
+        {:error, :not_found} ->
+          {current_tree, [{:error, "Element '#{element_id}' not found"} | acc_results]}
+        {:error, :cannot_replace_root} ->
+          {current_tree, [{:error, "Cannot replace root element"} | acc_results]}
       end
     end)
 
-    updated_tree = case Enum.find(results, &match?({:ok, _}, &1)) do
-      {:ok, _} -> tree
-      _ -> tree
-    end
+    {final_tree, Enum.reverse(results)}
+  end
 
-    {updated_tree, results}
+  defp process_additions(tree, additions) do
+    {final_tree, results} = Enum.reduce(additions, {tree, []}, fn addition, {current_tree, acc_results} ->
+      parent_id = Map.get(addition, "parent_id")
+      new_element = build_element_from_spec(addition)
+
+      case add_element(current_tree, parent_id, new_element) do
+        {:ok, updated_tree} ->
+          {updated_tree, [{:ok, "Added #{new_element.id}"} | acc_results]}
+        {:error, :parent_not_found} ->
+          {current_tree, [{:error, "Parent element '#{parent_id}' not found"} | acc_results]}
+        {:error, :duplicate_id} ->
+          {current_tree, [{:error, "Element with ID '#{new_element.id}' already exists"} | acc_results]}
+      end
+    end)
+
+    {final_tree, Enum.reverse(results)}
   end
 
   defp build_element_from_spec(spec) do
@@ -570,6 +584,35 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
         child.id == target_id -> {acc, true}
         true ->
           case remove_element(child, target_id) do
+            {:ok, updated_child} -> {acc ++ [updated_child], true}
+            {:error, :not_found} -> {acc ++ [child], false}
+          end
+      end
+    end)
+
+    if found, do: {:ok, updated}, else: {:error, :not_found}
+  end
+
+  defp replace_element(%{id: id} = _element, target_id, _new_element) when id == target_id do
+    {:error, :cannot_replace_root}
+  end
+  defp replace_element(%{children: children} = element, target_id, new_element) do
+    case replace_in_children(children, target_id, new_element) do
+      {:ok, updated_children} -> {:ok, %{element | children: updated_children}}
+      {:error, :not_found} -> {:error, :not_found}
+    end
+  end
+  defp replace_element(_element, _target_id, _new_element) do
+    {:error, :not_found}
+  end
+
+  defp replace_in_children(children, target_id, new_element) do
+    {updated, found} = Enum.reduce(children, {[], false}, fn child, {acc, found} ->
+      cond do
+        found -> {acc ++ [child], found}
+        child.id == target_id -> {acc ++ [new_element], true}
+        true ->
+          case replace_element(child, target_id, new_element) do
             {:ok, updated_child} -> {acc ++ [updated_child], true}
             {:error, :not_found} -> {acc ++ [child], false}
           end
