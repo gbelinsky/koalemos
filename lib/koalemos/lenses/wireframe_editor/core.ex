@@ -479,9 +479,10 @@ defmodule Koalemos.Lenses.WireframeEditor do
   """
   def execute(tool_name, args, context) do
     lens_state = Map.get(context, :lens_state, %{})
+    routine_id = Map.get(context, :routine_id)
 
     try do
-      case tool_name do
+      result = case tool_name do
         :modify_classes ->
           DOMHandler.modify_classes(lens_state, args)
 
@@ -512,6 +513,11 @@ defmodule Koalemos.Lenses.WireframeEditor do
         _ ->
           {"Unknown tool: #{inspect(tool_name)}", []}
       end
+
+      # Broadcast DOM tree updates for successful modifications (if routine_id available)
+      broadcast_dom_update_if_needed(result, tool_name, routine_id)
+
+      result
     rescue
       error ->
         Logger.error("[WireframeEditor] Tool execution failed: #{Exception.message(error)}")
@@ -592,8 +598,21 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
   defp build_css_section(%{custom_css: css}) when map_size(css) > 0 do
     css_list = Enum.map_join(css, "\n", fn {selector, declarations} ->
-      # Format declarations as "property: value; property: value;"
-      decl_str = Enum.map_join(declarations, "; ", fn {prop, val} -> "#{prop}: #{val}" end)
+      # Handle both string format and map format
+      decl_str = case declarations do
+        # String format: "property: value; property: value"
+        str when is_binary(str) ->
+          str
+
+        # Map format: %{"property" => "value", ...}
+        map when is_map(map) ->
+          Enum.map_join(map, "; ", fn {prop, val} -> "#{prop}: #{val}" end)
+
+        # List format: [{"property", "value"}, ...]
+        list when is_list(list) ->
+          Enum.map_join(list, "; ", fn {prop, val} -> "#{prop}: #{val}" end)
+      end
+
       "- #{selector} { #{decl_str} }"
     end)
 
@@ -674,11 +693,22 @@ defmodule Koalemos.Lenses.WireframeEditor do
     element_handlers = Map.get(handlers_map, id, %{})
     handlers_str = format_handlers_inline(element_handlers, indent)
 
+    # Build the base element line with tag and ID
+    base = "#{indent_str}- #{id}: <#{tag}>"
+
+    # Add classes prominently if present
+    with_classes = if classes != "" do
+      base <> " .#{String.replace(classes, " ", " .")}"
+    else
+      base
+    end
+
+    # Add other attributes and content (only show content if it's a non-empty string)
+    # Note: Filter out "nil" string because Observer.make_serializable converts atom nil to string "nil"
     parts = [
-      "#{indent_str}- #{id}: <#{tag}>",
-      if(classes != "", do: " classes: #{classes}", else: ""),
+      with_classes,
       if(attributes != "", do: " | #{attributes}", else: ""),
-      if(content && content != "", do: " | Content: \"#{content}\"", else: "")
+      if(is_binary(content) && content != "" && content != "nil", do: " | Content: \"#{content}\"", else: "")
     ]
 
     element_line = Enum.reject(parts, &(&1 == "")) |> Enum.join("")
@@ -730,6 +760,25 @@ defmodule Koalemos.Lenses.WireframeEditor do
     end
   end
   defp format_timestamp_age(_), do: "unknown"
+
+  # Broadcast DOM tree updates via PubSub for live preview updates
+  defp broadcast_dom_update_if_needed({_result_text, lens_updates}, tool_name, routine_id)
+      when not is_nil(routine_id) and tool_name != :trigger_interaction do
+    # Check if there's an updated DOM tree in lens_updates
+    case Keyword.get(lens_updates, :designed) do
+      %{dom_tree: updated_tree} when not is_nil(updated_tree) ->
+        Phoenix.PubSub.broadcast(
+          Koalemos.PubSub,
+          "wireframe_updates:#{routine_id}",
+          {:dom_tree_updated, updated_tree, %{source: :tool_execution, tool: tool_name}}
+        )
+        Logger.debug("[WireframeEditor] Broadcasted DOM update for #{tool_name} to routine #{routine_id}")
+
+      _ ->
+        :ok
+    end
+  end
+  defp broadcast_dom_update_if_needed(_result, _tool_name, _routine_id), do: :ok
 
   # Helper to get lens_state with defaults (TODO: will be used when tools are implemented)
   defp _get_lens_state(context) do

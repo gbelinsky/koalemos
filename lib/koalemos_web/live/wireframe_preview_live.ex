@@ -40,7 +40,7 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
   @impl true
   def mount(%{"routine_id" => routine_id} = _params, _session, socket) do
-    Logger.info("[WireframePreviewLive] Mounting for routine: #{routine_id}")
+    Logger.info("[WireframePreviewLive] 🔄 Mounting for routine: #{routine_id}")
 
     # Subscribe to PubSub for wireframe updates
     Phoenix.PubSub.subscribe(
@@ -48,14 +48,17 @@ defmodule KoalemosWeb.WireframePreviewLive do
       "wireframe_updates:#{routine_id}"
     )
 
-    # Load initial DOM tree from routine context
-    initial_tree = load_initial_dom_tree(routine_id)
+    # Load initial state from cache
+    {initial_tree, custom_css} = load_initial_state(routine_id)
+
+    Logger.info("[WireframePreviewLive] Initial mount - dom_tree present: #{not is_nil(initial_tree)}, css entries: #{map_size(custom_css)}")
 
     {:ok,
      socket
      |> assign(
        routine_id: routine_id,
        dom_tree: initial_tree,
+       custom_css: custom_css,
        page_title: "Wireframe Preview"
      )}
   end
@@ -64,7 +67,11 @@ defmodule KoalemosWeb.WireframePreviewLive do
   def handle_info({:dom_tree_updated, new_tree, metadata}, socket) do
     Logger.info("[WireframePreviewLive] Received DOM tree update: #{inspect(metadata)}")
 
-    {:noreply, assign(socket, :dom_tree, new_tree)}
+    # Also reload CSS from cache in case it changed
+    routine_id = socket.assigns.routine_id
+    {_, custom_css} = load_initial_state(routine_id)
+
+    {:noreply, assign(socket, dom_tree: new_tree, custom_css: custom_css)}
   end
 
   @impl true
@@ -76,11 +83,21 @@ defmodule KoalemosWeb.WireframePreviewLive do
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Wireframe Preview</title>
+
+        <!-- Tailwind CSS CDN for class-based styling -->
+        <script src="https://cdn.tailwindcss.com"></script>
+
         <style>
           /* Reset and base styles */
           * { box-sizing: border-box; }
           body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
         </style>
+        <%= if @custom_css && map_size(@custom_css) > 0 do %>
+          <style>
+            /* Custom CSS from wireframe */
+            <%= raw(render_custom_css(@custom_css)) %>
+          </style>
+        <% end %>
       </head>
       <body>
         <%= if @dom_tree do %>
@@ -97,20 +114,50 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
   # Private Helpers
 
-  defp load_initial_dom_tree(routine_id) do
-    Logger.debug("[WireframePreviewLive] Loading initial DOM tree for #{routine_id}")
+  defp load_initial_state(routine_id) do
+    Logger.debug("[WireframePreviewLive] Loading initial state for #{routine_id}")
 
     # Fetch lens_state from cache
     case Koalemos.Caches.WireframeStateCache.get_state(routine_id) do
       nil ->
         Logger.warning("[WireframePreviewLive] No lens_state found for routine #{routine_id}")
-        nil
+        {nil, %{}}
 
       lens_state ->
         Logger.info("[WireframePreviewLive] Found lens_state in cache for #{routine_id}")
-        get_in(lens_state, [:designed, :dom_tree])
+        dom_tree = get_in(lens_state, [:designed, :dom_tree])
+        custom_css = get_in(lens_state, [:designed, :custom_css]) || %{}
+        {dom_tree, custom_css}
     end
   end
+
+  defp render_custom_css(custom_css) when is_map(custom_css) do
+    custom_css
+    |> Enum.map(fn {selector, rules} ->
+      # Handle both string format and structured format
+      rules_str = case rules do
+        # String format: "property: value; property: value"
+        str when is_binary(str) ->
+          str
+
+        # Map format: %{"property" => "value", ...}
+        map when is_map(map) ->
+          Enum.map_join(map, "; ", fn {property, value} ->
+            "#{property}: #{value}"
+          end)
+
+        # List format: [{"property", "value"}, ...]
+        list when is_list(list) ->
+          Enum.map_join(list, "; ", fn {property, value} ->
+            "#{property}: #{value}"
+          end)
+      end
+
+      "#{selector} { #{rules_str}; }"
+    end)
+    |> Enum.join("\n")
+  end
+  defp render_custom_css(_), do: ""
 
   defp render_dom_tree(nil), do: ""
 
@@ -138,8 +185,9 @@ defmodule KoalemosWeb.WireframePreviewLive do
       "<#{tag}#{attrs} />"
     else
       # Render with children or content
+      # Note: Filter out "nil" string because Observer.make_serializable converts atom nil to string "nil"
       inner_html = cond do
-        content && is_binary(content) ->
+        is_binary(content) && content != "" && content != "nil" ->
           Plug.HTML.html_escape(content)
 
         is_list(children) && length(children) > 0 ->

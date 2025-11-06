@@ -86,7 +86,9 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
         }
       }
 
-      updated_state = WireframeTestRoutine.setup(%{}, state)
+      {:ok, diff} = WireframeTestRoutine.setup(%{}, state)
+      {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
+      updated_state = %{state | context: updated_context}
 
       assert is_binary(updated_state.context.wireframe_html)
       assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
@@ -101,7 +103,9 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
         }
       }
 
-      updated_state = WireframeTestRoutine.setup(%{}, state)
+      {:ok, diff} = WireframeTestRoutine.setup(%{}, state)
+      {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
+      updated_state = %{state | context: updated_context}
 
       assert is_binary(updated_state.context.wireframe_html)
       assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
@@ -117,7 +121,9 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
         }
       }
 
-      updated_state = WireframeTestRoutine.setup(%{}, state)
+      {:ok, diff} = WireframeTestRoutine.setup(%{}, state)
+      {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
+      updated_state = %{state | context: updated_context}
 
       assert is_binary(updated_state.context.wireframe_html)
       assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
@@ -135,7 +141,9 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
         }
       }
 
-      updated_state = WireframeTestRoutine.setup(%{}, state)
+      {:ok, diff} = WireframeTestRoutine.setup(%{}, state)
+      {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
+      updated_state = %{state | context: updated_context}
 
       # Should not crash, just leave wireframe_html as nil
       assert updated_state.context.wireframe_html == nil
@@ -150,7 +158,9 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
         }
       }
 
-      updated_state = WireframeTestRoutine.setup(%{}, state)
+      {:ok, diff} = WireframeTestRoutine.setup(%{}, state)
+      {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
+      updated_state = %{state | context: updated_context}
 
       assert updated_state.context.wireframe_html == custom_html
     end
@@ -165,7 +175,9 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
         }
       }
 
-      updated_state = WireframeTestRoutine.setup(%{}, state)
+      {:ok, diff} = WireframeTestRoutine.setup(%{}, state)
+      {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
+      updated_state = %{state | context: updated_context}
 
       # Sample should load and override the existing wireframe_html
       assert updated_state.context.wireframe_html =~ "Simple Wireframe"
@@ -183,7 +195,9 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
     test "all sample files contain valid HTML" do
       for sample <- ["simple", "medium", "complex"] do
         state = %{context: %{wireframe_sample: sample, wireframe_html: nil}}
-        updated_state = WireframeTestRoutine.setup(%{}, state)
+        {:ok, diff} = WireframeTestRoutine.setup(%{}, state)
+      {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
+      updated_state = %{state | context: updated_context}
 
         assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
         assert updated_state.context.wireframe_html =~ "<html"

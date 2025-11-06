@@ -32,6 +32,9 @@ defmodule KoalemosWeb.WireframeTestLive do
 
   alias Koalemos.Integrations.ParsingIntegration
   alias Koalemos.Lenses.WireframeEditor
+  alias Koalemos.{EngineManager, Engine}
+  alias Koalemos.Routines.WireframeTestRoutine
+  alias KoalemosWeb.ChatPanel
 
   @fixtures_path "test/fixtures"
   @available_samples [
@@ -54,7 +57,15 @@ defmodule KoalemosWeb.WireframeTestLive do
        lens_state: nil,
        agent_context: nil,
        show_context: false,
-       routine_id: nil
+       routine_id: nil,
+       # Chat/agent fields
+       messages: [],
+       status: :idle,
+       current_step: nil,
+       last_error: nil,
+       agent_running: false,
+       # Tab selection
+       active_tab: "preview"
      )
      |> allow_upload(:html_file,
        accept: ~w(.html .htm),
@@ -138,7 +149,17 @@ defmodule KoalemosWeb.WireframeTestLive do
 
   @impl true
   def handle_event("toggle_context", _params, socket) do
-    {:noreply, assign(socket, show_context: !socket.assigns.show_context)}
+    new_show_context = !socket.assigns.show_context
+    Logger.info("[WireframeTestLive] Toggling context drawer from #{socket.assigns.show_context} to #{new_show_context}")
+    Logger.debug("[WireframeTestLive] routine_id: #{inspect(socket.assigns.routine_id)}")
+    Logger.debug("[WireframeTestLive] lens_state present: #{not is_nil(socket.assigns.lens_state)}")
+    Logger.debug("[WireframeTestLive] agent_context length: #{if socket.assigns.agent_context, do: String.length(socket.assigns.agent_context), else: 0}")
+    {:noreply, assign(socket, show_context: new_show_context)}
+  end
+
+  @impl true
+  def handle_event("switch_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, active_tab: tab)}
   end
 
   @impl true
@@ -159,6 +180,67 @@ defmodule KoalemosWeb.WireframeTestLive do
   end
 
   @impl true
+  def handle_event("start_agent", _params, socket) do
+    Logger.info("[WireframeTestLive] Starting agent for routine #{socket.assigns.routine_id}")
+
+    routine_id = socket.assigns.routine_id
+    loaded_html = socket.assigns.loaded_html
+
+    if routine_id && loaded_html && !socket.assigns.agent_running do
+      # Subscribe to routine events
+      if connected?(socket) do
+        Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
+        Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
+      end
+
+      # Start the WireframeTestRoutine with the loaded wireframe HTML
+      # The routine's setup/2 will parse it and create lens_state
+      user_context = %{
+        llm_provider: "anthropic",
+        llm_model: "claude-haiku-4-5",
+        max_tokens: 64000,
+        temperature: 0.7,
+        wireframe_html: loaded_html
+      }
+
+      case EngineManager.start_routine(routine_id, WireframeTestRoutine, user_context) do
+        {:ok, _pid} ->
+          Logger.info("[WireframeTestLive] Started agent successfully")
+
+          {:noreply,
+           assign(socket,
+             agent_running: true,
+             status: :running,
+             messages: [],
+             last_error: nil
+           )}
+
+        {:error, reason} ->
+          Logger.error("[WireframeTestLive] Failed to start agent: #{inspect(reason)}")
+
+          {:noreply,
+           assign(socket,
+             last_error: "Failed to start agent: #{inspect(reason)}"
+           )}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("stop_agent", _params, socket) do
+    Logger.info("[WireframeTestLive] Stopping agent")
+
+    {:noreply,
+     assign(socket,
+       agent_running: false,
+       status: :idle,
+       messages: []
+     )}
+  end
+
+  @impl true
   def handle_info(:check_uploads, socket) do
     socket = process_completed_uploads(socket)
 
@@ -170,6 +252,145 @@ defmodule KoalemosWeb.WireframeTestLive do
       Process.send_after(self(), :check_uploads, 500)
     end
 
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:clear_sent_feedback, component_id}, socket) do
+    # Forward to nested UserInputComponent (inside ChatPanel)
+    alias KoalemosWeb.UserInputComponent
+    send_update(UserInputComponent, id: component_id, clear_sent_feedback: true)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:screenshot_request, %{routine_id: _requested_id}}, socket) do
+    # Wireframe editor doesn't support screenshots yet
+    # Just ignore the request
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:mock_ai_response, _message}, socket) do
+    # Mock responses not used in this live view (mock_responses: false)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:user_input_submitted, %{text: text, images: images, include_screenshot: include_screenshot}}, socket) do
+    Logger.info("[WireframeTestLive] User input submitted: text=#{text}, images=#{length(images)}")
+
+    # Send user input to routine
+    data = %{text: text, images: images, include_screenshot: include_screenshot}
+    Engine.send_external_event(socket.assigns.routine_id, :user_input, data)
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:new_messages, new_messages}, socket) do
+    Logger.debug("[WireframeTestLive] Received #{length(new_messages)} new message(s)")
+
+    # Append new messages to existing messages
+    updated_messages = socket.assigns.messages ++ new_messages
+
+    # Update lens_state from latest context if available
+    socket = update_lens_state_from_messages(socket, new_messages)
+
+    {:noreply, assign(socket, messages: updated_messages)}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "routine_completed"} = event}, socket) do
+    Logger.info("[WireframeTestLive] Routine completed")
+
+    error = get_in(event, [:metadata, :final_context, :error])
+    status = if error, do: :error, else: :completed
+
+    {:noreply,
+     assign(socket,
+       status: status,
+       last_error: error,
+       current_step: nil
+     )}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "error_occurred"} = event}, socket) do
+    error_msg = get_in(event, [:metadata, :reason]) || "Unknown error"
+    Logger.error("[WireframeTestLive] Routine error: #{error_msg}")
+
+    {:noreply,
+     assign(socket,
+       status: :error,
+       last_error: error_msg,
+       current_step: nil
+     )}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "step_started"} = event}, socket) do
+    step = event.step_id
+
+    {:noreply, assign(socket, current_step: step)}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "step_completed"}}, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:routine_event, %{event_type: "context_changed", context_diff: context_diff}}, socket) do
+    Logger.info("[WireframeTestLive] Received context_changed event")
+
+    # Log structure without huge data
+    diff_summary = Enum.map(context_diff, fn
+      {op, data} when is_map(data) -> {op, Map.keys(data)}
+      [op, data] when is_map(data) -> [op, Map.keys(data)]
+      other -> other
+    end)
+    Logger.debug("[WireframeTestLive] context_diff operations: #{inspect(diff_summary)}")
+
+    # Extract lens_state from context_diff if present
+    socket = case extract_lens_state_from_diff(context_diff) do
+      {:ok, lens_state} ->
+        Logger.info("[WireframeTestLive] ✓ Found lens_state in context_diff, updating cache and agent_context")
+
+        # Check if DOM tree has classes to verify
+        dom_tree = get_in(lens_state, [:designed, :dom_tree])
+        Logger.debug("[WireframeTestLive] DOM tree present: #{not is_nil(dom_tree)}")
+
+        # Update cache
+        if socket.assigns.routine_id do
+          Koalemos.Caches.WireframeStateCache.put_state(socket.assigns.routine_id, lens_state)
+          Logger.info("[WireframeTestLive] Updated cache for routine #{socket.assigns.routine_id}")
+        end
+
+        # Regenerate agent context
+        agent_context = regenerate_agent_context(lens_state)
+        Logger.info("[WireframeTestLive] Regenerated agent_context (#{String.length(agent_context)} chars)")
+
+        assign(socket, lens_state: lens_state, agent_context: agent_context)
+
+      :not_found ->
+        Logger.warning("[WireframeTestLive] ✗ No lens_state found in context_diff")
+        socket
+    end
+
+    {:noreply, socket}
+  end
+
+  # Catch-all for other routine events (routine_started, transition_taken, step_setup, etc.)
+  @impl true
+  def handle_info({:routine_event, _event}, socket) do
+    {:noreply, socket}
+  end
+
+  # Ultimate catch-all for any other unhandled messages
+  @impl true
+  def handle_info(message, socket) do
+    Logger.debug("[WireframeTestLive] Unhandled message: #{inspect(message)}")
     {:noreply, socket}
   end
 
@@ -255,6 +476,28 @@ defmodule KoalemosWeb.WireframeTestLive do
             <div>
               <h2 class="text-lg font-semibold text-slate-800 mb-3">Actions</h2>
               <div class="space-y-2">
+                <%= if @agent_running do %>
+                  <button
+                    phx-click="stop_agent"
+                    class="w-full px-4 py-2 rounded-lg font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Stop Agent
+                  </button>
+                <% else %>
+                  <button
+                    phx-click="start_agent"
+                    disabled={is_nil(@loaded_html)}
+                    class={[
+                      "w-full px-4 py-2 rounded-lg font-medium transition-colors",
+                      if(is_nil(@loaded_html),
+                        do: "bg-slate-100 text-slate-400 cursor-not-allowed",
+                        else: "bg-green-600 text-white hover:bg-green-700"
+                      )
+                    ]}
+                  >
+                    Start Agent
+                  </button>
+                <% end %>
                 <button
                   phx-click="clear_wireframe"
                   disabled={is_nil(@loaded_html)}
@@ -288,14 +531,33 @@ defmodule KoalemosWeb.WireframeTestLive do
                     </span>
                   </div>
                 <% end %>
+                <div class="flex justify-between">
+                  <span class="text-slate-600">Agent Status:</span>
+                  <span class={[
+                    "font-mono text-sm font-medium",
+                    if(@agent_running, do: "text-green-600", else: "text-slate-600")
+                  ]}>
+                    <%= if @agent_running, do: "🟢 Running", else: "⚪ Idle" %>
+                  </span>
+                </div>
+                <%= if @routine_id do %>
+                  <div class="flex justify-between">
+                    <span class="text-slate-600">Routine ID:</span>
+                    <span class="font-mono text-xs text-slate-800">
+                      <%= String.slice(@routine_id, 0..20) %>...
+                    </span>
+                  </div>
+                <% end %>
               </div>
             </div>
             <!-- Error Display -->
-            <%= if @error_message do %>
+            <%= if @error_message || @last_error do %>
               <div class="bg-red-50 border border-red-200 rounded-lg p-3">
                 <div class="flex items-start">
                   <div class="text-red-600 mr-2">⚠</div>
-                  <div class="text-sm text-red-800"><%= @error_message %></div>
+                  <div class="text-sm text-red-800">
+                    <%= @error_message || @last_error %>
+                  </div>
                 </div>
               </div>
             <% end %>
@@ -320,8 +582,8 @@ defmodule KoalemosWeb.WireframeTestLive do
         </div>
         <!-- Preview Panel (right side) -->
         <div class="w-2/3 bg-slate-50 flex flex-col relative">
-          <!-- Preview Section (full height) -->
-          <div class="flex-1 flex flex-col">
+          <!-- Preview Section (top half) -->
+          <div class={if(@agent_running, do: "h-1/2", else: "flex-1") <> " flex flex-col border-b border-slate-300"}>
             <div class="bg-slate-700 px-4 py-2 border-b border-slate-600 flex items-center justify-between">
               <h2 class="text-sm font-medium text-white">HTML Preview (Iframe)</h2>
               <%= if @loaded_html do %>
@@ -330,9 +592,19 @@ defmodule KoalemosWeb.WireframeTestLive do
                 </div>
               <% end %>
             </div>
-            <div class="flex-1 overflow-auto">
+            <div class="flex-1 overflow-auto relative">
+              <!-- Show Agent Context button (always rendered, hidden with CSS) -->
+              <button
+                phx-click="toggle_context"
+                class={"absolute top-4 right-4 z-10 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg shadow-lg transition-all flex items-center gap-2 text-sm #{if @agent_running && @agent_context && !@show_context, do: "", else: "hidden"}"}
+              >
+                <span>🤖</span>
+                <span class="font-medium">Agent Context</span>
+                <span class="text-xs">▲</span>
+              </button>
+
+              <!-- Iframe - stable because parent has no structural changes -->
               <%= if @routine_id do %>
-                <!-- Iframe Preview (LiveView) -->
                 <iframe
                   id="wireframe-preview"
                   src={"/wireframe-preview/#{@routine_id}"}
@@ -342,19 +614,38 @@ defmodule KoalemosWeb.WireframeTestLive do
                 >
                 </iframe>
               <% else %>
-                <!-- Empty State -->
-                <div class="h-full flex items-center justify-center">
-                  <div class="text-center text-slate-400">
-                    <div class="text-6xl mb-4">📄</div>
-                    <p class="text-lg font-medium mb-2">No wireframe loaded</p>
-                    <p class="text-sm">
-                      Select a sample HTML file from the left panel to preview it here
-                    </p>
-                  </div>
-                </div>
+                <div class="w-full h-full"></div>
               <% end %>
+
+              <!-- Empty State (shown when no routine_id) -->
+              <div class={"h-full flex items-center justify-center #{if @routine_id, do: "hidden", else: ""}"}>
+                <div class="text-center text-slate-400">
+                  <div class="text-6xl mb-4">📄</div>
+                  <p class="text-lg font-medium mb-2">No wireframe loaded</p>
+                  <p class="text-sm">
+                    Select a sample HTML file from the left panel to preview it here
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
+
+          <%= if @agent_running do %>
+            <!-- Chat Section (bottom half when agent running) -->
+            <div class="h-1/2 flex flex-col">
+              <.live_component
+                module={ChatPanel}
+                id="wireframe-chat-panel"
+                routine_id={@routine_id}
+                messages={@messages}
+                mock_responses={false}
+                current_step={@current_step}
+                disabled={@status in [:completed, :error] || @last_error != nil}
+                status={@status}
+                last_error={@last_error}
+              />
+            </div>
+          <% end %>
 
           <!-- Agent Context Drawer (slides up from bottom with bounce) -->
           <div class={"absolute bottom-0 left-0 right-0 #{if @show_context, do: "translate-y-0", else: "translate-y-full"}"} style="height: 60%; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
@@ -382,8 +673,8 @@ defmodule KoalemosWeb.WireframeTestLive do
             </div>
           </div>
 
-          <!-- Toggle Button (when drawer is closed) -->
-          <%= if @agent_context && !@show_context do %>
+          <!-- Toggle Button (when drawer is closed and agent not running) -->
+          <%= if @agent_context && !@show_context && !@agent_running do %>
             <button
               phx-click="toggle_context"
               class="absolute bottom-4 right-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-lg transition-all flex items-center gap-2"
@@ -530,6 +821,124 @@ defmodule KoalemosWeb.WireframeTestLive do
       end
     end)
   end
+
+  defp update_lens_state_from_messages(socket, new_messages) do
+    # Extract lens_state from tool results in messages and update cache
+    Enum.reduce(new_messages, socket, fn msg, acc_socket ->
+      case msg do
+        %{role: "assistant", lens_state: lens_state} when not is_nil(lens_state) ->
+          Logger.info("[WireframeTestLive] Found lens_state in assistant message, updating")
+
+          # Update cache with new lens_state
+          if socket.assigns.routine_id do
+            Koalemos.Caches.WireframeStateCache.put_state(socket.assigns.routine_id, lens_state)
+
+            # Broadcast DOM tree update
+            dom_tree = get_in(lens_state, [:designed, :dom_tree])
+            if dom_tree do
+              Logger.info("[WireframeTestLive] Broadcasting DOM update from message")
+              Phoenix.PubSub.broadcast(
+                Koalemos.PubSub,
+                "wireframe_updates:#{socket.assigns.routine_id}",
+                {:dom_tree_updated, dom_tree, %{source: :agent_modification}}
+              )
+            end
+          end
+
+          # Regenerate agent context from updated lens_state
+          agent_context = regenerate_agent_context(lens_state)
+
+          assign(acc_socket, lens_state: lens_state, agent_context: agent_context)
+
+        _ ->
+          acc_socket
+      end
+    end)
+  end
+
+  # Regenerate agent context from lens_state
+  defp regenerate_agent_context(lens_state) do
+    # Create a minimal state structure with lens_state for WireframeEditor
+    state = %{context: %{lens_state: lens_state}}
+
+    # Call WireframeEditor.provide_context to regenerate the context
+    context_blocks = WireframeEditor.provide_context(state)
+
+    # Extract text from context blocks
+    case context_blocks do
+      [%{type: "text", text: text}] -> text
+      _ -> "No context generated"
+    end
+  end
+
+  # Extract lens_state from context_diff
+  # Note: Observer.make_serializable converts tuples to lists and atoms to strings,
+  # so {:add_or_update, ...} becomes ["add_or_update", ...] when broadcast via PubSub
+  defp extract_lens_state_from_diff(diff) when is_list(diff) do
+    Logger.debug("[WireframeTestLive] Extracting lens_state from #{length(diff)} diff operations")
+
+    result = Enum.reduce_while(diff, :not_found, fn operation, _acc ->
+      case operation do
+        # Handle both serialized (string) and non-serialized (atom) formats
+        ["add_or_update", updates] when is_map(updates) ->
+          keys = Map.keys(updates)
+          Logger.debug("[WireframeTestLive] Checking [\"add_or_update\", ...] with keys: #{inspect(keys)}")
+          case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
+            nil ->
+              Logger.debug("[WireframeTestLive] No lens_state key found")
+              {:cont, :not_found}
+            lens_state ->
+              Logger.info("[WireframeTestLive] ✓ Found lens_state in [\"add_or_update\", ...]")
+              {:halt, {:ok, lens_state}}
+          end
+
+        [:add_or_update, updates] when is_map(updates) ->
+          keys = Map.keys(updates)
+          Logger.debug("[WireframeTestLive] Checking [:add_or_update, ...] with keys: #{inspect(keys)}")
+          case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
+            nil ->
+              Logger.debug("[WireframeTestLive] No lens_state key found")
+              {:cont, :not_found}
+            lens_state ->
+              Logger.info("[WireframeTestLive] ✓ Found lens_state in [:add_or_update, ...]")
+              {:halt, {:ok, lens_state}}
+          end
+
+        {:add_or_update, updates} when is_map(updates) ->
+          keys = Map.keys(updates)
+          Logger.debug("[WireframeTestLive] Checking {:add_or_update, ...} with keys: #{inspect(keys)}")
+          case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
+            nil ->
+              Logger.debug("[WireframeTestLive] No :lens_state key found")
+              {:cont, :not_found}
+            lens_state ->
+              Logger.info("[WireframeTestLive] ✓ Found :lens_state in {:add_or_update, ...}")
+              {:halt, {:ok, lens_state}}
+          end
+
+        [op | _] ->
+          Logger.debug("[WireframeTestLive] Skipping list operation: #{inspect(op)}")
+          {:cont, :not_found}
+
+        {op, _} ->
+          Logger.debug("[WireframeTestLive] Skipping tuple operation: #{inspect(op)}")
+          {:cont, :not_found}
+
+        other ->
+          Logger.debug("[WireframeTestLive] Skipping unknown operation: #{inspect(other)}")
+          {:cont, :not_found}
+      end
+    end)
+
+    case result do
+      {:ok, _} -> result
+      :not_found ->
+        Logger.debug("[WireframeTestLive] ✗ lens_state not found in any operation")
+        :not_found
+    end
+  end
+
+  defp extract_lens_state_from_diff(_), do: :not_found
 
   defp load_sample_html(sample_id) do
     case Enum.find(@available_samples, fn {id, _name, _file} -> id == sample_id end) do

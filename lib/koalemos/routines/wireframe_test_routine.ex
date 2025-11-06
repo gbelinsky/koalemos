@@ -155,6 +155,8 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   Setup function called by Engine after context is merged.
   Loads sample HTML if wireframe_sample is specified.
   Parses HTML and initializes lens_state.
+
+  Returns {:ok, diff} where diff is a keyword list of context field changes.
   """
   def setup(_routine_config, state) do
     # Load sample HTML if specified in context
@@ -162,7 +164,21 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
       |> maybe_load_sample()
       |> parse_and_initialize_lens_state()
 
-    %{state | context: updated_context}
+    # Calculate diff - only return fields that changed
+    changes = Enum.reduce(updated_context, %{}, fn {key, value}, acc ->
+      if Map.get(state.context, key) != value do
+        Map.put(acc, key, value)
+      else
+        acc
+      end
+    end)
+
+    # Return in ContextManager format: {:add_or_update, map()}
+    if map_size(changes) > 0 do
+      {:ok, [{:add_or_update, changes}]}
+    else
+      {:ok, []}
+    end
   end
 
   # Private Helpers
