@@ -97,6 +97,56 @@ defmodule KoalemosWeb.WireframePreviewLive do
     )}
   end
 
+  # Handle snapshot request from WireframeEditor lens (Sprint 7)
+  @impl true
+  def handle_info({:snapshot_request, requested_id, opts}, socket) do
+    if socket.assigns.routine_id == requested_id do
+      Logger.debug("[WireframePreviewLive] Snapshot requested, triggering client capture")
+      skip_screenshot = Keyword.get(opts || [], :skip_screenshot, false)
+      {:noreply, push_event(socket, "capture_state", %{skip_screenshot: skip_screenshot})}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Handle state snapshot data from client (Sprint 7)
+  @impl true
+  def handle_event("state_snapshot", snapshot_data, socket) do
+    routine_id = socket.assigns.routine_id
+
+    Logger.debug("[WireframePreviewLive] Received state snapshot from client")
+
+    # Store DOM in DOMStateCache
+    if dom_tree = snapshot_data["dom_tree"] do
+      Koalemos.Caches.DOMStateCache.add_dom_state(routine_id, %{
+        live_dom_tree: dom_tree,
+        change_type: "snapshot",
+        timestamp: System.system_time(:millisecond)
+      })
+    end
+
+    # Store console messages in ConsoleCache (if any new messages)
+    if console_messages = snapshot_data["console_messages"] do
+      Enum.each(console_messages, fn msg ->
+        Koalemos.Caches.ConsoleCache.add_message(routine_id, msg)
+      end)
+    end
+
+    # Store screenshot in ScreenshotCache
+    if screenshot_data = snapshot_data["screenshot"] do
+      Koalemos.Caches.ScreenshotCache.put(routine_id, screenshot_data)
+    end
+
+    # Broadcast ready notification
+    Phoenix.PubSub.broadcast(
+      Koalemos.PubSub,
+      "snapshot:response:#{routine_id}",
+      {:snapshot_ready, routine_id, DateTime.utc_now()}
+    )
+
+    {:noreply, socket}
+  end
+
   @impl true
   def render(assigns) do
     ~H"""

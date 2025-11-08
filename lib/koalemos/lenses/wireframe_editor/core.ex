@@ -49,7 +49,97 @@ defmodule Koalemos.Lenses.WireframeEditor do
   """
 
   alias Koalemos.Lenses.WireframeEditor.DOMHandler
+  alias Koalemos.Caches.DOMStateCache
+  alias Koalemos.Caches.ConsoleCache
+  alias Koalemos.Caches.ScreenshotCache
   require Logger
+
+  @doc """
+  Capture current state from preview iframe.
+
+  Requests DOM snapshot, screenshot, and console messages via PubSub,
+  waits for response with timeout, and returns complete running state.
+
+  ## Options
+  - `:timeout` - Max wait time in ms (default: 5000)
+  - `:skip_screenshot` - Skip screenshot capture (default: false)
+
+  ## Returns
+  - `{:ok, running_state}` - Complete state captured
+  - `{:error, :timeout}` - Preview didn't respond in time
+  - `{:error, :no_preview}` - Preview not running
+
+  ## Example
+      {:ok, state} = capture_current_state("routine-123")
+      # => %{
+      #   dom_tree: %{tag: "div", ...},
+      #   console_output: [%{level: "error", ...}],
+      #   screenshot: "base64...",
+      #   captured_at: ~U[...]
+      # }
+  """
+  @spec capture_current_state(String.t(), keyword()) :: {:ok, map()} | {:error, atom()}
+  def capture_current_state(routine_id, opts \\ []) do
+    timeout = Keyword.get(opts, :timeout, 5000)
+    skip_screenshot = Keyword.get(opts, :skip_screenshot, false)
+
+    Logger.debug("[WireframeEditor] Requesting state snapshot for #{routine_id}")
+
+    # Subscribe to response topic temporarily
+    response_topic = "snapshot:response:#{routine_id}"
+    Phoenix.PubSub.subscribe(Koalemos.PubSub, response_topic)
+
+    try do
+      # Broadcast snapshot request to preview
+      Phoenix.PubSub.broadcast(
+        Koalemos.PubSub,
+        "routine:#{routine_id}",
+        {:snapshot_request, routine_id, skip_screenshot: skip_screenshot}
+      )
+
+      # Wait for snapshot_ready notification
+      receive do
+        {:snapshot_ready, ^routine_id, _timestamp} ->
+          Logger.debug("[WireframeEditor] Snapshot ready, fetching from caches")
+
+          # Fetch from caches
+          dom_tree = case DOMStateCache.get_dom_state(routine_id) do
+            {:ok, dom_state} -> Map.get(dom_state, :live_dom_tree)
+            _ -> nil
+          end
+
+          console_output = ConsoleCache.get_messages(routine_id,
+            since: DateTime.add(DateTime.utc_now(), -60, :second),
+            limit: 50
+          )
+
+          screenshot_data = unless skip_screenshot do
+            case ScreenshotCache.get(routine_id) do
+              {:ok, data} -> data
+              _ -> nil
+            end
+          end
+
+          running_state = %{
+            dom_tree: dom_tree,
+            console_output: console_output || [],
+            screenshot: screenshot_data,
+            captured_at: DateTime.utc_now(),
+            differs_from_designed: false  # Will be computed later
+          }
+
+          {:ok, running_state}
+
+      after
+        timeout ->
+          Logger.warn("[WireframeEditor] Snapshot timeout after #{timeout}ms for #{routine_id}")
+          {:error, :timeout}
+      end
+    after
+      # Always unsubscribe
+      Phoenix.PubSub.unsubscribe(Koalemos.PubSub, response_topic)
+    end
+  end
 
   @doc """
   Provide context blocks showing current wireframe state.

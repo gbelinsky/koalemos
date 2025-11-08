@@ -288,6 +288,102 @@ WireframeHooks.JavaScriptUpdater = {
         this.attachedHandlers.set(elementId, newHandlers)
       })
     })
+
+    // Listen for state capture requests (Sprint 7)
+    this.handleEvent("capture_state", (opts) => {
+      console.log("[JavaScriptUpdater] State capture requested")
+      this.captureCompleteState(opts)
+    })
+
+    // Initialize state for console tracking (will be used in Phase 4)
+    this.lastSnapshotTime = Date.now()
+    this.consoleBuffer = []
+  },
+
+  /**
+   * Capture complete state (DOM + console + screenshot)
+   * Sprint 7 Phase 2
+   */
+  async captureCompleteState(opts = {}) {
+    console.log("[StateCapture] Capturing complete state...")
+
+    try {
+      // Serialize DOM tree
+      const dom_tree = this.serializeDOM(document.body)
+
+      // Gather console messages since last snapshot (placeholder for Phase 4)
+      const console_messages = []  // Will populate in Phase 4
+
+      // Capture screenshot (placeholder for Phase 5)
+      const screenshot = null  // Will implement in Phase 5
+
+      // Send snapshot back to LiveView
+      this.pushEvent("state_snapshot", {
+        dom_tree: dom_tree,
+        console_messages: console_messages,
+        screenshot: screenshot,
+        timestamp: Date.now()
+      })
+
+      this.lastSnapshotTime = Date.now()
+      console.log("[StateCapture] State snapshot sent successfully")
+    } catch (error) {
+      console.error("[StateCapture] Failed to capture state:", error)
+      // Still send partial data if possible
+      this.pushEvent("state_snapshot", {
+        error: error.message,
+        timestamp: Date.now()
+      })
+    }
+  },
+
+  /**
+   * Serialize DOM element to map structure
+   * Sprint 7 Phase 2
+   */
+  serializeDOM(element) {
+    // Skip script and style tags (not part of user content)
+    if (element.tagName === 'SCRIPT' || element.tagName === 'STYLE') {
+      return null
+    }
+
+    // Skip our hook div (hidden helper div)
+    if (element.id === 'js-updater') {
+      return null
+    }
+
+    // Get all attributes
+    const attributes = {}
+    Array.from(element.attributes || []).forEach(attr => {
+      // Skip phx-* attributes (LiveView internal)
+      if (!attr.name.startsWith('phx-') && !attr.name.startsWith('data-phx-')) {
+        attributes[attr.name] = attr.value
+      }
+    })
+
+    // Get text content (only if element has no children or only text nodes)
+    let content = null
+    if (element.childNodes.length === 1 && element.childNodes[0].nodeType === 3) {
+      content = element.textContent
+    }
+
+    // Serialize children
+    const children = []
+    Array.from(element.children || []).forEach(child => {
+      const serialized = this.serializeDOM(child)
+      if (serialized) {
+        children.push(serialized)
+      }
+    })
+
+    return {
+      tag: element.tagName.toLowerCase(),
+      id: element.id || null,
+      classes: Array.from(element.classList || []),
+      attributes: attributes,
+      content: content,
+      children: children
+    }
   },
 
   destroyed() {
