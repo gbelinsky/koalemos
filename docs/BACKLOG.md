@@ -355,7 +355,7 @@
 
 ## Milestone 4: Advanced Lens System 🔄 IN PROGRESS
 
-**Status:** Sprint 6 of 8 Complete (64% done)
+**Status:** Sprint 7 of 8 In Progress (75% estimated)
 **Started:** November 2, 2025
 **Goal:** Build three advanced lenses (PersonaLens, SequentialThinking, WireframeEditor) with comprehensive test infrastructure and modular architecture
 
@@ -468,43 +468,43 @@ Combining WireframeStateCache (for initial load) with PubSub (for updates) elega
 
 ### In Progress / Todo
 
-**Note:** Sprint 7 originally planned as CSS Handler, but CSS work (manage_css tool) already complete in Sprint 5. May need to revise Sprint 7 plan to focus on integrations above.
+- [x] **Sprint 7: WireframeEditor Feedback Loop & Integration** (~1,000 lines) 🔄 **IN PROGRESS**
+  - [ ] State snapshot infrastructure (~200 lines)
+    - [ ] Current state capture orchestration
+    - [ ] Preview state broadcaster
+    - [ ] Client-side state capture
+    - [ ] Two-state model (designed vs current)
+  - [ ] trigger_interaction tool (~150 lines)
+    - [ ] Server-side implementation
+    - [ ] Preview interaction handler
+    - [ ] Client-side execution (click, fill, submit, js)
+    - [ ] Completes all 9 tools
+  - [ ] Console integration (~150 lines)
+    - [ ] Console interception in preview
+    - [ ] Integration with ConsoleCache
+    - [ ] Console output in context
+  - [ ] Screenshot integration (~100 lines)
+    - [ ] Blocking screenshot capture
+    - [ ] Screenshots in state snapshots
+    - [ ] Automatic inclusion in context
+  - [ ] Enhanced context (~200 lines)
+    - [ ] State capture before LLM requests
+    - [ ] Designed vs current state display
+    - [ ] Diff highlighting
+    - [ ] Console error highlighting
+  - [ ] Integration tests (~200 lines)
+    - [ ] Tic-tac-toe test (agent plays game it built)
+    - [ ] Form interaction test
+    - [ ] Error recovery test
+    - [ ] Complex chain test
+  - [ ] See `docs/sprints/sprint-7-plan.md` for full details
 
-- [ ] **Sprint 7: WireframeEditor CSS Handler** (~500 lines)
-  - [ ] **CSS Handler** (~250 lines): CSS manipulation
-    - [ ] Uses existing CSSParser (don't reimplement parsing)
-    - [ ] Tools: query_styles, add_style_rule, modify_style, remove_style, add_class, get_computed_style
-    - [ ] Handle inline styles, <style> tags, linked stylesheets
-    - [ ] Style merging and specificity handling
-    - [ ] Integration with DOM + JavaScript handlers
-  - [ ] **CSS Utilities** (~100 lines): Style merging, specificity, color/unit normalization
-  - [ ] **Manual Verification Page** (~50 lines): Add CSS tool testing controls
-    - [ ] Show all CSS rules from complex wireframe
-    - [ ] Style inspector for selected elements
-    - [ ] Live style editing with preview updates
-  - [ ] **Tests** (~100 lines): Handler tests, CSSParser integration, full-stack integration tests
-
-- [ ] **Sprint 8: Testing + Context + Advanced Patterns** (~500 lines, down from 700)
-  - [ ] **Context Module** (~150 lines): Comprehensive context building
-    - [ ] Enhance basic context from Sprint 4
-    - [ ] Show DOM structure, scripts, styles summaries
-    - [ ] Display modifications history
-    - [ ] Provide context-aware suggestions
-  - [ ] **Testing Module** (~150 lines): Test utilities and fixtures
-    - [ ] Test helpers for wireframe manipulation
-    - [ ] Fixture management
-    - [ ] Assertion helpers
-  - [ ] **Agent-as-Node Pattern** (~200 lines): Complex multi-step operations
-    - [ ] Sub-routine pattern for complex tool chains
-    - [ ] Inspired by flo's TemplatedSemanticAgent
-    - [ ] Enables multi-step operations (e.g., "add login form" → multiple tools)
-  - [ ] **Integration Tests**: Full workflow tests with all handlers working together
-
-- [ ] **Sprint 9: Integration & Documentation** (~250 lines)
-  - [ ] All lenses working together
-  - [ ] Complete documentation
-  - [ ] Demo on complex wireframe
-  - [ ] M4 tagged and complete
+- [ ] **Sprint 8: Advanced Patterns & M4 Completion** (~500 lines)
+  - [ ] Context enhancements (modification history, suggestions)
+  - [ ] Testing utilities (helpers, fixtures, assertions)
+  - [ ] Agent-as-node pattern (complex multi-step operations)
+  - [ ] Final M4 documentation
+  - [ ] M4 tagged and complete (v0.4.0)
 
 **Dependencies:** M2 (LiveView), M3 (screenshots + parsers)
 
