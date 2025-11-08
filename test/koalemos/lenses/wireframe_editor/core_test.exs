@@ -165,5 +165,53 @@ defmodule Koalemos.Lenses.WireframeEditorTest do
       assert message =~ "Successfully managed"
       assert Keyword.has_key?(updates, :designed)
     end
+
+    test "modify_elements validates arguments and returns clear error for malformed input" do
+      lens_state = %{
+        designed: %{
+          dom_tree: %{
+            tag: "div",
+            id: "root",
+            classes: [],
+            attributes: %{},
+            handlers: %{},
+            content: nil,
+            children: []
+          }
+        }
+      }
+
+      # Test 1: Non-map arguments
+      result = WireframeEditor.execute(:modify_elements, "not a map", %{lens_state: lens_state})
+      assert {message, []} = result
+      assert message =~ "Invalid arguments - expected a map"
+
+      # Test 2: remove_elements as string instead of list
+      result = WireframeEditor.execute(:modify_elements, %{
+        "remove_elements" => "should-be-list"
+      }, %{lens_state: lens_state})
+      assert {message, []} = result
+      assert message =~ "Invalid 'remove_elements'"
+      assert message =~ "expected array"
+
+      # Test 3: replace_elements as string instead of list
+      result = WireframeEditor.execute(:modify_elements, %{
+        "replace_elements" => "should-be-list"
+      }, %{lens_state: lens_state})
+      assert {message, []} = result
+      assert message =~ "Invalid 'replace_elements'"
+
+      # Test 4: add_elements as string instead of list
+      result = WireframeEditor.execute(:modify_elements, %{
+        "add_elements" => "should-be-list"
+      }, %{lens_state: lens_state})
+      assert {message, []} = result
+      assert message =~ "Invalid 'add_elements'"
+
+      # Test 5: Valid empty args should succeed
+      result = WireframeEditor.execute(:modify_elements, %{}, %{lens_state: lens_state})
+      assert {message, _} = result
+      assert message =~ "Successfully modified 0 element(s)"
+    end
   end
 end

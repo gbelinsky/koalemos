@@ -249,4 +249,32 @@ function parseJavaScript(code) {
   }
 }
 
-module.exports = { parseJavaScript };
+/**
+ * Validate JavaScript function syntax.
+ * Returns {valid: true} or {valid: false, error: "message"}
+ */
+function validateFunction(code) {
+  try {
+    // Try to create a function from the code
+    new Function(`return (${code});`);
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: error.message };
+  }
+}
+
+/**
+ * Validate init script syntax.
+ * Returns {valid: true} or {valid: false, error: "message"}
+ */
+function validateInitScript(code) {
+  try {
+    // Try to parse as a script (not wrapped in function)
+    new Function(code);
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: error.message };
+  }
+}
+
+module.exports = { parseJavaScript, validateFunction, validateInitScript };

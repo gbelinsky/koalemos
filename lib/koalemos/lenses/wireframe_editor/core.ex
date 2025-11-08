@@ -231,7 +231,16 @@ defmodule Koalemos.Lenses.WireframeEditor do
       Use for: type, placeholder, href, disabled, aria-*, data-*, etc.
       Changes are PERMANENT (persisted to design).
 
-      Example: Set placeholder on input, remove disabled from button, add href to link.
+      BOOLEAN-VALUED ATTRIBUTES:
+      - Use boolean true/false values for attributes like disabled, checked, readonly, required
+      - true renders the attribute: {"disabled": true} → <button disabled>
+      - false omits the attribute: {"disabled": false} → attribute is removed
+      - Works for ANY attribute, not just standard boolean attributes
+
+      IMPORTANT: Only form elements (button, input, select, textarea) and fieldset
+      can have the 'disabled' attribute. List items (<li>) cannot be disabled.
+
+      Example: Set placeholder on input, disable a button, add href to link.
       """,
       input_schema: %{
         type: "object",
@@ -268,11 +277,16 @@ defmodule Koalemos.Lenses.WireframeEditor do
       description: """
       Manage event handlers across multiple elements.
 
-      Add, replace, or remove event listeners.
-      Handlers reference function names from custom_functions.
+      Add, replace, or remove event listeners with inline JavaScript code.
       Changes are PERMANENT (persisted to design).
 
-      Example: Add click handler to button, replace submit handler on form, remove old handlers.
+      Handler format: {event: {params: ["event"], body: "console.log('clicked')"}}
+      - params: Array of parameter names (usually ["event"] or [])
+      - body: Inline JavaScript code to execute
+
+      You can also reference functions: body can call window.funcName()
+
+      Example: Add click handler that logs to console, replace form submit, remove old handlers.
       """,
       input_schema: %{
         type: "object",
@@ -286,11 +300,11 @@ defmodule Koalemos.Lenses.WireframeEditor do
                 element_id: %{type: "string", description: "ID of element"},
                 add: %{
                   type: "object",
-                  description: "Handlers to add as {event: function_name} (fails if exists)"
+                  description: "Handlers to add as {event: {params: [...], body: \"...\"}} (fails if exists)"
                 },
                 replace: %{
                   type: "object",
-                  description: "Handlers to replace as {event: function_name} (fails if doesn't exist)"
+                  description: "Handlers to replace as {event: {params: [...], body: \"...\"}} (fails if doesn't exist)"
                 },
                 remove: %{
                   type: "array",
@@ -527,17 +541,25 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
   # Private helper functions for context building
 
+  @current_state_suffix " (CURRENT STATE)"
+  @current_state_note """
+  NOTE: This shows the wireframe's current state, including all changes from your previous tool executions.
+  When you modify elements, add CSS, or update handlers, those changes appear here immediately.
+  """
+
   defp build_design_dom_section(%{dom_tree: dom_tree, handlers: handlers}) when not is_nil(dom_tree) do
     """
-    === DESIGN DOM STRUCTURE ===
+    === DESIGN DOM STRUCTURE#{@current_state_suffix} ===
 
+    #{@current_state_note}
     #{format_dom_tree(dom_tree, 0, handlers)}
     """
   end
   defp build_design_dom_section(%{dom_tree: dom_tree}) when not is_nil(dom_tree) do
     """
-    === DESIGN DOM STRUCTURE ===
+    === DESIGN DOM STRUCTURE#{@current_state_suffix} ===
 
+    #{@current_state_note}
     #{format_dom_tree(dom_tree, 0, %{})}
     """
   end
@@ -563,7 +585,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
     end)
 
     """
-    === AVAILABLE FUNCTIONS ===
+    === AVAILABLE FUNCTIONS#{@current_state_suffix} ===
 
     #{function_list}
     """
@@ -578,7 +600,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
     end)
 
     """
-    === GLOBAL VARIABLES ===
+    === GLOBAL VARIABLES#{@current_state_suffix} ===
 
     #{var_list}
     """
@@ -589,7 +611,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
     end)
 
     """
-    === GLOBAL VARIABLES ===
+    === GLOBAL VARIABLES#{@current_state_suffix} ===
 
     #{var_list}
     """
@@ -617,7 +639,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
     end)
 
     """
-    === CUSTOM CSS ===
+    === CUSTOM CSS#{@current_state_suffix} ===
 
     #{css_list}
     """
@@ -631,7 +653,9 @@ defmodule Koalemos.Lenses.WireframeEditor do
     end)
 
     """
-    === INIT SCRIPTS (run on DOMContentLoaded) ===
+    === INIT SCRIPTS#{@current_state_suffix} ===
+
+    These scripts run once when the page loads (on DOMContentLoaded).
 
     #{script_list}
     """
@@ -762,11 +786,33 @@ defmodule Koalemos.Lenses.WireframeEditor do
   defp format_timestamp_age(_), do: "unknown"
 
   # Broadcast DOM tree updates via PubSub for live preview updates
+  # IMPORTANT: Also updates cache so PreviewLive gets fresh data (Sprint 6 fix)
   defp broadcast_dom_update_if_needed({_result_text, lens_updates}, tool_name, routine_id)
       when not is_nil(routine_id) and tool_name != :trigger_interaction do
     # Check if there's an updated DOM tree in lens_updates
     case Keyword.get(lens_updates, :designed) do
-      %{dom_tree: updated_tree} when not is_nil(updated_tree) ->
+      %{dom_tree: updated_tree} = updated_designed when not is_nil(updated_tree) ->
+        # Update cache BEFORE broadcasting (Sprint 6 fix)
+        # This ensures PreviewLive gets fresh data when it loads from cache
+        case Koalemos.Caches.WireframeStateCache.get_state(routine_id) do
+          nil ->
+            Logger.warning("[WireframeEditor] Cannot update cache - no lens_state found for #{routine_id}")
+
+          existing_lens_state ->
+            # Merge updated :designed map into existing lens_state
+            updated_lens_state = Map.update(existing_lens_state, :designed, updated_designed, fn existing_designed ->
+              merged = Map.merge(existing_designed, updated_designed)
+              Logger.debug("[Cache Merge] existing handlers: #{map_size(Map.get(existing_designed, :handlers, %{}))}")
+              Logger.debug("[Cache Merge] updated handlers: #{map_size(Map.get(updated_designed, :handlers, %{}))}")
+              Logger.debug("[Cache Merge] merged handlers: #{map_size(Map.get(merged, :handlers, %{}))}")
+              merged
+            end)
+
+            Koalemos.Caches.WireframeStateCache.put_state(routine_id, updated_lens_state)
+            Logger.debug("[WireframeEditor] Updated cache before broadcast for #{tool_name}")
+        end
+
+        # Now broadcast the update
         Phoenix.PubSub.broadcast(
           Koalemos.PubSub,
           "wireframe_updates:#{routine_id}",

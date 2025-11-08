@@ -432,10 +432,27 @@ defmodule KoalemosWeb.WireframeTestLive do
           </p>
         </div>
       </div>
-      <!-- Main Content: Control Panel + Preview -->
+      <!-- Main Content: Control Panel/Chat + Preview -->
       <div class="flex-1 overflow-hidden flex">
-        <!-- Control Panel (left side) -->
-        <div class="w-1/3 border-r border-slate-300 bg-white flex flex-col p-4 overflow-auto">
+        <!-- Left Panel: Control Panel OR Chat Panel -->
+        <%= if @agent_running do %>
+          <!-- Chat Panel (when agent running) -->
+          <div class="w-1/3 border-r border-slate-300 bg-white flex flex-col">
+            <.live_component
+              module={ChatPanel}
+              id="wireframe-chat-panel"
+              routine_id={@routine_id}
+              messages={@messages}
+              mock_responses={false}
+              current_step={@current_step}
+              disabled={@status in [:completed, :error] || @last_error != nil}
+              status={@status}
+              last_error={@last_error}
+            />
+          </div>
+        <% else %>
+          <!-- Control Panel (when agent not running) -->
+          <div class="w-1/3 border-r border-slate-300 bg-white flex flex-col p-4 overflow-auto">
           <div class="space-y-6">
             <!-- File Upload -->
             <div>
@@ -580,17 +597,29 @@ defmodule KoalemosWeb.WireframeTestLive do
             </div>
           </div>
         </div>
-        <!-- Preview Panel (right side) -->
+        <% end %>
+
+        <!-- Preview Panel (right side) - always full height -->
         <div class="w-2/3 bg-slate-50 flex flex-col relative">
-          <!-- Preview Section (top half) -->
-          <div class={if(@agent_running, do: "h-1/2", else: "flex-1") <> " flex flex-col border-b border-slate-300"}>
+          <!-- Preview Section -->
+          <div class="flex-1 flex flex-col border-b border-slate-300">
             <div class="bg-slate-700 px-4 py-2 border-b border-slate-600 flex items-center justify-between">
               <h2 class="text-sm font-medium text-white">HTML Preview (Iframe)</h2>
-              <%= if @loaded_html do %>
-                <div class="text-xs text-slate-300">
-                  Rendering in isolated iframe
-                </div>
-              <% end %>
+              <div class="flex items-center gap-4">
+                <%= if @agent_running do %>
+                  <button
+                    phx-click="stop_agent"
+                    class="px-3 py-1 rounded-lg font-medium text-sm transition-colors bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Stop Agent
+                  </button>
+                <% end %>
+                <%= if @loaded_html do %>
+                  <div class="text-xs text-slate-300">
+                    Rendering in isolated iframe
+                  </div>
+                <% end %>
+              </div>
             </div>
             <div class="flex-1 overflow-auto relative">
               <!-- Show Agent Context button (always rendered, hidden with CSS) -->
@@ -629,23 +658,6 @@ defmodule KoalemosWeb.WireframeTestLive do
               </div>
             </div>
           </div>
-
-          <%= if @agent_running do %>
-            <!-- Chat Section (bottom half when agent running) -->
-            <div class="h-1/2 flex flex-col">
-              <.live_component
-                module={ChatPanel}
-                id="wireframe-chat-panel"
-                routine_id={@routine_id}
-                messages={@messages}
-                mock_responses={false}
-                current_step={@current_step}
-                disabled={@status in [:completed, :error] || @last_error != nil}
-                status={@status}
-                last_error={@last_error}
-              />
-            </div>
-          <% end %>
 
           <!-- Agent Context Drawer (slides up from bottom with bounce) -->
           <div class={"absolute bottom-0 left-0 right-0 #{if @show_context, do: "translate-y-0", else: "translate-y-full"}"} style="height: 60%; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
