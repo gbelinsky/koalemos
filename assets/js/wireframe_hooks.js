@@ -177,4 +177,134 @@ WireframeHooks.ScreenshotCapture = {
   }
 }
 
+/**
+ * JavaScriptUpdater Hook (Sprint 6)
+ *
+ * Dynamically updates JavaScript variables and functions when agent modifies them.
+ * Solves the problem that script tags don't re-execute on LiveView updates.
+ *
+ * Usage:
+ *   <div phx-hook="JavaScriptUpdater" id="js-updater"></div>
+ */
+WireframeHooks.JavaScriptUpdater = {
+  mounted() {
+    console.log("[JavaScriptUpdater] Hook mounted - ready to receive JS updates")
+
+    // Track attached handlers so we can remove them before re-attaching
+    this.attachedHandlers = new Map() // Map<elementId, Map<eventType, handlerFunc>>
+
+    // Listen for init script changes - reload page for clean initialization
+    // TODO BACKLOG: Implement "soft reload" (reset state without browser reload)
+    this.handleEvent("reload_page", () => {
+      console.log("[JavaScriptUpdater] Init scripts changed - reloading page for clean state")
+      window.location.reload()
+    })
+
+    // Listen for variable updates from server
+    this.handleEvent("update_variables", ({variables}) => {
+      console.log("[JavaScriptUpdater] Updating variables:", variables)
+      Object.entries(variables).forEach(([name, value]) => {
+        window[name] = value
+        console.log(`[JavaScriptUpdater] Set window.${name} =`, value)
+      })
+    })
+
+    // Listen for function updates from server
+    this.handleEvent("update_functions", ({functions}) => {
+      console.log("[JavaScriptUpdater] Updating functions:", Object.keys(functions))
+      Object.entries(functions).forEach(([name, code]) => {
+        try {
+          // Evaluate function code and assign to window
+          window[name] = eval(`(${code})`)
+          console.log(`[JavaScriptUpdater] Set window.${name} = function`)
+        } catch (error) {
+          console.error(`[JavaScriptUpdater] Failed to update function ${name}:`, error)
+        }
+      })
+    })
+
+    // Listen for handler updates from server
+    this.handleEvent("update_handlers", ({handlers}) => {
+      console.log("[JavaScriptUpdater] Processing handler updates:", handlers)
+
+      Object.entries(handlers).forEach(([elementId, events]) => {
+        const el = document.getElementById(elementId)
+        if (!el) {
+          console.warn(`[JavaScriptUpdater] Element not found: ${elementId}`)
+          return
+        }
+
+        const oldHandlers = this.attachedHandlers.get(elementId) || new Map()
+        const newHandlers = new Map()
+        const oldEventTypes = new Set(oldHandlers.keys())
+        const newEventTypes = new Set(Object.keys(events))
+
+        // Process each new handler
+        Object.entries(events).forEach(([eventType, handlerSpec]) => {
+          const params = handlerSpec.params || []
+          const body = handlerSpec.body || ""
+
+          // Check if this handler changed
+          const oldHandler = oldHandlers.get(eventType)
+          const handlerChanged = !oldHandler ||
+            JSON.stringify(oldHandler.spec) !== JSON.stringify(handlerSpec)
+
+          if (handlerChanged) {
+            // Remove old handler if it exists
+            if (oldHandler) {
+              el.removeEventListener(eventType, oldHandler.func)
+              console.log(`[JavaScriptUpdater] Replaced ${eventType} handler on ${elementId}`)
+            } else {
+              console.log(`[JavaScriptUpdater] Added ${eventType} handler to ${elementId}`)
+            }
+
+            try {
+              // Create and attach new handler function
+              const handlerFunc = new Function(...params, body)
+              el.addEventListener(eventType, handlerFunc)
+
+              // Store handler with its spec for comparison
+              newHandlers.set(eventType, {func: handlerFunc, spec: handlerSpec})
+            } catch (error) {
+              console.error(`[JavaScriptUpdater] Failed to attach ${eventType} handler to ${elementId}:`, error)
+            }
+          } else {
+            // Handler unchanged - keep the old one
+            console.log(`[JavaScriptUpdater] Kept unchanged ${eventType} handler on ${elementId}`)
+            newHandlers.set(eventType, oldHandler)
+          }
+        })
+
+        // Remove handlers that are no longer in the new set
+        oldEventTypes.forEach(eventType => {
+          if (!newEventTypes.has(eventType)) {
+            const oldHandler = oldHandlers.get(eventType)
+            el.removeEventListener(eventType, oldHandler.func)
+            console.log(`[JavaScriptUpdater] Removed ${eventType} handler from ${elementId}`)
+          }
+        })
+
+        // Store updated handlers for this element
+        this.attachedHandlers.set(elementId, newHandlers)
+      })
+    })
+  },
+
+  destroyed() {
+    console.log("[JavaScriptUpdater] Hook destroyed - cleaning up handlers")
+
+    // Clean up all attached handlers
+    this.attachedHandlers.forEach((handlers, elementId) => {
+      const el = document.getElementById(elementId)
+      if (el) {
+        handlers.forEach((handlerData, eventType) => {
+          el.removeEventListener(eventType, handlerData.func)
+        })
+      }
+    })
+
+    this.attachedHandlers.clear()
+  }
+}
+
 export default WireframeHooks

@@ -80,46 +80,53 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     if is_nil(dom_tree) do
       {"Error: No wireframe loaded. Load a wireframe first.", []}
     else
-      # Process in order: remove, replace, add
-      updated_tree = dom_tree
+      # Validate args structure before processing
+      case validate_modify_elements_args(args) do
+        :ok ->
+          # Process in order: remove, replace, add
+          updated_tree = dom_tree
 
-      # Remove elements
-      remove_ids = Map.get(args, "remove_elements", [])
-      {updated_tree, remove_results} = process_removals(updated_tree, remove_ids)
+          # Remove elements
+          remove_ids = Map.get(args, "remove_elements", [])
+          {updated_tree, remove_results} = process_removals(updated_tree, remove_ids)
 
-      # Replace elements
-      replacements = Map.get(args, "replace_elements", [])
-      {updated_tree, replace_results} = process_replacements(updated_tree, replacements)
+          # Replace elements
+          replacements = Map.get(args, "replace_elements", [])
+          {updated_tree, replace_results} = process_replacements(updated_tree, replacements)
 
-      # Add elements
-      additions = Map.get(args, "add_elements", [])
-      {updated_tree, add_results} = process_additions(updated_tree, additions)
+          # Add elements
+          additions = Map.get(args, "add_elements", [])
+          {updated_tree, add_results} = process_additions(updated_tree, additions)
 
-      # Collect results
-      all_results = remove_results ++ replace_results ++ add_results
-      errors = Enum.filter(all_results, &match?({:error, _}, &1))
+          # Collect results
+          all_results = remove_results ++ replace_results ++ add_results
+          errors = Enum.filter(all_results, &match?({:error, _}, &1))
 
-      if length(errors) > 0 do
-        error_messages = Enum.map_join(errors, "\n", fn {:error, msg} -> "- #{msg}" end)
-        {"Errors modifying elements:\n#{error_messages}", []}
-      else
-        # Track modification
-        modification = %{
-          type: :modify_elements,
-          removed: length(remove_ids),
-          replaced: length(replacements),
-          added: length(additions),
-          timestamp: DateTime.utc_now()
-        }
+          if length(errors) > 0 do
+            error_messages = Enum.map_join(errors, "\n", fn {:error, msg} -> "- #{msg}" end)
+            {"Errors modifying elements:\n#{error_messages}", []}
+          else
+            # Track modification
+            modification = %{
+              type: :modify_elements,
+              removed: length(remove_ids),
+              replaced: length(replacements),
+              added: length(additions),
+              timestamp: DateTime.utc_now()
+            }
 
-        updated_designed = %{designed | dom_tree: updated_tree}
-        modifications = [modification | Map.get(lens_state, :modifications, [])]
+            updated_designed = %{designed | dom_tree: updated_tree}
+            modifications = [modification | Map.get(lens_state, :modifications, [])]
 
-        total = length(remove_ids) + length(replacements) + length(additions)
-        {"Successfully modified #{total} element(s)", [
-          designed: updated_designed,
-          modifications: modifications
-        ]}
+            total = length(remove_ids) + length(replacements) + length(additions)
+            {"Successfully modified #{total} element(s)", [
+              designed: updated_designed,
+              modifications: modifications
+            ]}
+          end
+
+        {:error, error_message} ->
+          {error_message, []}
       end
     end
   end
@@ -194,24 +201,35 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
   def manage_handlers(lens_state, %{"elements" => elements}) do
     designed = Map.get(lens_state, :designed, %{})
     dom_tree = Map.get(designed, :dom_tree)
+    current_handlers = Map.get(designed, :handlers, %{})
 
     if is_nil(dom_tree) do
       {"Error: No wireframe loaded. Load a wireframe first.", []}
     else
-      # Thread updated tree through each modification using reduce
-      {final_tree, results} = Enum.reduce(elements, {dom_tree, []}, fn elem, {current_tree, acc_results} ->
-        element_id = Map.get(elem, "element_id")
-        add_handlers = Map.get(elem, "add", %{})
-        replace_handlers = Map.get(elem, "replace", %{})
-        remove_events = Map.get(elem, "remove", [])
+      # Single source of truth: only modify designed.handlers (flat map)
+      # No need to touch DOM tree - handlers live only in the flat map
+      {final_handlers, results} = Enum.reduce(elements, {current_handlers, []},
+        fn elem, {handlers_map, acc_results} ->
+          element_id = Map.get(elem, "element_id")
+          add_handlers = Map.get(elem, "add", %{})
+          replace_handlers = Map.get(elem, "replace", %{})
+          remove_events = Map.get(elem, "remove", [])
 
-        case modify_element_handlers(current_tree, element_id, add_handlers, replace_handlers, remove_events) do
-          {:ok, updated_tree} ->
-            {updated_tree, [{:ok, element_id} | acc_results]}
-          {:error, msg} ->
-            {current_tree, [{:error, msg} | acc_results]}
-        end
-      end)
+          # First validate element exists in DOM tree
+          case validate_element_exists(dom_tree, element_id) do
+            {:error, msg} ->
+              {handlers_map, [{:error, msg} | acc_results]}
+
+            :ok ->
+              # Update handlers in flat map
+              case update_handlers_in_map(handlers_map, element_id, add_handlers, replace_handlers, remove_events) do
+                {:ok, updated_map} ->
+                  {updated_map, [{:ok, element_id} | acc_results]}
+                {:error, msg} ->
+                  {handlers_map, [{:error, msg} | acc_results]}
+              end
+          end
+        end)
 
       errors = Enum.filter(results, &match?({:error, _}, &1))
 
@@ -219,15 +237,13 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
         error_messages = Enum.map_join(errors, "\n", fn {:error, msg} -> "- #{msg}" end)
         {"Errors managing handlers:\n#{error_messages}", []}
       else
-        updated_tree = final_tree
-
         modification = %{
           type: :manage_handlers,
           elements: Enum.map(elements, & &1["element_id"]),
           timestamp: DateTime.utc_now()
         }
 
-        updated_designed = %{designed | dom_tree: updated_tree}
+        updated_designed = Map.put(designed, :handlers, final_handlers)
         modifications = [modification | Map.get(lens_state, :modifications, [])]
 
         count = length(elements)
@@ -250,32 +266,49 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
 
     # Add functions
     add_functions = Map.get(args, "add_functions", %{})
-    updated_functions = Map.merge(current_functions, add_functions)
 
-    # Replace functions
-    replace_functions = Map.get(args, "replace_functions", %{})
-    updated_functions = Map.merge(updated_functions, replace_functions)
+    # Validate add functions
+    case validate_functions(add_functions) do
+      {:error, {name, error}} ->
+        {"Error: Function '#{name}' has invalid JavaScript syntax: #{error}", []}
 
-    # Remove functions
-    remove_functions = Map.get(args, "remove_functions", [])
-    updated_functions = Map.drop(updated_functions, remove_functions)
+      :ok ->
+        # Replace functions
+        replace_functions = Map.get(args, "replace_functions", %{})
 
-    modification = %{
-      type: :manage_functions,
-      added: map_size(add_functions),
-      replaced: map_size(replace_functions),
-      removed: length(remove_functions),
-      timestamp: DateTime.utc_now()
-    }
+        # Validate replace functions
+        case validate_functions(replace_functions) do
+          {:error, {name, error}} ->
+            {"Error: Function '#{name}' has invalid JavaScript syntax: #{error}", []}
 
-    updated_designed = %{designed | custom_functions: updated_functions}
-    modifications = [modification | Map.get(lens_state, :modifications, [])]
+          :ok ->
+            # All valid - proceed with updates
+            updated_functions = current_functions
+              |> Map.merge(add_functions)
+              |> Map.merge(replace_functions)
 
-    total = map_size(add_functions) + map_size(replace_functions) + length(remove_functions)
-    {"Successfully managed #{total} function(s)", [
-      designed: updated_designed,
-      modifications: modifications
-    ]}
+            # Remove functions
+            remove_functions = Map.get(args, "remove_functions", [])
+            updated_functions = Map.drop(updated_functions, remove_functions)
+
+            modification = %{
+              type: :manage_functions,
+              added: map_size(add_functions),
+              replaced: map_size(replace_functions),
+              removed: length(remove_functions),
+              timestamp: DateTime.utc_now()
+            }
+
+            updated_designed = %{designed | custom_functions: updated_functions}
+            modifications = [modification | Map.get(lens_state, :modifications, [])]
+
+            total = map_size(add_functions) + map_size(replace_functions) + length(remove_functions)
+            {"Successfully managed #{total} function(s)", [
+              designed: updated_designed,
+              modifications: modifications
+            ]}
+        end
+    end
   end
 
   @doc """
@@ -341,7 +374,11 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
       timestamp: DateTime.utc_now()
     }
 
-    updated_designed = %{designed | custom_css: updated_css}
+    # Include dom_tree in update so broadcast happens (even though CSS doesn't modify tree)
+    updated_designed = designed
+      |> Map.put(:custom_css, updated_css)
+      |> Map.put(:dom_tree, Map.get(designed, :dom_tree))  # Include tree for broadcast
+
     modifications = [modification | Map.get(lens_state, :modifications, [])]
 
     total = map_size(add_css) + map_size(replace_css) + length(remove_selectors)
@@ -362,32 +399,59 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
 
     # Add scripts
     add_scripts = Map.get(args, "add", %{})
-    updated_scripts = Map.merge(current_scripts, add_scripts)
 
-    # Replace scripts
-    replace_scripts = Map.get(args, "replace", %{})
-    updated_scripts = Map.merge(updated_scripts, replace_scripts)
+    # Validate add scripts
+    case validate_init_scripts(add_scripts) do
+      {:error, {name, error}} ->
+        {"Error: Init script '#{name}' has invalid JavaScript syntax: #{error}", []}
 
-    # Remove scripts
-    remove_scripts = Map.get(args, "remove", [])
-    updated_scripts = Map.drop(updated_scripts, remove_scripts)
+      :ok ->
+        # Replace scripts
+        replace_scripts = Map.get(args, "replace", %{})
 
-    modification = %{
-      type: :manage_init_scripts,
-      added: map_size(add_scripts),
-      replaced: map_size(replace_scripts),
-      removed: length(remove_scripts),
-      timestamp: DateTime.utc_now()
-    }
+        # Validate replace scripts
+        case validate_init_scripts(replace_scripts) do
+          {:error, {name, error}} ->
+            {"Error: Init script '#{name}' has invalid JavaScript syntax: #{error}", []}
 
-    updated_designed = %{designed | init_scripts: updated_scripts}
-    modifications = [modification | Map.get(lens_state, :modifications, [])]
+          :ok ->
+            # All valid - proceed with updates
+            updated_scripts = current_scripts
+              |> Map.merge(add_scripts)
+              |> Map.merge(replace_scripts)
 
-    total = map_size(add_scripts) + map_size(replace_scripts) + length(remove_scripts)
-    {"Successfully managed #{total} init script(s)", [
-      designed: updated_designed,
-      modifications: modifications
-    ]}
+            # Remove scripts
+            remove_scripts = Map.get(args, "remove", [])
+            updated_scripts = Map.drop(updated_scripts, remove_scripts)
+
+            modification = %{
+              type: :manage_init_scripts,
+              added: map_size(add_scripts),
+              replaced: map_size(replace_scripts),
+              removed: length(remove_scripts),
+              timestamp: DateTime.utc_now()
+            }
+
+            # Include dom_tree in update so broadcast happens (triggers reload in preview)
+            # IMPORTANT: Preserve all other fields (handlers, css, functions, variables)
+            updated_designed = designed
+              |> Map.put(:init_scripts, updated_scripts)
+              |> Map.put(:dom_tree, Map.get(designed, :dom_tree))
+
+            require Logger
+            Logger.debug("[manage_init_scripts] Before update - handlers present? #{inspect(Map.has_key?(designed, :handlers))}")
+            Logger.debug("[manage_init_scripts] After update - handlers present? #{inspect(Map.has_key?(updated_designed, :handlers))}")
+            Logger.debug("[manage_init_scripts] Handler count: #{map_size(Map.get(updated_designed, :handlers, %{}))}")
+
+            modifications = [modification | Map.get(lens_state, :modifications, [])]
+
+            total = map_size(add_scripts) + map_size(replace_scripts) + length(remove_scripts)
+            {"Successfully managed #{total} init script(s)", [
+              designed: updated_designed,
+              modifications: modifications
+            ]}
+        end
+    end
   end
 
   @doc """
@@ -412,6 +476,32 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
   end
 
   # Private helper functions
+
+  # Validate modify_elements args structure
+  defp validate_modify_elements_args(args) when not is_map(args) do
+    {:error, "Error: Invalid arguments - expected a map but received: #{inspect(args)}"}
+  end
+
+  defp validate_modify_elements_args(args) do
+    # Check remove_elements if present
+    with :ok <- validate_array_field(args, "remove_elements", "element IDs"),
+         :ok <- validate_array_field(args, "replace_elements", "replacement specs"),
+         :ok <- validate_array_field(args, "add_elements", "addition specs") do
+      :ok
+    end
+  end
+
+  # Validate that a field (if present) is an array/list
+  defp validate_array_field(args, field_name, description) do
+    case Map.get(args, field_name) do
+      nil ->
+        :ok
+      value when is_list(value) ->
+        :ok
+      value ->
+        {:error, "Error: Invalid '#{field_name}' - expected array of #{description}, got: #{inspect(value)}"}
+    end
+  end
 
   defp modify_element_classes(tree, element_id, add_classes, remove_classes) do
     case find_and_update_element(tree, element_id, fn element ->
@@ -442,34 +532,53 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     end
   end
 
-  defp modify_element_handlers(tree, element_id, add_handlers, replace_handlers, remove_events) do
-    case find_and_update_element(tree, element_id, fn element ->
-      current_handlers = Map.get(element, :handlers, %{})
-
-      # Check add conflicts
-      add_conflicts = Enum.filter(Map.keys(add_handlers), &Map.has_key?(current_handlers, &1))
-      if length(add_conflicts) > 0 do
-        throw({:error, "Handler already exists for events: #{Enum.join(add_conflicts, ", ")} on element '#{element_id}'"})
-      end
-
-      # Check replace requirements
-      replace_missing = Enum.filter(Map.keys(replace_handlers), &(!Map.has_key?(current_handlers, &1)))
-      if length(replace_missing) > 0 do
-        throw({:error, "No existing handler to replace for events: #{Enum.join(replace_missing, ", ")} on element '#{element_id}'"})
-      end
-
-      updated_handlers = current_handlers
-        |> Map.merge(add_handlers)
-        |> Map.merge(replace_handlers)
-        |> Map.drop(remove_events)
-
-      Map.put(element, :handlers, updated_handlers)
-    end) do
-      {:ok, updated_tree} -> {:ok, updated_tree}
-      {:error, :not_found} -> {:error, "Element '#{element_id}' not found"}
+  # Validate element exists in DOM tree (read-only check)
+  defp validate_element_exists(tree, element_id) do
+    if element_exists?(tree, element_id) do
+      :ok
+    else
+      {:error, "Element '#{element_id}' not found"}
     end
-  catch
-    {:error, message} -> {:error, message}
+  end
+
+  # Update handlers in flat map only (single source of truth)
+  defp update_handlers_in_map(handlers_map, element_id, add_handlers, replace_handlers, remove_events) do
+    current_element_handlers = Map.get(handlers_map, element_id, %{})
+
+    # Convert incoming handler keys to atoms for consistency
+    add_handlers_atom = atomize_handler_keys(add_handlers)
+    replace_handlers_atom = atomize_handler_keys(replace_handlers)
+    remove_events_atom = Enum.map(remove_events, fn
+      event when is_binary(event) -> String.to_atom(event)
+      event -> event
+    end)
+
+    # Check add conflicts
+    add_conflicts = Enum.filter(Map.keys(add_handlers_atom), &Map.has_key?(current_element_handlers, &1))
+    if length(add_conflicts) > 0 do
+      {:error, "Handler already exists for events: #{Enum.join(add_conflicts, ", ")} on element '#{element_id}'"}
+    else
+      # Check replace requirements
+      replace_missing = Enum.filter(Map.keys(replace_handlers_atom), &(!Map.has_key?(current_element_handlers, &1)))
+      if length(replace_missing) > 0 do
+        {:error, "No existing handler to replace for events: #{Enum.join(replace_missing, ", ")} on element '#{element_id}'"}
+      else
+        # Update element's handlers
+        updated_element_handlers = current_element_handlers
+          |> Map.merge(add_handlers_atom)
+          |> Map.merge(replace_handlers_atom)
+          |> Map.drop(remove_events_atom)
+
+        # Update the map (remove element key if no handlers left)
+        updated_map = if map_size(updated_element_handlers) > 0 do
+          Map.put(handlers_map, element_id, updated_element_handlers)
+        else
+          Map.delete(handlers_map, element_id)
+        end
+
+        {:ok, updated_map}
+      end
+    end
   end
 
   defp process_removals(tree, remove_ids) do
@@ -491,7 +600,12 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     {final_tree, results} = Enum.reduce(replacements, {tree, []}, fn replacement, {current_tree, acc_results} ->
       element_id = Map.get(replacement, "element_id")
       new_element_spec = Map.get(replacement, "new_element")
-      new_element = build_element_from_spec(new_element_spec)
+
+      # Collect all existing IDs from the tree for uniqueness checking
+      used_ids = collect_all_ids(current_tree)
+
+      # Build element with auto-generated IDs for children without IDs
+      {new_element, _counter} = build_element_from_spec_with_ids(new_element_spec, used_ids, 1)
 
       case replace_element(current_tree, element_id, new_element) do
         {:ok, updated_tree} ->
@@ -509,7 +623,12 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
   defp process_additions(tree, additions) do
     {final_tree, results} = Enum.reduce(additions, {tree, []}, fn addition, {current_tree, acc_results} ->
       parent_id = Map.get(addition, "parent_id")
-      new_element = build_element_from_spec(addition)
+
+      # Collect all existing IDs from the tree for uniqueness checking
+      used_ids = collect_all_ids(current_tree)
+
+      # Build element with auto-generated IDs for children without IDs
+      {new_element, _counter} = build_element_from_spec_with_ids(addition, used_ids, 1)
 
       case add_element(current_tree, parent_id, new_element) do
         {:ok, updated_tree} ->
@@ -524,16 +643,79 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     {final_tree, Enum.reverse(results)}
   end
 
-  defp build_element_from_spec(spec) do
-    %{
-      tag: Map.get(spec, "tag"),
-      id: Map.get(spec, "id"),
+  # Build element from spec WITH auto-ID generation for children
+  defp build_element_from_spec_with_ids(spec, used_ids, counter) do
+    tag = Map.get(spec, "tag")
+
+    # Generate ID if not provided
+    {element_id, updated_used_ids} = case Map.get(spec, "id") do
+      nil ->
+        # Auto-generate ID
+        base_id = "auto-#{tag}-#{counter}"
+        unique_id = ensure_unique_id(base_id, used_ids)
+        {unique_id, MapSet.put(used_ids, unique_id)}
+
+      provided_id ->
+        {provided_id, MapSet.put(used_ids, provided_id)}
+    end
+
+    # Recursively build children with auto-IDs
+    {children, final_counter} = case Map.get(spec, "children") do
+      child_specs when is_list(child_specs) ->
+        {built_children, child_counter} = Enum.reduce(child_specs, {[], counter + 1}, fn child_spec, {acc_children, current_counter} ->
+          {child_element, next_counter} = build_element_from_spec_with_ids(child_spec, updated_used_ids, current_counter)
+          {acc_children ++ [child_element], next_counter}
+        end)
+        {built_children, child_counter}
+
+      _ ->
+        {[], counter + 1}
+    end
+
+    element = %{
+      tag: tag,
+      id: element_id,
       content: Map.get(spec, "content"),
       classes: Map.get(spec, "classes", []),
       attributes: Map.get(spec, "attributes", %{}),
       handlers: Map.get(spec, "handlers", %{}),
-      children: []
+      children: children
     }
+
+    {element, final_counter}
+  end
+
+  # Collect all IDs in the tree into a MapSet
+  defp collect_all_ids(element) when is_map(element) do
+    child_ids = element
+      |> Map.get(:children, [])
+      |> Enum.reduce(MapSet.new(), fn child, acc ->
+        MapSet.union(acc, collect_all_ids(child))
+      end)
+
+    case Map.get(element, :id) do
+      nil -> child_ids
+      id -> MapSet.put(child_ids, id)
+    end
+  end
+  defp collect_all_ids(_), do: MapSet.new()
+
+  # Ensure ID is unique by appending -1, -2, etc. if needed
+  defp ensure_unique_id(proposed_id, used_ids) do
+    if MapSet.member?(used_ids, proposed_id) do
+      find_unique_variant(proposed_id, used_ids, 1)
+    else
+      proposed_id
+    end
+  end
+
+  defp find_unique_variant(base_id, used_ids, suffix) do
+    candidate = "#{base_id}-#{suffix}"
+    if MapSet.member?(used_ids, candidate) do
+      find_unique_variant(base_id, used_ids, suffix + 1)
+    else
+      candidate
+    end
   end
 
   defp find_and_update_element(%{id: id} = element, target_id, update_fn) when id == target_id do
@@ -663,4 +845,63 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     Enum.any?(children, &element_exists?(&1, target_id))
   end
   defp element_exists?(_, _), do: false
+
+  # Helper to convert handler map keys from strings to atoms
+  # Handles both simple format {event: "code"} and structured format {event: %{params: [], body: "code"}}
+  defp atomize_handler_keys(handlers) when is_map(handlers) do
+    handlers
+    |> Enum.map(fn {key, value} ->
+      atom_key = if is_binary(key), do: String.to_atom(key), else: key
+
+      # Convert nested maps to atom keys too
+      atom_value = case value do
+        %{"params" => params, "body" => body} ->
+          %{params: params, body: body}
+        %{} = map when is_map(map) ->
+          Map.new(map, fn {k, v} -> {String.to_atom(k), v} end)
+        other ->
+          other
+      end
+
+      {atom_key, atom_value}
+    end)
+    |> Map.new()
+  end
+  defp atomize_handler_keys(_), do: %{}
+
+  # JavaScript Validation Helpers
+
+  # Validate a map of functions using NodeJS
+  defp validate_functions(functions) when map_size(functions) == 0, do: :ok
+  defp validate_functions(functions) when is_map(functions) do
+    Enum.reduce_while(functions, :ok, fn {name, code}, :ok ->
+      case NodeJS.call({"js_parser", :validateFunction}, [code]) do
+        {:ok, %{"valid" => true}} ->
+          {:cont, :ok}
+
+        {:ok, %{"valid" => false, "error" => error}} ->
+          {:halt, {:error, {name, error}}}
+
+        {:error, reason} ->
+          {:halt, {:error, {name, "Validation service error: #{inspect(reason)}"}}}
+      end
+    end)
+  end
+
+  # Validate a map of init scripts using NodeJS
+  defp validate_init_scripts(scripts) when map_size(scripts) == 0, do: :ok
+  defp validate_init_scripts(scripts) when is_map(scripts) do
+    Enum.reduce_while(scripts, :ok, fn {name, code}, :ok ->
+      case NodeJS.call({"js_parser", :validateInitScript}, [code]) do
+        {:ok, %{"valid" => true}} ->
+          {:cont, :ok}
+
+        {:ok, %{"valid" => false, "error" => error}} ->
+          {:halt, {:error, {name, error}}}
+
+        {:error, reason} ->
+          {:halt, {:error, {name, "Validation service error: #{inspect(reason)}"}}}
+      end
+    end)
+  end
 end

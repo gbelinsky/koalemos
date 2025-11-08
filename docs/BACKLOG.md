@@ -355,7 +355,7 @@
 
 ## Milestone 4: Advanced Lens System 🔄 IN PROGRESS
 
-**Status:** Sprint 4 of 8 Complete
+**Status:** Sprint 6 of 8 Complete (64% done)
 **Started:** November 2, 2025
 **Goal:** Build three advanced lenses (PersonaLens, SequentialThinking, WireframeEditor) with comprehensive test infrastructure and modular architecture
 
@@ -428,44 +428,47 @@ Original Sprint 4 plan called for DOM tools, but infrastructure needs revealed t
 **5. Cache + PubSub Solves Timing Issues**
 Combining WireframeStateCache (for initial load) with PubSub (for updates) elegantly solved the iframe mount timing problem. Both patterns will be useful as the system grows.
 
+### Completed (continued)
+
+- [x] **Sprint 5: WireframeEditor Core + DOM Tools** (~400 lines) ✅ Nov 5
+  - [x] Fixed batch operation accumulation in all DOM tools
+  - [x] Implemented element replacement functionality
+  - [x] Added PubSub broadcasting for live updates
+  - [x] Built chat interface for agent interaction
+  - [x] Added CSS rendering to preview
+  - [x] **All 9 tools functional** (CSS already complete)
+  - [x] See `docs/sprints/sprint-5-summary.md` for full details
+
+- [x] **Sprint 6: JavaScript Rendering + Critical Fixes** (~680 lines) ✅ Nov 7
+  - [x] JavaScript rendering in preview (variables, functions, handlers, init scripts)
+  - [x] JavaScriptUpdater LiveView hook for dynamic updates
+  - [x] Auto-reload system for init script changes
+  - [x] JavaScript syntax validation (NodeJS integration)
+  - [x] **6 Critical Bug Fixes:** Boolean serialization, nested children, auto-IDs, init script timing, JS validation, argument validation
+  - [x] Context clarity improvements
+  - [x] Integration tests
+  - [x] **8 of 9 tools tested and working** (trigger_interaction deferred)
+  - [x] See `docs/sprints/sprint-6-summary.md` for full details
+
+### Deferred from Sprint 6
+
+**Infrastructure & Integration Work:**
+- [ ] **trigger_interaction tool implementation** - Requires client-side infrastructure for server-to-client interaction triggers and element highlighting/selection
+- [ ] **Console capture integration (ConsoleCache)** - May be significant work to get console capture correct
+- [ ] **Screenshot integration** - Connect with existing screenshot infrastructure from M3
+- [ ] **Better integration test scenarios (Test 12)** - Multi-tool workflows and complex agent interactions
+
+**Performance Optimizations (Nice-to-have):**
+- [ ] Server-side diff for push events - Only broadcast changed parts of state
+- [ ] Smart diffing for variables/functions - Don't re-send unchanged code
+- [ ] Soft reload for init scripts - Reset state without browser reload
+
+**Bug Investigation:**
+- [ ] Investigate document.title change issue in init scripts - Browser ignores title changes, low priority
+
 ### In Progress / Todo
 
-- [ ] **Sprint 5: WireframeEditor Core + DOM Tools** (~550 lines)
-  - [ ] **Core Module** (~250 lines): Lens interface, handler coordination
-    - [ ] Two-version state management (designed vs running)
-    - [ ] Uses existing HTMLParser (don't reimplement parsing)
-    - [ ] Basic context builder (element count, state summary)
-    - [ ] Error handling pattern
-    - [ ] Integrate with WireframeStateCache
-  - [ ] **DOM Handler** (~250 lines): HTML manipulation
-    - [ ] Tools: query_element, add_element, remove_element, update_attributes, get_structure
-    - [ ] HTML serialization (AST → string for preview reload)
-    - [ ] Round-trip testing (parse → modify → serialize → parse)
-    - [ ] Integration with WireframePreviewLive via PubSub
-  - [ ] **Manual Verification Page** (~50 lines): Extend /test/wireframe
-    - [ ] Test controls for each DOM tool
-    - [ ] Show tool results and lens state updates
-    - [ ] Visual validation of changes in preview
-  - [ ] **Tests** (~100 lines): Core, DOM handler, tool execution, state management
-  - [ ] **Note:** Tool execution infrastructure already ready from Sprint 4
-
-- [ ] **Sprint 6: WireframeEditor JavaScript + Parser Improvements** (~550 lines)
-  - [ ] **JavaScript Handler** (~250 lines): JS manipulation
-    - [ ] Uses existing JavaScriptParser (don't reimplement parsing)
-    - [ ] Tools: query_javascript, add_event_listener, modify_function, add_script, remove_event_listener
-    - [ ] Integration with DOM handler
-    - [ ] Script serialization (AST → JS string)
-  - [ ] **JavaScriptParser Improvements** (~200 lines): **Fix complex wireframe extraction**
-    - [ ] Improve inline event handler parsing (onclick="...")
-    - [ ] Better function extraction from mixed HTML/JS
-    - [ ] Enhanced event listener detection
-    - [ ] Test with complex wireframe's actual structure
-  - [ ] **JavaScript Utilities** (~50 lines): AST helpers, event formatting
-  - [ ] **Manual Verification Page** (~50 lines): Add JS tool testing controls
-    - [ ] Show parsed event listeners from complex wireframe
-    - [ ] Display function list with modify buttons
-    - [ ] Live preview updates when JS changes
-  - [ ] **Tests** (~100 lines): Handler tests, parser improvement tests, integration tests
+**Note:** Sprint 7 originally planned as CSS Handler, but CSS work (manage_css tool) already complete in Sprint 5. May need to revise Sprint 7 plan to focus on integrations above.
 
 - [ ] **Sprint 7: WireframeEditor CSS Handler** (~500 lines)
   - [ ] **CSS Handler** (~250 lines): CSS manipulation

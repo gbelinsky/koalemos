@@ -161,6 +161,11 @@ defmodule Koalemos.Engine.Observer do
     "#Port<#{inspect(data)}>"
   end
 
+  # Handle booleans and nil - keep as-is for JSON serialization
+  defp make_serializable(data) when is_boolean(data) or is_nil(data) do
+    data
+  end
+
   # Handle atoms - strip "Elixir." prefix for cleaner output
   defp make_serializable(data) when is_atom(data) do
     case Atom.to_string(data) do
