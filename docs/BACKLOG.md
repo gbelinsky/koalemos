@@ -1245,6 +1245,132 @@ Eventually, tool request/result pairs could be:
 - May want configurable verbosity (debug vs. production)
 - Integration with future observability/debugging tools
 
+### WireframeEditor Context Display & State Capture
+**Status:** Deferred (identified during M4 Sprint 7 - November 9, 2025)
+
+**Problem:**
+The "Show Agent Context" UI button and the actual agent LLM request capture state independently, resulting in:
+1. Duplicate snapshot requests (wasteful)
+2. Inconsistent views (UI shows stale, agent sees fresh)
+3. Confusion about what the agent actually sees
+
+**Current workaround:**
+When "Show Agent Context" button is clicked, regenerate context with fresh state capture. This works but:
+- Captures state twice per turn (once for agent, once for UI)
+- UI context may differ from what agent actually saw
+- No guarantee of temporal consistency
+
+**Better architecture:**
+UI should display the ACTUAL context that was sent to the LLM in the most recent request, not regenerate it:
+
+```elixir
+# Store actual sent context in routine state
+context.last_llm_context = %{
+  text: "...",  # What was actually sent
+  captured_at: DateTime.utc_now(),
+  turn_number: 5
+}
+
+# UI retrieves and displays exactly what agent saw
+def show_agent_context(routine_id) do
+  get_last_llm_context(routine_id)
+end
+```
+
+**Benefits:**
+- ✅ Single source of truth
+- ✅ No duplicate captures
+- ✅ UI shows EXACTLY what agent saw
+- ✅ Can track context over time (history viewer)
+
+**Why deferred:**
+- Current approach works for Sprint 7
+- Need to implement context history tracking first
+- Requires Engine changes to store sent contexts
+- Should wait until M4 complete to evaluate patterns
+
+**Future considerations:**
+- Context history viewer (see what agent saw on each turn)
+- Diff viewer (show context changes between turns)
+- Time-travel debugging (replay from specific context)
+
+### Live DOM Snapshot Scope & Format
+**Status:** Deferred (identified during M4 Sprint 7 - November 9, 2025)
+
+**Problem 1: Snapshot captures too much**
+Current DOM snapshot captures the entire iframe body, including LiveView wrapper elements (flash-group, phx-* attributes, etc.). Should only capture the actual wireframe content:
+
+```javascript
+// Current: captures everything
+this.serializeDOM(document.body)
+
+// Should be: capture only wireframe root
+const wireframeRoot = document.getElementById('root')
+this.serializeDOM(wireframeRoot)
+```
+
+**Problem 2: Inconsistent rendering format**
+Designed DOM shows clean format:
+```
+- auto-div-4: <div> .logo | Content: "Complex Dashboard"
+```
+
+Live DOM shows verbose format:
+```
+- auto-div-4: <div> .logo | class: logo, id: auto-div-4 | Content: "Complex Dashboard"
+```
+
+The designed format is better because:
+- Classes shown inline with dot notation (.logo)
+- ID already in line prefix (auto-div-4:)
+- No redundant attribute listing
+
+**Current workaround:**
+Accept the inconsistency and extra verbosity. Filter noise manually.
+
+**Better architecture:**
+
+1. **Scoped capture:**
+```javascript
+captureCompleteState(opts = {}) {
+  // Find wireframe root element
+  const wireframeRoot = document.getElementById(opts.rootId || 'root')
+  if (!wireframeRoot) {
+    console.warn('[StateCapture] Wireframe root not found')
+    return
+  }
+
+  // Capture only the wireframe content
+  const dom_tree = this.serializeDOM(wireframeRoot)
+  // ...
+}
+```
+
+2. **Unified format_dom_tree:**
+Share the same formatting logic between designed and live DOM. Currently using two different code paths:
+- Designed: `format_dom_tree(tree, indent, handlers)` - clean output
+- Live: `format_dom_tree(tree, indent, %{})` - verbose output
+
+Both should use the same formatter with the same output style.
+
+**Benefits:**
+- ✅ Cleaner context (no LiveView noise)
+- ✅ Consistent presentation (easier to compare)
+- ✅ Less token usage (removes redundant attributes)
+- ✅ Better agent experience (focused on actual wireframe)
+
+**Why deferred:**
+- Current approach works for Sprint 7 (agent can see changes)
+- Need to test with various wireframe structures first
+- Should understand what root element patterns emerge
+- Format unification requires careful refactoring
+
+**Future considerations:**
+- Make root selector configurable per wireframe
+- Add visual diff highlighting (designed vs live)
+- Consider showing only CHANGED elements in live view
+- Extract common formatting to shared module
+
 ---
 
 ## Future / Ideas

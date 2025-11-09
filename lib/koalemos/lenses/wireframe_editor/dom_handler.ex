@@ -10,9 +10,6 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
   Uses existing HTMLParser for parsing, implements tree manipulation and serialization.
   """
 
-  # TODO: Will be used when tools are fully implemented
-  # alias Koalemos.Parsers.HTMLParser
-  # alias Koalemos.Caches.DOMStateCache
   require Logger
 
   @doc """
@@ -459,20 +456,72 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
 
   Returns {result_text, lens_updates}.
   """
-  def trigger_interaction(_lens_state, args, _context) do
-    # TODO: Implement interaction with preview iframe
-    # For now, return placeholder response
+  def trigger_interaction(_lens_state, args, context) do
+    routine_id = Map.get(context, :routine_id)
     action = Map.get(args, "action")
     element_id = Map.get(args, "element_id")
 
-    """
-    Triggered interaction: #{action} on #{element_id || "page"}
+    # Subscribe to interaction completion topic
+    response_topic = "interaction:response:#{routine_id}"
+    Phoenix.PubSub.subscribe(Koalemos.PubSub, response_topic)
 
-    NOTE: This is a TESTING tool - changes are EPHEMERAL and won't persist to design.
-    Check the LIVE DOM STATE in context to see what happened.
-    For PERMANENT changes, use the design tools (modify_elements, manage_handlers, etc.).
-    """
-    |> then(&{&1, []})
+    try do
+      # Broadcast interaction request to preview iframe
+      Phoenix.PubSub.broadcast(
+        Koalemos.PubSub,
+        "wireframe_updates:#{routine_id}",
+        {:execute_interaction, args}
+      )
+
+      # Wait for interaction completion (with timeout)
+      result = receive do
+        {:interaction_complete, completion_result} ->
+          if completion_result["success"] do
+            :ok
+          else
+            {:error, completion_result["error"] || "Interaction failed"}
+          end
+      after
+        3000 ->
+          {:error, :timeout}
+      end
+
+      # Format response
+      action_desc = case action do
+        "click" -> "clicked #{element_id}"
+        "fill_input" -> "filled #{element_id} with value"
+        "submit_form" -> "submitted form #{element_id}"
+        "execute_js" -> "executed custom JavaScript"
+        _ -> "#{action} on #{element_id || "page"}"
+      end
+
+      response = case result do
+        :ok ->
+          """
+          Successfully triggered #{action_desc}.
+
+          The live state will appear in your next context showing any changes.
+
+          NOTE: This is a TESTING tool - changes are EPHEMERAL and won't persist to design.
+          For PERMANENT changes, use design tools (modify_elements, manage_handlers, etc.).
+          """
+
+        {:error, :timeout} ->
+          """
+          Triggered #{action_desc}, but interaction timed out after 3 seconds.
+          The preview may not be responding. Check browser console for errors.
+          """
+
+        {:error, reason} ->
+          """
+          Interaction failed: #{inspect(reason)}
+          """
+      end
+
+      {response, []}
+    after
+      Phoenix.PubSub.unsubscribe(Koalemos.PubSub, response_topic)
+    end
   end
 
   # Private helper functions

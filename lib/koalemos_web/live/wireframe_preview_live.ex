@@ -42,7 +42,7 @@ defmodule KoalemosWeb.WireframePreviewLive do
   def mount(%{"routine_id" => routine_id} = _params, _session, socket) do
     Logger.info("[WireframePreviewLive] 🔄 Mounting for routine: #{routine_id}")
 
-    # Subscribe to PubSub for wireframe updates
+    # Subscribe to PubSub for wireframe updates, snapshots, and interactions
     Phoenix.PubSub.subscribe(
       Koalemos.PubSub,
       "wireframe_updates:#{routine_id}"
@@ -100,13 +100,23 @@ defmodule KoalemosWeb.WireframePreviewLive do
   # Handle snapshot request from WireframeEditor lens (Sprint 7)
   @impl true
   def handle_info({:snapshot_request, requested_id, opts}, socket) do
+    Logger.info("[WireframePreviewLive] Received snapshot_request for #{requested_id}, my routine_id: #{socket.assigns.routine_id}")
+
     if socket.assigns.routine_id == requested_id do
-      Logger.debug("[WireframePreviewLive] Snapshot requested, triggering client capture")
+      Logger.info("[WireframePreviewLive] Snapshot requested, triggering client capture")
       skip_screenshot = Keyword.get(opts || [], :skip_screenshot, false)
       {:noreply, push_event(socket, "capture_state", %{skip_screenshot: skip_screenshot})}
     else
+      Logger.warning("[WireframePreviewLive] Snapshot request for wrong routine_id: #{requested_id} != #{socket.assigns.routine_id}")
       {:noreply, socket}
     end
+  end
+
+  # Handle interaction execution request from WireframeEditor (Sprint 7 Phase 3)
+  @impl true
+  def handle_info({:execute_interaction, args}, socket) do
+    Logger.debug("[WireframePreviewLive] Executing interaction: #{inspect(args)}")
+    {:noreply, push_event(socket, "execute_interaction", args)}
   end
 
   # Handle state snapshot data from client (Sprint 7)
@@ -116,12 +126,12 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
     Logger.debug("[WireframePreviewLive] Received state snapshot from client")
 
-    # Store DOM in DOMStateCache
+    # Store DOM in DOMStateCache (use format expected by cache)
     if dom_tree = snapshot_data["dom_tree"] do
       Koalemos.Caches.DOMStateCache.add_dom_state(routine_id, %{
-        live_dom_tree: dom_tree,
-        change_type: "snapshot",
-        timestamp: System.system_time(:millisecond)
+        "liveDOMTree" => dom_tree,
+        "changeType" => "snapshot",
+        "timestamp" => System.system_time(:millisecond)
       })
     end
 
@@ -142,6 +152,24 @@ defmodule KoalemosWeb.WireframePreviewLive do
       Koalemos.PubSub,
       "snapshot:response:#{routine_id}",
       {:snapshot_ready, routine_id, DateTime.utc_now()}
+    )
+
+    {:noreply, socket}
+  end
+
+  # Handle interaction completion from client (Sprint 7 Phase 3)
+  @impl true
+  def handle_event("interaction_complete", result, socket) do
+    routine_id = socket.assigns.routine_id
+
+    Logger.info("[WireframePreviewLive] Interaction completed: #{inspect(result)}")
+
+    # Broadcast completion notification (for future use / debugging)
+    # Note: Currently fire-and-forget, not blocking like snapshots
+    Phoenix.PubSub.broadcast(
+      Koalemos.PubSub,
+      "interaction:response:#{routine_id}",
+      {:interaction_complete, result}
     )
 
     {:noreply, socket}
@@ -437,11 +465,6 @@ defmodule KoalemosWeb.WireframePreviewLive do
     |> Enum.join("\n\n")
   end
   defp render_custom_functions(_), do: ""
-
-  # render_event_handlers is no longer used (Sprint 6)
-  # Handlers are now attached dynamically via JavaScriptUpdater hook
-  # This allows proper cleanup and prevents duplicate handlers
-  defp render_event_handlers(_), do: ""
 
   defp render_init_scripts(init_scripts) when is_map(init_scripts) and map_size(init_scripts) > 0 do
     # Execute init scripts, handling both initial load and reload cases

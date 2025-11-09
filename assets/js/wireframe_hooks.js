@@ -298,6 +298,12 @@ WireframeHooks.JavaScriptUpdater = {
     // Initialize state for console tracking (will be used in Phase 4)
     this.lastSnapshotTime = Date.now()
     this.consoleBuffer = []
+
+    // Listen for interaction execution requests (Sprint 7 Phase 3)
+    this.handleEvent("execute_interaction", (args) => {
+      console.log("[Interaction] Received execution request:", args)
+      this.executeInteraction(args)
+    })
   },
 
   /**
@@ -308,8 +314,12 @@ WireframeHooks.JavaScriptUpdater = {
     console.log("[StateCapture] Capturing complete state...")
 
     try {
-      // Serialize DOM tree
-      const dom_tree = this.serializeDOM(document.body)
+      // Serialize DOM tree (capture only wireframe content, not LiveView wrapper)
+      const wireframeRoot = document.getElementById('root')
+      if (!wireframeRoot) {
+        console.warn("[StateCapture] Wireframe root element not found, falling back to body")
+      }
+      const dom_tree = this.serializeDOM(wireframeRoot || document.body)
 
       // Gather console messages since last snapshot (placeholder for Phase 4)
       const console_messages = []  // Will populate in Phase 4
@@ -352,11 +362,15 @@ WireframeHooks.JavaScriptUpdater = {
       return null
     }
 
-    // Get all attributes
+    // Get all attributes (exclude class/id since they're handled separately)
     const attributes = {}
     Array.from(element.attributes || []).forEach(attr => {
       // Skip phx-* attributes (LiveView internal)
-      if (!attr.name.startsWith('phx-') && !attr.name.startsWith('data-phx-')) {
+      // Skip class/id (handled separately for consistent formatting)
+      if (!attr.name.startsWith('phx-') &&
+          !attr.name.startsWith('data-phx-') &&
+          attr.name !== 'class' &&
+          attr.name !== 'id') {
         attributes[attr.name] = attr.value
       }
     })
@@ -384,6 +398,104 @@ WireframeHooks.JavaScriptUpdater = {
       content: content,
       children: children
     }
+  },
+
+  /**
+   * Execute interaction in preview
+   * Sprint 7 Phase 3
+   */
+  executeInteraction(command) {
+    console.log("[Interaction] Executing:", command)
+
+    try {
+      // Execute the requested action
+      switch(command.action) {
+        case "click":
+          this.triggerClick(command.element_id)
+          break
+        case "fill_input":
+          this.fillInput(command.element_id, command.value)
+          break
+        case "submit_form":
+          this.submitForm(command.element_id)
+          break
+        case "execute_js":
+          this.executeJavaScript(command.javascript)
+          break
+        default:
+          throw new Error(`Unknown interaction action: ${command.action}`)
+      }
+
+      // Wait a bit for DOM changes to settle, then notify completion
+      setTimeout(() => {
+        this.pushEvent("interaction_complete", {
+          success: true,
+          action: command.action
+        })
+      }, 300)
+
+    } catch (error) {
+      console.error("[Interaction] Failed:", error)
+      this.pushEvent("interaction_complete", {
+        success: false,
+        action: command.action,
+        error: error.message
+      })
+    }
+  },
+
+  /**
+   * Trigger click on element
+   * Sprint 7 Phase 3
+   */
+  triggerClick(elementId) {
+    const el = document.getElementById(elementId)
+    if (!el) {
+      throw new Error(`Element not found: ${elementId}`)
+    }
+    console.log(`[Interaction] Clicking element: ${elementId}`)
+    el.click()
+  },
+
+  /**
+   * Fill input element with value
+   * Sprint 7 Phase 3
+   */
+  fillInput(elementId, value) {
+    const el = document.getElementById(elementId)
+    if (!el) {
+      throw new Error(`Element not found: ${elementId}`)
+    }
+    console.log(`[Interaction] Filling ${elementId} with: ${value}`)
+    el.value = value
+    // Dispatch input and change events to trigger any listeners
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+  },
+
+  /**
+   * Submit form
+   * Sprint 7 Phase 3
+   */
+  submitForm(elementId) {
+    const el = document.getElementById(elementId)
+    if (!el) {
+      throw new Error(`Element not found: ${elementId}`)
+    }
+    console.log(`[Interaction] Submitting form: ${elementId}`)
+    // Dispatch submit event (respects preventDefault if handler uses it)
+    el.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  },
+
+  /**
+   * Execute arbitrary JavaScript
+   * Sprint 7 Phase 3
+   */
+  executeJavaScript(code) {
+    console.log(`[Interaction] Executing JavaScript: ${code.substring(0, 50)}...`)
+    // Execute in global scope using Function constructor
+    const func = new Function(code)
+    func()
   },
 
   destroyed() {

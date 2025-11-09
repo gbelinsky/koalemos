@@ -52,6 +52,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
   alias Koalemos.Caches.DOMStateCache
   alias Koalemos.Caches.ConsoleCache
   alias Koalemos.Caches.ScreenshotCache
+  alias Koalemos.Caches.WireframeStateCache
   require Logger
 
   @doc """
@@ -93,7 +94,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
       # Broadcast snapshot request to preview
       Phoenix.PubSub.broadcast(
         Koalemos.PubSub,
-        "routine:#{routine_id}",
+        "wireframe_updates:#{routine_id}",
         {:snapshot_request, routine_id, skip_screenshot: skip_screenshot}
       )
 
@@ -104,8 +105,8 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
           # Fetch from caches
           dom_tree = case DOMStateCache.get_dom_state(routine_id) do
-            {:ok, dom_state} -> Map.get(dom_state, :live_dom_tree)
-            _ -> nil
+            nil -> nil
+            dom_state when is_map(dom_state) -> Map.get(dom_state, :live_dom_tree)
           end
 
           console_output = ConsoleCache.get_messages(routine_id,
@@ -120,19 +121,28 @@ defmodule Koalemos.Lenses.WireframeEditor do
             end
           end
 
+          # Get designed DOM tree for comparison
+          designed_tree = case WireframeStateCache.get_state(routine_id) do
+            nil -> nil
+            lens_state -> get_in(lens_state, [:designed, :dom_tree])
+          end
+
+          # Compare live vs designed (simple equality check for now)
+          differs = designed_tree != nil && dom_tree != designed_tree
+
           running_state = %{
             dom_tree: dom_tree,
             console_output: console_output || [],
             screenshot: screenshot_data,
             captured_at: DateTime.utc_now(),
-            differs_from_designed: false  # Will be computed later
+            differs_from_designed: differs
           }
 
           {:ok, running_state}
 
       after
         timeout ->
-          Logger.warn("[WireframeEditor] Snapshot timeout after #{timeout}ms for #{routine_id}")
+          Logger.warning("[WireframeEditor] Snapshot timeout after #{timeout}ms for #{routine_id}")
           {:error, :timeout}
       end
     after
@@ -153,9 +163,25 @@ defmodule Koalemos.Lenses.WireframeEditor do
   """
   def provide_context(state, _config \\ %{}) do
     lens_state = get_in(state, [:context, :lens_state]) || %{}
+    routine_id = get_in(state, [:context, :routine_id])
 
     designed = Map.get(lens_state, :designed, %{})
-    running = Map.get(lens_state, :running, %{})
+
+    # Capture current live state before building context (Sprint 7)
+    running = if routine_id do
+      case capture_current_state(routine_id, skip_screenshot: true) do
+        {:ok, current_state} ->
+          has_dom = current_state[:dom_tree] != nil
+          Logger.info("[WireframeEditor] Captured live state for context - has DOM: #{has_dom}")
+          current_state
+        {:error, reason} ->
+          Logger.warning("[WireframeEditor] Failed to capture live state: #{inspect(reason)}")
+          Map.get(lens_state, :running, %{})
+      end
+    else
+      Logger.debug("[WireframeEditor] No routine_id, skipping state capture")
+      Map.get(lens_state, :running, %{})
+    end
 
     context_parts = [
       build_design_dom_section(designed),
@@ -655,18 +681,36 @@ defmodule Koalemos.Lenses.WireframeEditor do
   end
   defp build_design_dom_section(_), do: nil
 
-  defp build_live_dom_section(_designed, %{dom_tree: live_tree, captured_at: timestamp}) when not is_nil(live_tree) do
+  defp build_live_dom_section(_designed, %{dom_tree: live_tree, captured_at: timestamp, differs_from_designed: differs}) when not is_nil(live_tree) do
     age = format_timestamp_age(timestamp)
 
-    """
+    Logger.debug("[WireframeEditor] Building LIVE DOM section with tree: #{inspect(Map.keys(live_tree))}")
+
+    formatted_tree = format_dom_tree(live_tree, 0, %{})
+    Logger.info("[WireframeEditor] Formatted tree length: #{String.length(formatted_tree)} chars")
+
+    # Show status based on comparison with designed state
+    status = if differs do
+      "Status: DIFFERS FROM DESIGN ⚠️  (user or JavaScript modified the page)"
+    else
+      "Status: MATCHES DESIGN ✓"
+    end
+
+    result = """
     === LIVE DOM STATE (captured #{age}) ===
 
-    Status: MATCHES DESIGN ✓
+    #{status}
 
-    #{format_dom_tree(live_tree, 0, %{})}
+    #{formatted_tree}
     """
+
+    Logger.info("[WireframeEditor] LIVE DOM section length: #{String.length(result)} chars")
+    result
   end
-  defp build_live_dom_section(_designed, _running), do: nil
+  defp build_live_dom_section(_designed, running) do
+    Logger.warning("[WireframeEditor] build_live_dom_section skipped - running: #{inspect(Map.keys(running || %{}))}")
+    nil
+  end
 
   defp build_functions_section(%{custom_functions: functions}) when map_size(functions) > 0 do
     function_list = Enum.map_join(functions, "\n\n", fn {name, code} ->
@@ -916,19 +960,4 @@ defmodule Koalemos.Lenses.WireframeEditor do
   end
   defp broadcast_dom_update_if_needed(_result, _tool_name, _routine_id), do: :ok
 
-  # Helper to get lens_state with defaults (TODO: will be used when tools are implemented)
-  defp _get_lens_state(context) do
-    Map.get(context, :lens_state, %{
-      designed: %{
-        dom_tree: nil,
-        custom_css: %{},
-        custom_functions: %{},
-        custom_variables: %{},
-        init_scripts: %{},
-        metadata: %{}
-      },
-      running: %{},
-      modifications: []
-    })
-  end
 end

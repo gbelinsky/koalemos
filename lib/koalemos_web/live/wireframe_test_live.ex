@@ -151,9 +151,16 @@ defmodule KoalemosWeb.WireframeTestLive do
   def handle_event("toggle_context", _params, socket) do
     new_show_context = !socket.assigns.show_context
     Logger.info("[WireframeTestLive] Toggling context drawer from #{socket.assigns.show_context} to #{new_show_context}")
-    Logger.debug("[WireframeTestLive] routine_id: #{inspect(socket.assigns.routine_id)}")
-    Logger.debug("[WireframeTestLive] lens_state present: #{not is_nil(socket.assigns.lens_state)}")
-    Logger.debug("[WireframeTestLive] agent_context length: #{if socket.assigns.agent_context, do: String.length(socket.assigns.agent_context), else: 0}")
+
+    # When OPENING the drawer, regenerate context with current live state
+    socket = if new_show_context && socket.assigns.lens_state do
+      Logger.info("[WireframeTestLive] Regenerating agent_context with live state capture")
+      agent_context = regenerate_agent_context(socket.assigns.lens_state, socket.assigns.routine_id)
+      assign(socket, agent_context: agent_context)
+    else
+      socket
+    end
+
     {:noreply, assign(socket, show_context: new_show_context)}
   end
 
@@ -196,6 +203,7 @@ defmodule KoalemosWeb.WireframeTestLive do
       # Start the WireframeTestRoutine with the loaded wireframe HTML
       # The routine's setup/2 will parse it and create lens_state
       user_context = %{
+        routine_id: routine_id,
         llm_provider: "anthropic",
         llm_model: "claude-haiku-4-5",
         max_tokens: 64000,
@@ -367,8 +375,8 @@ defmodule KoalemosWeb.WireframeTestLive do
           Logger.info("[WireframeTestLive] Updated cache for routine #{socket.assigns.routine_id}")
         end
 
-        # Regenerate agent context
-        agent_context = regenerate_agent_context(lens_state)
+        # Regenerate agent context with live state capture
+        agent_context = regenerate_agent_context(lens_state, socket.assigns.routine_id)
         Logger.info("[WireframeTestLive] Regenerated agent_context (#{String.length(agent_context)} chars)")
 
         assign(socket, lens_state: lens_state, agent_context: agent_context)
@@ -857,8 +865,8 @@ defmodule KoalemosWeb.WireframeTestLive do
             end
           end
 
-          # Regenerate agent context from updated lens_state
-          agent_context = regenerate_agent_context(lens_state)
+          # Regenerate agent context from updated lens_state with live state capture
+          agent_context = regenerate_agent_context(lens_state, socket.assigns.routine_id)
 
           assign(acc_socket, lens_state: lens_state, agent_context: agent_context)
 
@@ -869,9 +877,9 @@ defmodule KoalemosWeb.WireframeTestLive do
   end
 
   # Regenerate agent context from lens_state
-  defp regenerate_agent_context(lens_state) do
-    # Create a minimal state structure with lens_state for WireframeEditor
-    state = %{context: %{lens_state: lens_state}}
+  defp regenerate_agent_context(lens_state, routine_id) do
+    # Create a minimal state structure with lens_state and routine_id for WireframeEditor
+    state = %{context: %{lens_state: lens_state, routine_id: routine_id}}
 
     # Call WireframeEditor.provide_context to regenerate the context
     context_blocks = WireframeEditor.provide_context(state)
