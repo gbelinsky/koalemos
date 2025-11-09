@@ -170,8 +170,9 @@ defmodule Koalemos.Lenses.WireframeEditor do
     designed = Map.get(lens_state, :designed, %{})
 
     # Capture current live state before building context (Sprint 7)
+    # Include screenshots by default (Phase 5) - provides visual feedback
     running = if routine_id do
-      case capture_current_state(routine_id, skip_screenshot: true) do
+      case capture_current_state(routine_id, skip_screenshot: false) do
         {:ok, current_state} ->
           has_dom = current_state[:dom_tree] != nil
           Logger.info("[WireframeEditor] Captured live state for context - has DOM: #{has_dom}")

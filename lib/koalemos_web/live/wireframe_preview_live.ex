@@ -258,6 +258,9 @@ defmodule KoalemosWeb.WireframePreviewLive do
         <!-- JavaScript Updater Hook (Sprint 6) - dynamically updates variables/functions -->
         <div phx-hook="JavaScriptUpdater" id="js-updater" style="display: none;"></div>
 
+        <!-- ScreenshotCapture Hook (Sprint 7 Phase 5) - enables screenshot capture for state snapshots -->
+        <div phx-hook="ScreenshotCapture" id="wireframe-screenshot-target" style="display: none;"></div>
+
         <%= if @dom_tree do %>
           <%= render_dom_tree(@dom_tree) %>
         <% else %>

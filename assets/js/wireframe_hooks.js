@@ -57,19 +57,22 @@ WireframeHooks.ScreenshotCapture = {
    * Hook mounted - setup and load html2canvas
    */
   mounted() {
-    console.log("[ScreenshotCapture] Hook mounted on element:", this.el.id)
+    INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Hook mounted on element:", this.el.id)
 
     // State
     this.html2canvasReady = false
     this.lastScreenshotTime = null
     this.isCapturing = false
 
+    // Expose for other hooks (Sprint 7 Phase 5)
+    window.__screenshotHook = this
+
     // Load html2canvas library from CDN
     this.loadHtml2Canvas()
 
     // Listen for manual capture trigger from LiveView
     this.handleEvent("trigger_screenshot_capture", () => {
-      console.log("[ScreenshotCapture] Manual capture triggered")
+      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Manual capture triggered")
       this.captureScreenshot()
     })
   },
@@ -85,7 +88,7 @@ WireframeHooks.ScreenshotCapture = {
    * Hook destroyed - cleanup
    */
   destroyed() {
-    console.log("[ScreenshotCapture] Hook destroyed")
+    INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Hook destroyed")
     // No persistent listeners to clean up in Sprint 2
   },
 
@@ -95,24 +98,24 @@ WireframeHooks.ScreenshotCapture = {
   loadHtml2Canvas() {
     // Check if already loaded
     if (window.html2canvas) {
-      console.log("[ScreenshotCapture] html2canvas already loaded")
+      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] html2canvas already loaded")
       this.html2canvasReady = true
       return
     }
 
-    console.log("[ScreenshotCapture] Loading html2canvas from CDN...")
+    INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Loading html2canvas from CDN...")
 
     const script = document.createElement('script')
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
     script.async = true
 
     script.onload = () => {
-      console.log("[ScreenshotCapture] html2canvas loaded successfully")
+      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] html2canvas loaded successfully")
       this.html2canvasReady = true
     }
 
     script.onerror = (error) => {
-      console.error("[ScreenshotCapture] Failed to load html2canvas:", error)
+      INFRASTRUCTURE_CONSOLE.error("[ScreenshotCapture] Failed to load html2canvas:", error)
       this.pushEvent("screenshot_failed", {
         error: "Failed to load html2canvas library",
         timestamp: Date.now()
@@ -131,13 +134,13 @@ WireframeHooks.ScreenshotCapture = {
   async captureScreenshot() {
     // Check if library is ready
     if (!this.html2canvasReady || !window.html2canvas) {
-      console.warn("[ScreenshotCapture] html2canvas not ready, skipping capture")
+      INFRASTRUCTURE_CONSOLE.warn("[ScreenshotCapture] html2canvas not ready, skipping capture")
       return
     }
 
     // Check if already capturing (prevent concurrent captures)
     if (this.isCapturing) {
-      console.log("[ScreenshotCapture] Capture already in progress, skipping")
+      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Capture already in progress, skipping")
       return
     }
 
@@ -147,42 +150,20 @@ WireframeHooks.ScreenshotCapture = {
 
     if (this.lastScreenshotTime && (now - this.lastScreenshotTime) < cooldownMs) {
       const remaining = Math.ceil((cooldownMs - (now - this.lastScreenshotTime)) / 1000)
-      console.log(`[ScreenshotCapture] Cooldown active, ${remaining}s remaining`)
-      return
-    }
-
-    // Check for empty content
-    const rect = this.el.getBoundingClientRect()
-    if (rect.height === 0 || rect.width === 0) {
-      console.log("[ScreenshotCapture] Skipping capture - element has no dimensions")
+      INFRASTRUCTURE_CONSOLE.log(`[ScreenshotCapture] Cooldown active, ${remaining}s remaining`)
       return
     }
 
     try {
       this.isCapturing = true
-      console.log("[ScreenshotCapture] Starting screenshot capture...")
+      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Starting screenshot capture...")
 
-      // Capture element to canvas
-      const canvas = await window.html2canvas(this.el, {
-        backgroundColor: '#ffffff',
-        scale: 1,
-        useCORS: true,
-        allowTaint: false,
-        removeContainer: true,
-        height: this.el.scrollHeight,
-        windowHeight: this.el.scrollHeight,
-        logging: false  // Disable html2canvas console logs
-      })
-
-      console.log(`[ScreenshotCapture] Canvas created: ${canvas.width}x${canvas.height}`)
-
-      // Convert canvas to base64 PNG
-      const dataUrl = canvas.toDataURL('image/png')
-      const base64Data = dataUrl.split(',')[1] // Remove "data:image/png;base64," prefix
+      // Use shared capture logic (Sprint 7 Phase 5 refactor)
+      const { canvas, base64 } = await this._performCapture(this.el)
 
       // Send to LiveView
       this.pushEvent("screenshot_captured", {
-        data: base64Data,
+        data: base64,
         format: "png",
         width: canvas.width,
         height: canvas.height,
@@ -192,10 +173,10 @@ WireframeHooks.ScreenshotCapture = {
       // Update state
       this.lastScreenshotTime = now
 
-      console.log(`[ScreenshotCapture] Screenshot captured and sent (${Math.round(base64Data.length / 1024)}KB)`)
+      INFRASTRUCTURE_CONSOLE.log(`[ScreenshotCapture] Screenshot captured and sent (${Math.round(base64.length / 1024)}KB)`)
 
     } catch (error) {
-      console.error("[ScreenshotCapture] Capture failed:", error)
+      INFRASTRUCTURE_CONSOLE.error("[ScreenshotCapture] Capture failed:", error)
 
       this.pushEvent("screenshot_failed", {
         error: error.message || "Screenshot capture failed",
@@ -204,6 +185,96 @@ WireframeHooks.ScreenshotCapture = {
 
     } finally {
       this.isCapturing = false
+    }
+  },
+
+  /**
+   * Core screenshot capture logic (Sprint 7 Phase 5)
+   *
+   * Shared by both captureScreenshot() (manual) and captureScreenshotBlocking() (automatic).
+   *
+   * @param {HTMLElement} element - Element to capture
+   * @returns {Promise<{canvas: HTMLCanvasElement, base64: string}>}
+   * @private
+   */
+  async _performCapture(element) {
+    if (!element) {
+      throw new Error("No element provided for capture")
+    }
+
+    // Check dimensions
+    const rect = element.getBoundingClientRect()
+    if (rect.height === 0 || rect.width === 0) {
+      throw new Error("Element has no dimensions")
+    }
+
+    // Capture element to canvas
+    const canvas = await window.html2canvas(element, {
+      backgroundColor: '#ffffff',
+      scale: 1,
+      useCORS: true,
+      allowTaint: false,
+      removeContainer: true,
+      height: element.scrollHeight,
+      windowHeight: element.scrollHeight,
+      logging: false  // Disable html2canvas console logs
+    })
+
+    INFRASTRUCTURE_CONSOLE.log(`[ScreenshotCapture] Canvas created: ${canvas.width}x${canvas.height}`)
+
+    // Convert canvas to base64 PNG
+    const dataUrl = canvas.toDataURL('image/png')
+    const base64Data = dataUrl.split(',')[1] // Remove "data:image/png;base64," prefix
+
+    return { canvas, base64: base64Data }
+  },
+
+  /**
+   * Blocking screenshot capture for state snapshots (Sprint 7 Phase 5)
+   *
+   * Used by JavaScriptUpdater.captureCompleteState() to include screenshots
+   * in state snapshots. Unlike captureScreenshot(), this method:
+   * - Returns data directly (no pushEvent)
+   * - Optionally skips cooldown check
+   * - Captures document #root or body (not this.el)
+   * - Returns null on failure (doesn't throw)
+   *
+   * @param {Object} opts - Options
+   * @param {boolean} opts.skipCooldown - Skip cooldown check (default: false)
+   * @returns {Promise<string|null>} Base64 PNG data or null on failure
+   */
+  async captureScreenshotBlocking(opts = {}) {
+    // Check if library is ready
+    if (!this.html2canvasReady || !window.html2canvas) {
+      INFRASTRUCTURE_CONSOLE.warn("[ScreenshotCapture] html2canvas not ready for blocking capture")
+      return null
+    }
+
+    // Check cooldown unless explicitly skipped
+    if (!opts.skipCooldown) {
+      const now = Date.now()
+      const cooldownMs = 2000
+
+      if (this.lastScreenshotTime && (now - this.lastScreenshotTime) < cooldownMs) {
+        INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Cooldown active, skipping blocking capture")
+        return null
+      }
+    }
+
+    try {
+      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Starting blocking capture...")
+
+      // Capture #root element or body (for state snapshots)
+      const element = document.getElementById('root') || document.body
+      const { canvas, base64 } = await this._performCapture(element)
+
+      INFRASTRUCTURE_CONSOLE.log(`[ScreenshotCapture] Blocking capture complete (${Math.round(base64.length / 1024)}KB)`)
+
+      return base64
+
+    } catch (error) {
+      INFRASTRUCTURE_CONSOLE.error("[ScreenshotCapture] Blocking capture failed:", error)
+      return null
     }
   }
 }
@@ -378,8 +449,18 @@ WireframeHooks.JavaScriptUpdater = {
       // Gather console messages since last snapshot (Sprint 7 Phase 4)
       const console_messages = this.getConsoleSinceLastSnapshot()
 
-      // Capture screenshot (placeholder for Phase 5)
-      const screenshot = null  // Will implement in Phase 5
+      // Capture screenshot (Sprint 7 Phase 5)
+      let screenshot = null
+      if (!opts.skip_screenshot && window.__screenshotHook) {
+        screenshot = await window.__screenshotHook.captureScreenshotBlocking({ skipCooldown: true })
+        if (screenshot) {
+          INFRASTRUCTURE_CONSOLE.log(`[StateCapture] Screenshot captured (${Math.round(screenshot.length / 1024)}KB)`)
+        } else {
+          INFRASTRUCTURE_CONSOLE.warn("[StateCapture] Screenshot capture returned null")
+        }
+      } else if (!window.__screenshotHook) {
+        INFRASTRUCTURE_CONSOLE.warn("[StateCapture] Screenshot hook not available")
+      }
 
       // Send snapshot back to LiveView
       this.pushEvent("state_snapshot", {
