@@ -137,8 +137,15 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
     # Store console messages in ConsoleCache (if any new messages)
     if console_messages = snapshot_data["console_messages"] do
+      Logger.debug("[WireframePreviewLive] Storing #{length(console_messages)} console messages in ConsoleCache")
       Enum.each(console_messages, fn msg ->
-        Koalemos.Caches.ConsoleCache.add_message(routine_id, msg)
+        # Convert string keys to atom keys (JavaScript sends strings, ConsoleCache expects atoms)
+        atomized_msg = %{
+          level: msg["level"],
+          message: msg["message"],
+          timestamp: msg["timestamp"]
+        }
+        Koalemos.Caches.ConsoleCache.add_message(routine_id, atomized_msg)
       end)
     end
 
@@ -201,6 +208,53 @@ defmodule KoalemosWeb.WireframePreviewLive do
         <% end %>
       </head>
       <body>
+        <!-- Early console interception (Sprint 7 Phase 4) - must run BEFORE init scripts -->
+        <script>
+          // Store original console methods before any wireframe code runs
+          window.__originalConsole = {
+            log: console.log.bind(console),
+            warn: console.warn.bind(console),
+            error: console.error.bind(console)
+          };
+
+          // Log that we're starting interception (using original console)
+          window.__originalConsole.log('[ConsoleInterception] Starting console capture - all subsequent logs will be buffered');
+
+          // Buffer for captured console messages
+          window.__consoleBuffer = [];
+
+          // Intercept console methods
+          ['log', 'warn', 'error'].forEach(function(level) {
+            var original = window.__originalConsole[level];
+            console[level] = function() {
+              // Still show in browser console
+              original.apply(console, arguments);
+
+              // Convert arguments to array and buffer
+              var args = Array.prototype.slice.call(arguments);
+              var message = args.map(function(arg) {
+                if (typeof arg === 'string') return arg;
+                if (arg instanceof Error) return arg.name + ': ' + arg.message + '\\n' + (arg.stack || '');
+                try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+              }).join(' ');
+
+              window.__consoleBuffer.push({
+                level: level,
+                message: message,
+                timestamp: Date.now()
+              });
+
+              // Limit buffer size
+              if (window.__consoleBuffer.length > 100) {
+                window.__consoleBuffer.shift();
+              }
+            };
+          });
+
+          // Log that interception is active (using original console so NOT captured)
+          window.__originalConsole.log('[ConsoleInterception] Console buffering is now active');
+        </script>
+
         <!-- JavaScript Updater Hook (Sprint 6) - dynamically updates variables/functions -->
         <div phx-hook="JavaScriptUpdater" id="js-updater" style="display: none;"></div>
 

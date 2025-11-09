@@ -1371,6 +1371,258 @@ Both should use the same formatter with the same output style.
 - Consider showing only CHANGED elements in live view
 - Extract common formatting to shared module
 
+### Live DOM Form Element Values
+**Status:** Deferred (identified during M4 Sprint 7 Phase 4 - November 9, 2025)
+
+**Problem:**
+Current DOM snapshot captures element attributes but not runtime form element values. When a user types into an input field or selects an option, the agent cannot see these values in the live DOM tree.
+
+**Example:**
+```html
+<!-- HTML design -->
+<input type="text" id="username" placeholder="Enter name">
+
+<!-- User types "Alice" -->
+<!-- Agent sees: <input> type: text, placeholder: Enter name -->
+<!-- Agent should see: <input> type: text, placeholder: Enter name, value: "Alice" -->
+```
+
+**Impact:**
+- Agent cannot verify form interactions worked correctly
+- Cannot see what user entered before form submission
+- Cannot debug form validation issues
+- Testing forms (like tic-tac-toe game state) is incomplete
+
+**Current workaround:**
+None. Form values are invisible to the agent in current snapshot implementation.
+
+**Better architecture:**
+Enhance `serializeDOM` to capture runtime values for form elements:
+
+```javascript
+serializeDOM(element) {
+  // ... existing code ...
+
+  // Capture runtime form values
+  const formData = {}
+
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    if (element.value) {
+      formData.value = element.value
+    }
+    if (element.type === 'checkbox' || element.type === 'radio') {
+      formData.checked = element.checked
+    }
+  } else if (element.tagName === 'SELECT') {
+    formData.selectedIndex = element.selectedIndex
+    formData.value = element.value
+  }
+
+  return {
+    tag: element.tagName.toLowerCase(),
+    id: element.id || null,
+    classes: Array.from(element.classList || []),
+    attributes: attributes,
+    formData: Object.keys(formData).length > 0 ? formData : null,
+    content: content,
+    children: children
+  }
+}
+```
+
+**Rendering in context:**
+```
+- username-input: <input> #username | type: text, placeholder: "Enter name" | VALUE: "Alice"
+- terms-checkbox: <input> #terms | type: checkbox | CHECKED: true
+```
+
+**Benefits:**
+- ✅ Agent sees complete runtime state
+- ✅ Can verify form interactions
+- ✅ Can test input validation logic
+- ✅ Better debugging of interactive features
+- ✅ Essential for game state tracking (tic-tac-toe)
+
+**Why deferred:**
+- Phase 4 focuses on console integration
+- Need to design consistent format for form data
+- Should test with various form element types first
+- May want to highlight changed values vs defaults
+
+**Future considerations:**
+- Highlight values that differ from default/placeholder
+- Capture contenteditable element content
+- Track focus state (which element has focus)
+- Capture selection ranges in text inputs
+
+### WireframeEditor Console Isolation Strategy
+**Status:** Deferred - Using discipline-based approach for M4 (identified November 9, 2025)
+
+**Problem:**
+Console interception in wireframe preview captures ALL console output, including infrastructure logging from JavaScriptUpdater hook, StateCapture, Interaction handlers, etc. Agent sees infrastructure messages instead of just wireframe output:
+
+Example of current pollution:
+```
+[LOG] [JavaScriptUpdater] Processing handler updates: {...}
+[LOG] [StateCapture] Capturing complete state...
+[LOG] [JavaScriptUpdater] Added click handler to refresh-btn
+```
+
+Agent should only see console output from the wireframe itself (user code + browser errors).
+
+**Architectural Options Considered:**
+
+**Option A: Nested LiveView Iframes (3 LiveView connections)**
+- Main editor page (wireframe_test_live.ex)
+- Outer preview iframe (wireframe_preview_live.ex with hook)
+- Inner content iframe (wireframe_content_live.ex - NEW)
+
+Architecture:
+```
+wireframe_test_live.ex
+  └─ <iframe src="/wireframe/preview/:id"> (LiveView with hook)
+       └─ <iframe src="/wireframe/content/:id"> (LiveView, no hook)
+            └─ Just wireframe DOM (LiveView patches, no reload)
+```
+
+✅ Complete architectural isolation
+✅ Real-time updates via LiveView patching (no blink)
+✅ All wireframe console output captured (including browser errors)
+❌ 3 LiveView connections per user (resource intensive)
+❌ Additional complexity (new LiveView module)
+
+**Option B: Manual DOM Patching in JavaScript**
+- Outer iframe: LiveView with hook
+- Inner iframe: Static HTML (no LiveView)
+- Hook manually patches inner DOM on updates
+
+Architecture:
+```
+wireframe_preview_live.ex
+  └─ <iframe srcdoc="...static HTML...">
+       └─ Hook receives PubSub events
+       └─ Hook manually diffs and patches DOM
+```
+
+✅ Only 2 LiveView connections
+✅ Console isolation
+✅ Closest to "metal" (how user would see static HTML)
+✅ Real-time updates (if patching is smart)
+❌ Reimplementing LiveView's DOM diffing in JavaScript (complex)
+❌ srcdoc changes cause iframe reload (blink on major updates)
+
+Note: flo uses variant of this approach (hook-based DOM manipulation, no isolation)
+
+**Option C: INFRASTRUCTURE_CONSOLE Discipline (CURRENT CHOICE)**
+- Module-level constant at top of wireframe_hooks.js
+- All infrastructure code uses INFRASTRUCTURE_CONSOLE.log()
+- Wireframe code uses regular console.log() (gets intercepted)
+
+Implementation:
+```javascript
+// Top of wireframe_hooks.js
+const INFRASTRUCTURE_CONSOLE = {
+  log: console.log.bind(console),
+  warn: console.warn.bind(console),
+  error: console.error.bind(console)
+}
+
+// Hook code uses:
+INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] ...")
+
+// Wireframe code uses:
+console.log("Hello") // Gets intercepted and sent to agent
+```
+
+✅ Simplest implementation (~30 line changes)
+✅ Only 2 LiveView connections
+✅ Real-time updates work perfectly
+✅ No architectural changes
+❌ Requires discipline (developers must use INFRASTRUCTURE_CONSOLE)
+❌ Easy to accidentally leak logs (use wrong console)
+❌ Doesn't capture browser-generated errors in infrastructure code
+
+**Option D: Hybrid Approach**
+- Inner iframe starts static
+- Major changes (DOM structure): reload inner iframe (blink acceptable)
+- Minor changes (CSS, handlers, variables): hook patches manually
+
+✅ 2 LiveView connections
+❌ Complex decision logic (what's "major" vs "minor"?)
+❌ Still has occasional blinks
+❌ Partial console isolation
+
+**Decision: Option C for M4 Demo**
+
+Rationale:
+- M4 demo timeline prioritizes working solution over perfect architecture
+- Only ~28 console.log calls to update in hook code
+- Blink-free real-time editing is critical for demo impact
+- Can revisit post-M4 with Option A or B if needed
+
+**Current Implementation Status:**
+- Console interception: ✅ Working (Phase 4 complete)
+- Infrastructure pollution: ❌ Not fixed yet
+- Need to update 28 console calls to use INFRASTRUCTURE_CONSOLE
+
+**Why Deferred:**
+- M4 Sprint 7 focused on getting console integration working
+- Cleaning up infrastructure logs is polish, not blocker
+- Demo can show agent seeing wireframe errors even with some noise
+- Post-M4: Can implement Option A (nested LiveViews) properly
+
+**Future Implementation Path (Post-M4):**
+
+Recommended: **Option A - Nested LiveView Iframes**
+
+Benefits over Option C:
+- Architectural isolation (impossible to leak)
+- Captures ALL wireframe output (including browser warnings)
+- No developer discipline required
+- Cleaner separation of concerns
+
+Implementation estimate: ~350 lines across 4 files
+- New: wireframe_content_live.ex (~100 lines)
+- Modified: wireframe_preview_live.ex (~100 lines)
+- Modified: wireframe_hooks.js (~150 lines)
+- Modified: router.ex (~10 lines)
+
+Alternative: **Option B - Manual DOM Patching**
+
+Benefits:
+- Closest to "bare metal" experience
+- Only 2 connections
+- Good learning exercise (understand LiveView diffing)
+
+Challenges:
+- Need efficient DOM diffing algorithm in JavaScript
+- Handle all element types (text nodes, attributes, event listeners)
+- May have edge cases LiveView handles that we miss
+
+Could reference flo's implementation as starting point.
+
+**Consequences of Current Approach (Option C):**
+
+**For M4 Demo:**
+- Agent will see some infrastructure logs mixed with wireframe output
+- Still demonstrates console integration capability
+- Wireframe errors and user console.log() work correctly
+
+**For Production:**
+- Need developer education (use INFRASTRUCTURE_CONSOLE in hooks)
+- Risk of accidental pollution in new features
+- Not fully automatic/architectural
+
+**For Maintenance:**
+- Every new hook feature must remember to use INFRASTRUCTURE_CONSOLE
+- Could add ESLint rule: "no bare console.log in wireframe_hooks.js"
+- Alternatively, create wrapper: all hooks extend BaseHook that provides this.log()
+
+**Testing Implications:**
+- Integration tests should verify infrastructure logs DON'T appear in agent context
+- Should verify wireframe logs DO appear
+- Test coverage for "pollution detection"
+
 ---
 
 ## Future / Ideas

@@ -646,7 +646,7 @@ defmodule KoalemosWeb.WireframeTestLive do
                   id="wireframe-preview"
                   src={"/wireframe-preview/#{@routine_id}"}
                   class="w-full h-full border-0"
-                  sandbox="allow-scripts allow-same-origin"
+                  sandbox="allow-scripts allow-same-origin allow-forms"
                   title="Wireframe Preview"
                 >
                 </iframe>

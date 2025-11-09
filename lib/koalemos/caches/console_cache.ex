@@ -35,9 +35,9 @@ defmodule Koalemos.Caches.ConsoleCache do
   Protects against infinite loop console spam:
   - Max 15 messages/second per routine
   - Max 10 duplicate messages within 5-second window
-  - Max 500 total messages per routine
-  - Automatic cleanup every 30 seconds
-  - 5-minute TTL on messages
+  - Max 500 total messages per routine (oldest messages are dropped when limit reached)
+  - Automatic cleanup every 30 seconds (only removes old rate limit tracking data)
+  - NO TTL on messages - they persist for the entire session
 
   When rate limits are hit, warning messages are inserted instead.
   """
@@ -48,8 +48,8 @@ defmodule Koalemos.Caches.ConsoleCache do
   # Rate limiting settings
   @max_messages_per_second 15
   @max_duplicate_messages 10
-  @cleanup_interval_ms 30_000  # Clean up every 30 seconds
-  @message_ttl_ms 300_000      # Messages expire after 5 minutes
+  @cleanup_interval_ms 30_000  # Clean up rate tracking data every 30 seconds
+  @rate_data_ttl_ms 300_000    # Rate tracking data expires after 5 minutes
   @max_messages_per_routine 500
   @duplicate_time_window_ms 5000  # Only count duplicates within 5 seconds
 
@@ -296,25 +296,35 @@ defmodule Koalemos.Caches.ConsoleCache do
   @impl true
   def handle_info(:cleanup, state) do
     now = System.monotonic_time(:millisecond)
-    cutoff = now - @message_ttl_ms
+    cutoff = now - @rate_data_ttl_ms
 
     new_state =
       state
       |> Enum.map(fn {routine_id, routine_data} ->
-        # Clean up old messages
-        fresh_messages =
-          Enum.filter(routine_data.messages, fn msg ->
-            Map.get(msg, :cached_at, 0) > cutoff
-          end)
+        # DO NOT clean up messages - they persist for the entire session
+        # Only clean up old rate tracking data to prevent memory bloat
 
         # Clean up old timestamps in rate data
         rate_data = routine_data.rate_data
         recent_timestamps = Map.get(rate_data, :recent_timestamps, [])
         fresh_timestamps = Enum.filter(recent_timestamps, &(&1 > cutoff))
 
-        updated_rate_data = Map.put(rate_data, :recent_timestamps, fresh_timestamps)
+        # Clean up old duplicate tracking data
+        duplicate_counts = Map.get(rate_data, :duplicate_counts, %{})
+        fresh_duplicate_counts =
+          duplicate_counts
+          |> Enum.map(fn {hash, timestamps} ->
+            {hash, Enum.filter(timestamps, &(&1 > cutoff))}
+          end)
+          |> Enum.reject(fn {_hash, timestamps} -> Enum.empty?(timestamps) end)
+          |> Enum.into(%{})
 
-        {routine_id, %{messages: fresh_messages, rate_data: updated_rate_data}}
+        updated_rate_data =
+          rate_data
+          |> Map.put(:recent_timestamps, fresh_timestamps)
+          |> Map.put(:duplicate_counts, fresh_duplicate_counts)
+
+        {routine_id, %{messages: routine_data.messages, rate_data: updated_rate_data}}
       end)
       |> Enum.into(%{})
 

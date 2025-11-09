@@ -109,10 +109,12 @@ defmodule Koalemos.Lenses.WireframeEditor do
             dom_state when is_map(dom_state) -> Map.get(dom_state, :live_dom_tree)
           end
 
+          # Get all console messages from the session (up to limit)
+          # No time window - messages persist for entire session since we removed TTL
           console_output = ConsoleCache.get_messages(routine_id,
-            since: DateTime.add(DateTime.utc_now(), -60, :second),
             limit: 50
           )
+          Logger.debug("[WireframeEditor] Fetched #{length(console_output)} console messages from cache")
 
           screenshot_data = unless skip_screenshot do
             case ScreenshotCache.get(routine_id) do
@@ -797,6 +799,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
   defp build_init_scripts_section(_), do: nil
 
   defp build_console_section(%{console_output: logs}) when length(logs) > 0 do
+    Logger.debug("[WireframeEditor] Building console section with #{length(logs)} messages")
     recent_logs = Enum.take(logs, 10)
     log_list = Enum.map_join(recent_logs, "\n", fn log ->
       level = String.upcase(Map.get(log, :level, "log"))
@@ -811,7 +814,10 @@ defmodule Koalemos.Lenses.WireframeEditor do
     #{log_list}
     """
   end
-  defp build_console_section(_), do: nil
+  defp build_console_section(running) do
+    Logger.debug("[WireframeEditor] No console messages to display. Running state: #{inspect(Map.keys(running))}")
+    nil
+  end
 
   defp build_tools_guide do
     """
@@ -908,6 +914,22 @@ defmodule Koalemos.Lenses.WireframeEditor do
   end
 
   defp format_timestamp_age(nil), do: "unknown"
+
+  # Handle JavaScript timestamps (milliseconds since epoch)
+  defp format_timestamp_age(timestamp) when is_integer(timestamp) do
+    now_ms = System.system_time(:millisecond)
+    diff_ms = now_ms - timestamp
+    seconds_ago = div(diff_ms, 1000)
+
+    cond do
+      seconds_ago < 5 -> "just now"
+      seconds_ago < 60 -> "#{seconds_ago}s ago"
+      seconds_ago < 3600 -> "#{div(seconds_ago, 60)}m ago"
+      true -> "#{div(seconds_ago, 3600)}h ago"
+    end
+  end
+
+  # Handle DateTime structs
   defp format_timestamp_age(timestamp) when is_struct(timestamp, DateTime) do
     seconds_ago = DateTime.diff(DateTime.utc_now(), timestamp)
     cond do
@@ -917,6 +939,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
       true -> "#{div(seconds_ago, 3600)}h ago"
     end
   end
+
   defp format_timestamp_age(_), do: "unknown"
 
   # Broadcast DOM tree updates via PubSub for live preview updates

@@ -1,6 +1,37 @@
 // Wireframe-specific LiveView hooks
 // Loaded globally but only activates on elements with phx-hook="ScreenshotCapture"
 
+// Infrastructure console - never captured, only shows in browser
+// Uses the original console methods saved by early interception script
+// All hook code should use this instead of bare console.log/warn/error
+//
+// NOTE: The early script in wireframe_preview_live.ex creates window.__originalConsole
+// with bound methods (console.log.bind(console)). We just call them directly.
+const INFRASTRUCTURE_CONSOLE = {
+  log: function(...args) {
+    if (window.__originalConsole?.log) {
+      window.__originalConsole.log(...args)
+    } else {
+      // Debug: __originalConsole not available
+      console.log('[INFRA] No __originalConsole:', ...args)
+    }
+  },
+  warn: function(...args) {
+    if (window.__originalConsole?.warn) {
+      window.__originalConsole.warn(...args)
+    } else {
+      console.warn('[INFRA] No __originalConsole:', ...args)
+    }
+  },
+  error: function(...args) {
+    if (window.__originalConsole?.error) {
+      window.__originalConsole.error(...args)
+    } else {
+      console.error('[INFRA] No __originalConsole:', ...args)
+    }
+  }
+}
+
 const WireframeHooks = {}
 
 /**
@@ -188,7 +219,7 @@ WireframeHooks.ScreenshotCapture = {
  */
 WireframeHooks.JavaScriptUpdater = {
   mounted() {
-    console.log("[JavaScriptUpdater] Hook mounted - ready to receive JS updates")
+    INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] Hook mounted - ready to receive JS updates")
 
     // Track attached handlers so we can remove them before re-attaching
     this.attachedHandlers = new Map() // Map<elementId, Map<eventType, handlerFunc>>
@@ -196,41 +227,41 @@ WireframeHooks.JavaScriptUpdater = {
     // Listen for init script changes - reload page for clean initialization
     // TODO BACKLOG: Implement "soft reload" (reset state without browser reload)
     this.handleEvent("reload_page", () => {
-      console.log("[JavaScriptUpdater] Init scripts changed - reloading page for clean state")
+      INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] Init scripts changed - reloading page for clean state")
       window.location.reload()
     })
 
     // Listen for variable updates from server
     this.handleEvent("update_variables", ({variables}) => {
-      console.log("[JavaScriptUpdater] Updating variables:", variables)
+      INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] Updating variables:", variables)
       Object.entries(variables).forEach(([name, value]) => {
         window[name] = value
-        console.log(`[JavaScriptUpdater] Set window.${name} =`, value)
+        INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] Set window.${name} =`, value)
       })
     })
 
     // Listen for function updates from server
     this.handleEvent("update_functions", ({functions}) => {
-      console.log("[JavaScriptUpdater] Updating functions:", Object.keys(functions))
+      INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] Updating functions:", Object.keys(functions))
       Object.entries(functions).forEach(([name, code]) => {
         try {
           // Evaluate function code and assign to window
           window[name] = eval(`(${code})`)
-          console.log(`[JavaScriptUpdater] Set window.${name} = function`)
+          INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] Set window.${name} = function`)
         } catch (error) {
-          console.error(`[JavaScriptUpdater] Failed to update function ${name}:`, error)
+          INFRASTRUCTURE_CONSOLE.error(`[JavaScriptUpdater] Failed to update function ${name}:`, error)
         }
       })
     })
 
     // Listen for handler updates from server
     this.handleEvent("update_handlers", ({handlers}) => {
-      console.log("[JavaScriptUpdater] Processing handler updates:", handlers)
+      INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] Processing handler updates:", handlers)
 
       Object.entries(handlers).forEach(([elementId, events]) => {
         const el = document.getElementById(elementId)
         if (!el) {
-          console.warn(`[JavaScriptUpdater] Element not found: ${elementId}`)
+          INFRASTRUCTURE_CONSOLE.warn(`[JavaScriptUpdater] Element not found: ${elementId}`)
           return
         }
 
@@ -253,9 +284,9 @@ WireframeHooks.JavaScriptUpdater = {
             // Remove old handler if it exists
             if (oldHandler) {
               el.removeEventListener(eventType, oldHandler.func)
-              console.log(`[JavaScriptUpdater] Replaced ${eventType} handler on ${elementId}`)
+              INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] Replaced ${eventType} handler on ${elementId}`)
             } else {
-              console.log(`[JavaScriptUpdater] Added ${eventType} handler to ${elementId}`)
+              INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] Added ${eventType} handler to ${elementId}`)
             }
 
             try {
@@ -266,11 +297,11 @@ WireframeHooks.JavaScriptUpdater = {
               // Store handler with its spec for comparison
               newHandlers.set(eventType, {func: handlerFunc, spec: handlerSpec})
             } catch (error) {
-              console.error(`[JavaScriptUpdater] Failed to attach ${eventType} handler to ${elementId}:`, error)
+              INFRASTRUCTURE_CONSOLE.error(`[JavaScriptUpdater] Failed to attach ${eventType} handler to ${elementId}:`, error)
             }
           } else {
             // Handler unchanged - keep the old one
-            console.log(`[JavaScriptUpdater] Kept unchanged ${eventType} handler on ${elementId}`)
+            INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] Kept unchanged ${eventType} handler on ${elementId}`)
             newHandlers.set(eventType, oldHandler)
           }
         })
@@ -280,7 +311,7 @@ WireframeHooks.JavaScriptUpdater = {
           if (!newEventTypes.has(eventType)) {
             const oldHandler = oldHandlers.get(eventType)
             el.removeEventListener(eventType, oldHandler.func)
-            console.log(`[JavaScriptUpdater] Removed ${eventType} handler from ${elementId}`)
+            INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] Removed ${eventType} handler from ${elementId}`)
           }
         })
 
@@ -291,19 +322,42 @@ WireframeHooks.JavaScriptUpdater = {
 
     // Listen for state capture requests (Sprint 7)
     this.handleEvent("capture_state", (opts) => {
-      console.log("[JavaScriptUpdater] State capture requested")
+      INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] State capture requested")
       this.captureCompleteState(opts)
     })
 
-    // Initialize state for console tracking (will be used in Phase 4)
-    this.lastSnapshotTime = Date.now()
-    this.consoleBuffer = []
+    // Initialize state for console tracking (Sprint 7 Phase 4)
+    // Start from 0 so we capture ALL console output including init scripts
+    // that ran before this hook mounted
+    this.lastSnapshotTime = 0
+
+    // Use the global console buffer created by early interception script
+    // This buffer already captured init script console output
+    this.consoleBuffer = window.__consoleBuffer || []
+    this.originalConsole = window.__originalConsole || {}
+
+    INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] Console tracking initialized, buffer has ${this.consoleBuffer.length} messages`)
 
     // Listen for interaction execution requests (Sprint 7 Phase 3)
     this.handleEvent("execute_interaction", (args) => {
-      console.log("[Interaction] Received execution request:", args)
+      INFRASTRUCTURE_CONSOLE.log("[Interaction] Received execution request:", args)
       this.executeInteraction(args)
     })
+  },
+
+
+
+  /**
+   * Get console messages since last snapshot
+   * Sprint 7 Phase 4
+   */
+  getConsoleSinceLastSnapshot() {
+    // Filter messages that occurred after last snapshot
+    const messages = this.consoleBuffer.filter(msg =>
+      msg.timestamp >= this.lastSnapshotTime
+    )
+
+    return messages
   },
 
   /**
@@ -311,18 +365,18 @@ WireframeHooks.JavaScriptUpdater = {
    * Sprint 7 Phase 2
    */
   async captureCompleteState(opts = {}) {
-    console.log("[StateCapture] Capturing complete state...")
+    INFRASTRUCTURE_CONSOLE.log("[StateCapture] Capturing complete state...")
 
     try {
       // Serialize DOM tree (capture only wireframe content, not LiveView wrapper)
       const wireframeRoot = document.getElementById('root')
       if (!wireframeRoot) {
-        console.warn("[StateCapture] Wireframe root element not found, falling back to body")
+        INFRASTRUCTURE_CONSOLE.warn("[StateCapture] Wireframe root element not found, falling back to body")
       }
       const dom_tree = this.serializeDOM(wireframeRoot || document.body)
 
-      // Gather console messages since last snapshot (placeholder for Phase 4)
-      const console_messages = []  // Will populate in Phase 4
+      // Gather console messages since last snapshot (Sprint 7 Phase 4)
+      const console_messages = this.getConsoleSinceLastSnapshot()
 
       // Capture screenshot (placeholder for Phase 5)
       const screenshot = null  // Will implement in Phase 5
@@ -336,9 +390,9 @@ WireframeHooks.JavaScriptUpdater = {
       })
 
       this.lastSnapshotTime = Date.now()
-      console.log("[StateCapture] State snapshot sent successfully")
+      INFRASTRUCTURE_CONSOLE.log("[StateCapture] State snapshot sent successfully")
     } catch (error) {
-      console.error("[StateCapture] Failed to capture state:", error)
+      INFRASTRUCTURE_CONSOLE.error("[StateCapture] Failed to capture state:", error)
       // Still send partial data if possible
       this.pushEvent("state_snapshot", {
         error: error.message,
@@ -405,7 +459,7 @@ WireframeHooks.JavaScriptUpdater = {
    * Sprint 7 Phase 3
    */
   executeInteraction(command) {
-    console.log("[Interaction] Executing:", command)
+    INFRASTRUCTURE_CONSOLE.log("[Interaction] Executing:", command)
 
     try {
       // Execute the requested action
@@ -435,7 +489,7 @@ WireframeHooks.JavaScriptUpdater = {
       }, 300)
 
     } catch (error) {
-      console.error("[Interaction] Failed:", error)
+      INFRASTRUCTURE_CONSOLE.error("[Interaction] Failed:", error)
       this.pushEvent("interaction_complete", {
         success: false,
         action: command.action,
@@ -453,7 +507,7 @@ WireframeHooks.JavaScriptUpdater = {
     if (!el) {
       throw new Error(`Element not found: ${elementId}`)
     }
-    console.log(`[Interaction] Clicking element: ${elementId}`)
+    INFRASTRUCTURE_CONSOLE.log(`[Interaction] Clicking element: ${elementId}`)
     el.click()
   },
 
@@ -466,7 +520,7 @@ WireframeHooks.JavaScriptUpdater = {
     if (!el) {
       throw new Error(`Element not found: ${elementId}`)
     }
-    console.log(`[Interaction] Filling ${elementId} with: ${value}`)
+    INFRASTRUCTURE_CONSOLE.log(`[Interaction] Filling ${elementId} with: ${value}`)
     el.value = value
     // Dispatch input and change events to trigger any listeners
     el.dispatchEvent(new Event('input', { bubbles: true }))
@@ -482,7 +536,7 @@ WireframeHooks.JavaScriptUpdater = {
     if (!el) {
       throw new Error(`Element not found: ${elementId}`)
     }
-    console.log(`[Interaction] Submitting form: ${elementId}`)
+    INFRASTRUCTURE_CONSOLE.log(`[Interaction] Submitting form: ${elementId}`)
     // Dispatch submit event (respects preventDefault if handler uses it)
     el.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
   },
@@ -492,14 +546,14 @@ WireframeHooks.JavaScriptUpdater = {
    * Sprint 7 Phase 3
    */
   executeJavaScript(code) {
-    console.log(`[Interaction] Executing JavaScript: ${code.substring(0, 50)}...`)
+    INFRASTRUCTURE_CONSOLE.log(`[Interaction] Executing JavaScript: ${code.substring(0, 50)}...`)
     // Execute in global scope using Function constructor
     const func = new Function(code)
     func()
   },
 
   destroyed() {
-    console.log("[JavaScriptUpdater] Hook destroyed - cleaning up handlers")
+    INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] Hook destroyed - cleaning up handlers")
 
     // Clean up all attached handlers
     this.attachedHandlers.forEach((handlers, elementId) => {
@@ -512,6 +566,10 @@ WireframeHooks.JavaScriptUpdater = {
     })
 
     this.attachedHandlers.clear()
+
+    // Console interception is handled by global script, no cleanup needed
+    // Just clear the buffer reference
+    this.consoleBuffer = null
   }
 }
 
