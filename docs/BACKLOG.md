@@ -1623,6 +1623,70 @@ Could reference flo's implementation as starting point.
 - Should verify wireframe logs DO appear
 - Test coverage for "pollution detection"
 
+### WireframeEditor Inline DOM Diff Highlighting
+**Status:** Deferred from M4 Sprint 7 Phase 6 (identified November 9, 2025)
+
+**Problem:**
+When the live DOM differs from the designed state, the agent receives both trees but no visual highlighting of what specifically changed. This makes it harder for the agent to quickly identify modifications.
+
+**Attempted Solution (Sprint 7 Phase 6):**
+Implemented inline diff markers (`+` for added, `~` for modified elements) directly in the DOM tree display with annotations like `[Modified: text: "old" → "new"]`.
+
+**What Worked:**
+- ✅ Diff detection: Successfully compares designed vs live DOM trees
+- ✅ Status indication: Shows "DIFFERS FROM DESIGN ⚠️" when changes exist
+- ✅ Diff computation: MapSet-based algorithm correctly identifies added/removed/modified elements
+- ✅ Change description: Accurately detects content, class, and value changes
+
+**What Didn't Work:**
+- ❌ Inline display: Diff markers not appearing in formatted output despite correct computation
+- ❌ Debugging complexity: Deep recursion in `format_dom_tree` made it difficult to trace rendering flow
+- ❌ Field mismatch: Designed tree uses `:content`, live tree sometimes uses `:text`, created edge cases
+- ❌ Annotation timing: `describe_element_changes` called correctly but changes description returned empty
+
+**Root Cause:**
+The `format_dom_tree/4` recursive function needs to pass diff info through entire tree, adding an extra parameter to every recursive call. The inline marker injection point is deep in recursion, making it hard to debug when markers don't appear. Field naming inconsistencies between designed (`:content`, `:classes`) and live (`:text`, `:class`) required careful handling.
+
+**Current State:**
+- Diff feature code removed to keep codebase clean
+- Agent receives accurate designed and live DOM trees
+- Status line correctly indicates when trees differ
+- Screenshots provide visual context
+- Enhanced console display shows errors/warnings (✅ delivered in Phase 6)
+
+**Future Approach:**
+When revisiting this feature:
+
+1. **Separate diff formatting from tree formatting**: Instead of trying to add diff markers inline during recursive tree formatting, consider:
+   - First format the tree normally
+   - Then post-process the formatted string to add diff markers
+   - Or build a separate diff view that highlights changes
+
+2. **Normalize data structures first**: Before computing diffs, normalize both trees to use consistent field names (`:content` vs `:text`, `:classes` vs `:class`)
+
+3. **Simpler annotation strategy**: Instead of inline markers, consider:
+   - A separate "Changes" section at the top listing modifications
+   - Element IDs in the main tree that link to change descriptions
+   - Side-by-side diff view (designed | live)
+
+4. **Test with simpler cases**: Start with single-element changes before tackling full tree diffs
+
+5. **Use external diff library**: Consider using a proven diff algorithm library rather than custom implementation
+
+**Related Files:**
+- `lib/koalemos/lenses/wireframe_editor/core.ex` - Context building and tree formatting
+- Removed code available in git history from Nov 9 2025 (Sprint 7 Phase 6 commits)
+
+**Estimated Effort:**
+2-3 hours with fresh perspective and simplified approach (separate diff section or post-processing)
+
+**Why Deferred:**
+- Inline markers proved more complex than anticipated due to recursive tree formatting
+- Current approach (two complete trees + status) provides sufficient debugging information
+- Agent can compare trees manually
+- M4 demo timeline prioritizes working features over perfect UX
+- Can revisit post-M4 with clearer requirements and simpler architecture
+
 ---
 
 ## Future / Ideas

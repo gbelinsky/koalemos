@@ -672,6 +672,8 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
   defp process_additions(tree, additions) do
     {final_tree, results} = Enum.reduce(additions, {tree, []}, fn addition, {current_tree, acc_results} ->
       parent_id = Map.get(addition, "parent_id")
+      position = Map.get(addition, "position", "last")
+      reference_id = Map.get(addition, "reference_id")
 
       # Collect all existing IDs from the tree for uniqueness checking
       used_ids = collect_all_ids(current_tree)
@@ -679,13 +681,15 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
       # Build element with auto-generated IDs for children without IDs
       {new_element, _counter} = build_element_from_spec_with_ids(addition, used_ids, 1)
 
-      case add_element(current_tree, parent_id, new_element) do
+      case add_element(current_tree, parent_id, new_element, position, reference_id) do
         {:ok, updated_tree} ->
           {updated_tree, [{:ok, "Added #{new_element.id}"} | acc_results]}
         {:error, :parent_not_found} ->
           {current_tree, [{:error, "Parent element '#{parent_id}' not found"} | acc_results]}
         {:error, :duplicate_id} ->
           {current_tree, [{:error, "Element with ID '#{new_element.id}' already exists"} | acc_results]}
+        {:error, :reference_not_found} ->
+          {current_tree, [{:error, "Reference element '#{reference_id}' not found in parent"} | acc_results]}
       end
     end)
 
@@ -853,30 +857,70 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     if found, do: {:ok, updated}, else: {:error, :not_found}
   end
 
-  defp add_element(%{id: id, children: children} = element, parent_id, new_element) when id == parent_id do
+  # Insert element at specified position within children list
+  # Supports: "first", "last", "before", "after" (before/after require reference_id)
+  defp insert_at_position(children, new_element, "first", _reference_id) do
+    {:ok, [new_element | children]}
+  end
+  defp insert_at_position(children, new_element, "last", _reference_id) do
+    {:ok, children ++ [new_element]}
+  end
+  defp insert_at_position(children, new_element, "before", reference_id) when not is_nil(reference_id) do
+    case find_index_by_id(children, reference_id) do
+      {:ok, index} -> {:ok, List.insert_at(children, index, new_element)}
+      :not_found -> {:error, :reference_not_found}
+    end
+  end
+  defp insert_at_position(children, new_element, "after", reference_id) when not is_nil(reference_id) do
+    case find_index_by_id(children, reference_id) do
+      {:ok, index} -> {:ok, List.insert_at(children, index + 1, new_element)}
+      :not_found -> {:error, :reference_not_found}
+    end
+  end
+  defp insert_at_position(_children, _new_element, _position, _reference_id) do
+    {:error, :invalid_position}
+  end
+
+  # Find index of element with given ID in children list
+  defp find_index_by_id(children, target_id) do
+    children
+    |> Enum.with_index()
+    |> Enum.find_value(fn {child, index} ->
+      if Map.get(child, :id) == target_id, do: {:ok, index}
+    end)
+    |> case do
+      {:ok, _index} = result -> result
+      nil -> :not_found
+    end
+  end
+
+  defp add_element(%{id: id, children: children} = element, parent_id, new_element, position, reference_id) when id == parent_id do
     # Check for duplicate ID
     if element_exists?(element, new_element.id) do
       {:error, :duplicate_id}
     else
-      {:ok, %{element | children: children ++ [new_element]}}
+      case insert_at_position(children, new_element, position, reference_id) do
+        {:ok, updated_children} -> {:ok, %{element | children: updated_children}}
+        error -> error
+      end
     end
   end
-  defp add_element(%{children: children} = element, parent_id, new_element) do
-    case add_to_children(children, parent_id, new_element) do
+  defp add_element(%{children: children} = element, parent_id, new_element, position, reference_id) do
+    case add_to_children(children, parent_id, new_element, position, reference_id) do
       {:ok, updated_children} -> {:ok, %{element | children: updated_children}}
       error -> error
     end
   end
-  defp add_element(_element, _parent_id, _new_element) do
+  defp add_element(_element, _parent_id, _new_element, _position, _reference_id) do
     {:error, :parent_not_found}
   end
 
-  defp add_to_children(children, parent_id, new_element) do
+  defp add_to_children(children, parent_id, new_element, position, reference_id) do
     {updated, found} = Enum.reduce(children, {[], false}, fn child, {acc, found} ->
       if found do
         {acc ++ [child], found}
       else
-        case add_element(child, parent_id, new_element) do
+        case add_element(child, parent_id, new_element, position, reference_id) do
           {:ok, updated_child} -> {acc ++ [updated_child], true}
           {:error, :parent_not_found} -> {acc ++ [child], false}
           error -> throw(error)

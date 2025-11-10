@@ -199,7 +199,16 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
     context_text = Enum.join(Enum.reject(context_parts, &is_nil/1), "\n\n")
 
-    [%{type: "text", text: context_text}]
+    # Add screenshot if available (Sprint 7 Phase 6)
+    screenshot_block = build_screenshot_block(running)
+
+    # Return text block + optional image block
+    # Image blocks go in messages array (not system) via LensRendering
+    if screenshot_block do
+      [%{type: "text", text: context_text}, screenshot_block]
+    else
+      [%{type: "text", text: context_text}]
+    end
   end
 
   @doc """
@@ -801,17 +810,45 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
   defp build_console_section(%{console_output: logs}) when length(logs) > 0 do
     Logger.debug("[WireframeEditor] Building console section with #{length(logs)} messages")
-    recent_logs = Enum.take(logs, 10)
+
+    # Count errors and warnings (Sprint 7 Phase 6)
+    error_count = Enum.count(logs, fn log -> Map.get(log, :level) == "error" end)
+    warn_count = Enum.count(logs, fn log -> Map.get(log, :level) == "warn" end)
+
+    # Show last 20 messages (user preference)
+    recent_logs = Enum.take(logs, 20)
+
+    # Format with visual indicators (Sprint 7 Phase 6)
     log_list = Enum.map_join(recent_logs, "\n", fn log ->
-      level = String.upcase(Map.get(log, :level, "log"))
+      level = Map.get(log, :level, "log")
+      level_upper = String.upcase(level)
       message = Map.get(log, :message, "")
       timestamp = format_timestamp_age(Map.get(log, :timestamp))
-      "[#{level}] (#{timestamp}) #{message}"
+
+      # Add visual indicator based on level
+      indicator = case level do
+        "error" -> "❌"
+        "warn" -> "⚠️"
+        _ -> "ℹ️"
+      end
+
+      "#{indicator} [#{level_upper}] (#{timestamp}) #{message}"
     end)
 
-    """
-    === CONSOLE OUTPUT (last 10 messages) ===
+    # Build summary line
+    summary_parts = []
+    summary_parts = if error_count > 0, do: [summary_parts, "#{error_count} error(s)"], else: summary_parts
+    summary_parts = if warn_count > 0, do: [summary_parts, "#{warn_count} warning(s)"], else: summary_parts
 
+    summary = if length(List.flatten(summary_parts)) > 0 do
+      "\nSummary: " <> Enum.join(List.flatten(summary_parts), ", ")
+    else
+      ""
+    end
+
+    """
+    === CONSOLE OUTPUT (last 20 messages) ===
+#{summary}
     #{log_list}
     """
   end
@@ -819,6 +856,21 @@ defmodule Koalemos.Lenses.WireframeEditor do
     Logger.debug("[WireframeEditor] No console messages to display. Running state: #{inspect(Map.keys(running))}")
     nil
   end
+
+  # Build screenshot image block (Sprint 7 Phase 6)
+  # Returns image block in format expected by Anthropic provider
+  # Will be added to messages array (not system) by LensRendering
+  defp build_screenshot_block(%{screenshot: screenshot_data}) when not is_nil(screenshot_data) do
+    %{
+      type: "image",
+      source: %{
+        type: "base64",
+        media_type: "image/png",
+        data: screenshot_data
+      }
+    }
+  end
+  defp build_screenshot_block(_), do: nil
 
   defp build_tools_guide do
     """

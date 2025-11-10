@@ -178,10 +178,11 @@ defmodule KoalemosWeb.WireframePreviewLiveTest do
 
       {:ok, _view, html} = live(conn, "/wireframe-preview/#{routine_id}")
 
-      # Should not render any JavaScript section
+      # Should not render user JavaScript sections
+      # Note: Phoenix includes app.js, so we check for user-generated script markers
       refute html =~ "// ===== Global Variables ====="
       refute html =~ "// ===== Function Definitions ====="
-      refute html =~ "<script>"
+      refute html =~ "// ===== Event Handler Attachment ====="
     end
 
     test "updates JavaScript on PubSub broadcast", %{conn: conn} do

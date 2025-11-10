@@ -810,8 +810,10 @@ defmodule KoalemosWeb.WireframeTestLive do
         context_blocks = WireframeEditor.provide_context(state)
 
         # Extract text from context blocks
+        # May include image block (Sprint 7 Phase 6), but we only display text in UI
         agent_context = case context_blocks do
           [%{type: "text", text: text}] -> text
+          [%{type: "text", text: text}, _image_block] -> text
           _ -> "No context generated"
         end
 
@@ -885,8 +887,10 @@ defmodule KoalemosWeb.WireframeTestLive do
     context_blocks = WireframeEditor.provide_context(state)
 
     # Extract text from context blocks
+    # May include image block (Sprint 7 Phase 6), but we only display text in UI
     case context_blocks do
       [%{type: "text", text: text}] -> text
+      [%{type: "text", text: text}, _image_block] -> text
       _ -> "No context generated"
     end
   end
