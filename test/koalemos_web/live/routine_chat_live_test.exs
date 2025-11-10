@@ -2,6 +2,28 @@ defmodule KoalemosWeb.RoutineChatLiveTest do
   use KoalemosWeb.ConnCase
   import Phoenix.LiveViewTest
 
+  alias Koalemos.EngineManager
+
+  setup do
+    # Cleanup: Stop any routines created by this test after test completes
+    on_exit(fn ->
+      # Get all routine-test routines
+      routine_routines =
+        EngineManager.list_routines()
+        |> Enum.filter(fn info -> String.starts_with?(info.id, "routine-test-") end)
+
+      # Stop each one
+      Enum.each(routine_routines, fn info ->
+        EngineManager.stop_routine(info.id)
+      end)
+
+      # Give processes time to terminate
+      :timer.sleep(10)
+    end)
+
+    :ok
+  end
+
   test "renders chat page with routine_id", %{conn: conn} do
     routine_id = "routine-test-#{:erlang.unique_integer([:positive])}"
     {:ok, _view, html} = live(conn, ~p"/chat/#{routine_id}")

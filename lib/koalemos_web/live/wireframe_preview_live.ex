@@ -42,7 +42,7 @@ defmodule KoalemosWeb.WireframePreviewLive do
   def mount(%{"routine_id" => routine_id} = _params, _session, socket) do
     Logger.info("[WireframePreviewLive] 🔄 Mounting for routine: #{routine_id}")
 
-    # Subscribe to PubSub for wireframe updates
+    # Subscribe to PubSub for wireframe updates, snapshots, and interactions
     Phoenix.PubSub.subscribe(
       Koalemos.PubSub,
       "wireframe_updates:#{routine_id}"
@@ -97,6 +97,91 @@ defmodule KoalemosWeb.WireframePreviewLive do
     )}
   end
 
+  # Handle snapshot request from WireframeEditor lens (Sprint 7)
+  @impl true
+  def handle_info({:snapshot_request, requested_id, opts}, socket) do
+    Logger.info("[WireframePreviewLive] Received snapshot_request for #{requested_id}, my routine_id: #{socket.assigns.routine_id}")
+
+    if socket.assigns.routine_id == requested_id do
+      Logger.info("[WireframePreviewLive] Snapshot requested, triggering client capture")
+      skip_screenshot = Keyword.get(opts || [], :skip_screenshot, false)
+      {:noreply, push_event(socket, "capture_state", %{skip_screenshot: skip_screenshot})}
+    else
+      Logger.warning("[WireframePreviewLive] Snapshot request for wrong routine_id: #{requested_id} != #{socket.assigns.routine_id}")
+      {:noreply, socket}
+    end
+  end
+
+  # Handle interaction execution request from WireframeEditor (Sprint 7 Phase 3)
+  @impl true
+  def handle_info({:execute_interaction, args}, socket) do
+    Logger.debug("[WireframePreviewLive] Executing interaction: #{inspect(args)}")
+    {:noreply, push_event(socket, "execute_interaction", args)}
+  end
+
+  # Handle state snapshot data from client (Sprint 7)
+  @impl true
+  def handle_event("state_snapshot", snapshot_data, socket) do
+    routine_id = socket.assigns.routine_id
+
+    Logger.debug("[WireframePreviewLive] Received state snapshot from client")
+
+    # Store DOM in DOMStateCache (use format expected by cache)
+    if dom_tree = snapshot_data["dom_tree"] do
+      Koalemos.Caches.DOMStateCache.add_dom_state(routine_id, %{
+        "liveDOMTree" => dom_tree,
+        "changeType" => "snapshot",
+        "timestamp" => System.system_time(:millisecond)
+      })
+    end
+
+    # Store console messages in ConsoleCache (if any new messages)
+    if console_messages = snapshot_data["console_messages"] do
+      Logger.debug("[WireframePreviewLive] Storing #{length(console_messages)} console messages in ConsoleCache")
+      Enum.each(console_messages, fn msg ->
+        # Convert string keys to atom keys (JavaScript sends strings, ConsoleCache expects atoms)
+        atomized_msg = %{
+          level: msg["level"],
+          message: msg["message"],
+          timestamp: msg["timestamp"]
+        }
+        Koalemos.Caches.ConsoleCache.add_message(routine_id, atomized_msg)
+      end)
+    end
+
+    # Store screenshot in ScreenshotCache
+    if screenshot_data = snapshot_data["screenshot"] do
+      Koalemos.Caches.ScreenshotCache.put(routine_id, screenshot_data)
+    end
+
+    # Broadcast ready notification
+    Phoenix.PubSub.broadcast(
+      Koalemos.PubSub,
+      "snapshot:response:#{routine_id}",
+      {:snapshot_ready, routine_id, DateTime.utc_now()}
+    )
+
+    {:noreply, socket}
+  end
+
+  # Handle interaction completion from client (Sprint 7 Phase 3)
+  @impl true
+  def handle_event("interaction_complete", result, socket) do
+    routine_id = socket.assigns.routine_id
+
+    Logger.info("[WireframePreviewLive] Interaction completed: #{inspect(result)}")
+
+    # Broadcast completion notification (for future use / debugging)
+    # Note: Currently fire-and-forget, not blocking like snapshots
+    Phoenix.PubSub.broadcast(
+      Koalemos.PubSub,
+      "interaction:response:#{routine_id}",
+      {:interaction_complete, result}
+    )
+
+    {:noreply, socket}
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -123,8 +208,58 @@ defmodule KoalemosWeb.WireframePreviewLive do
         <% end %>
       </head>
       <body>
+        <!-- Early console interception (Sprint 7 Phase 4) - must run BEFORE init scripts -->
+        <script>
+          // Store original console methods before any wireframe code runs
+          window.__originalConsole = {
+            log: console.log.bind(console),
+            warn: console.warn.bind(console),
+            error: console.error.bind(console)
+          };
+
+          // Log that we're starting interception (using original console)
+          window.__originalConsole.log('[ConsoleInterception] Starting console capture - all subsequent logs will be buffered');
+
+          // Buffer for captured console messages
+          window.__consoleBuffer = [];
+
+          // Intercept console methods
+          ['log', 'warn', 'error'].forEach(function(level) {
+            var original = window.__originalConsole[level];
+            console[level] = function() {
+              // Still show in browser console
+              original.apply(console, arguments);
+
+              // Convert arguments to array and buffer
+              var args = Array.prototype.slice.call(arguments);
+              var message = args.map(function(arg) {
+                if (typeof arg === 'string') return arg;
+                if (arg instanceof Error) return arg.name + ': ' + arg.message + '\\n' + (arg.stack || '');
+                try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+              }).join(' ');
+
+              window.__consoleBuffer.push({
+                level: level,
+                message: message,
+                timestamp: Date.now()
+              });
+
+              // Limit buffer size
+              if (window.__consoleBuffer.length > 100) {
+                window.__consoleBuffer.shift();
+              }
+            };
+          });
+
+          // Log that interception is active (using original console so NOT captured)
+          window.__originalConsole.log('[ConsoleInterception] Console buffering is now active');
+        </script>
+
         <!-- JavaScript Updater Hook (Sprint 6) - dynamically updates variables/functions -->
         <div phx-hook="JavaScriptUpdater" id="js-updater" style="display: none;"></div>
+
+        <!-- ScreenshotCapture Hook (Sprint 7 Phase 5) - enables screenshot capture for state snapshots -->
+        <div phx-hook="ScreenshotCapture" id="wireframe-screenshot-target" style="display: none;"></div>
 
         <%= if @dom_tree do %>
           <%= render_dom_tree(@dom_tree) %>
@@ -387,11 +522,6 @@ defmodule KoalemosWeb.WireframePreviewLive do
     |> Enum.join("\n\n")
   end
   defp render_custom_functions(_), do: ""
-
-  # render_event_handlers is no longer used (Sprint 6)
-  # Handlers are now attached dynamically via JavaScriptUpdater hook
-  # This allows proper cleanup and prevents duplicate handlers
-  defp render_event_handlers(_), do: ""
 
   defp render_init_scripts(init_scripts) when is_map(init_scripts) and map_size(init_scripts) > 0 do
     # Execute init scripts, handling both initial load and reload cases

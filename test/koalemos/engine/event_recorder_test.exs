@@ -275,7 +275,8 @@ defmodule Koalemos.Engine.EventRecorderTest do
 
       assert_receive {:routine_event, event}, 1000
       # Check metadata contains auto_execute false (key might be atom or string)
-      auto_exec = event.metadata[:auto_execute] || event.metadata["auto_execute"]
+      # Note: Use Map.get to avoid false || nil returning nil
+      auto_exec = Map.get(event.metadata, :auto_execute, Map.get(event.metadata, "auto_execute"))
       assert auto_exec == false or auto_exec == "false"
     end
 

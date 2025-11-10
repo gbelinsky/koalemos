@@ -3,10 +3,28 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
   import Phoenix.LiveViewTest
 
   alias Koalemos.Caches.ScreenshotCache
+  alias Koalemos.EngineManager
 
   setup do
     # Clear screenshot cache before each test
     ScreenshotCache.clear_all()
+
+    # Cleanup: Stop any routines created by this test after test completes
+    on_exit(fn ->
+      # Get all screenshot-test routines
+      screenshot_routines =
+        EngineManager.list_routines()
+        |> Enum.filter(fn info -> String.starts_with?(info.id, "screenshot-test-") end)
+
+      # Stop each one
+      Enum.each(screenshot_routines, fn info ->
+        EngineManager.stop_routine(info.id)
+      end)
+
+      # Give processes time to terminate
+      :timer.sleep(10)
+    end)
+
     :ok
   end
 

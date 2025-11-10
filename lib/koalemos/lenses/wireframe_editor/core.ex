@@ -49,7 +49,109 @@ defmodule Koalemos.Lenses.WireframeEditor do
   """
 
   alias Koalemos.Lenses.WireframeEditor.DOMHandler
+  alias Koalemos.Caches.DOMStateCache
+  alias Koalemos.Caches.ConsoleCache
+  alias Koalemos.Caches.ScreenshotCache
+  alias Koalemos.Caches.WireframeStateCache
   require Logger
+
+  @doc """
+  Capture current state from preview iframe.
+
+  Requests DOM snapshot, screenshot, and console messages via PubSub,
+  waits for response with timeout, and returns complete running state.
+
+  ## Options
+  - `:timeout` - Max wait time in ms (default: 5000)
+  - `:skip_screenshot` - Skip screenshot capture (default: false)
+
+  ## Returns
+  - `{:ok, running_state}` - Complete state captured
+  - `{:error, :timeout}` - Preview didn't respond in time
+  - `{:error, :no_preview}` - Preview not running
+
+  ## Example
+      {:ok, state} = capture_current_state("routine-123")
+      # => %{
+      #   dom_tree: %{tag: "div", ...},
+      #   console_output: [%{level: "error", ...}],
+      #   screenshot: "base64...",
+      #   captured_at: ~U[...]
+      # }
+  """
+  @spec capture_current_state(String.t(), keyword()) :: {:ok, map()} | {:error, atom()}
+  def capture_current_state(routine_id, opts \\ []) do
+    timeout = Keyword.get(opts, :timeout, 5000)
+    skip_screenshot = Keyword.get(opts, :skip_screenshot, false)
+
+    Logger.debug("[WireframeEditor] Requesting state snapshot for #{routine_id}")
+
+    # Subscribe to response topic temporarily
+    response_topic = "snapshot:response:#{routine_id}"
+    Phoenix.PubSub.subscribe(Koalemos.PubSub, response_topic)
+
+    try do
+      # Broadcast snapshot request to preview
+      Phoenix.PubSub.broadcast(
+        Koalemos.PubSub,
+        "wireframe_updates:#{routine_id}",
+        {:snapshot_request, routine_id, skip_screenshot: skip_screenshot}
+      )
+
+      # Wait for snapshot_ready notification
+      receive do
+        {:snapshot_ready, ^routine_id, _timestamp} ->
+          Logger.debug("[WireframeEditor] Snapshot ready, fetching from caches")
+
+          # Fetch from caches
+          dom_tree = case DOMStateCache.get_dom_state(routine_id) do
+            nil -> nil
+            dom_state when is_map(dom_state) -> Map.get(dom_state, :live_dom_tree)
+          end
+
+          # Get all console messages from the session (up to limit)
+          # No time window - messages persist for entire session since we removed TTL
+          console_output = ConsoleCache.get_messages(routine_id,
+            limit: 50
+          )
+          Logger.debug("[WireframeEditor] Fetched #{length(console_output)} console messages from cache")
+
+          screenshot_data = unless skip_screenshot do
+            case ScreenshotCache.get(routine_id) do
+              {:ok, data} -> data
+              _ -> nil
+            end
+          end
+
+          # Get designed DOM tree for comparison
+          designed_tree = case WireframeStateCache.get_state(routine_id) do
+            nil -> nil
+            lens_state -> get_in(lens_state, [:designed, :dom_tree])
+          end
+
+          # Compare live vs designed (simple equality check for now)
+          differs = designed_tree != nil && dom_tree != designed_tree
+
+          running_state = %{
+            dom_tree: dom_tree,
+            console_output: console_output || [],
+            screenshot: screenshot_data,
+            captured_at: DateTime.utc_now(),
+            differs_from_designed: differs
+          }
+
+          {:ok, running_state}
+
+      after
+        timeout ->
+          Logger.warning("[WireframeEditor] Snapshot timeout after #{timeout}ms for #{routine_id}")
+          {:error, :timeout}
+      end
+    after
+      # Always unsubscribe
+      Phoenix.PubSub.unsubscribe(Koalemos.PubSub, response_topic)
+    end
+  end
 
   @doc """
   Provide context blocks showing current wireframe state.
@@ -63,9 +165,26 @@ defmodule Koalemos.Lenses.WireframeEditor do
   """
   def provide_context(state, _config \\ %{}) do
     lens_state = get_in(state, [:context, :lens_state]) || %{}
+    routine_id = get_in(state, [:context, :routine_id])
 
     designed = Map.get(lens_state, :designed, %{})
-    running = Map.get(lens_state, :running, %{})
+
+    # Capture current live state before building context (Sprint 7)
+    # Include screenshots by default (Phase 5) - provides visual feedback
+    running = if routine_id do
+      case capture_current_state(routine_id, skip_screenshot: false) do
+        {:ok, current_state} ->
+          has_dom = current_state[:dom_tree] != nil
+          Logger.info("[WireframeEditor] Captured live state for context - has DOM: #{has_dom}")
+          current_state
+        {:error, reason} ->
+          Logger.warning("[WireframeEditor] Failed to capture live state: #{inspect(reason)}")
+          Map.get(lens_state, :running, %{})
+      end
+    else
+      Logger.debug("[WireframeEditor] No routine_id, skipping state capture")
+      Map.get(lens_state, :running, %{})
+    end
 
     context_parts = [
       build_design_dom_section(designed),
@@ -80,7 +199,16 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
     context_text = Enum.join(Enum.reject(context_parts, &is_nil/1), "\n\n")
 
-    [%{type: "text", text: context_text}]
+    # Add screenshot if available (Sprint 7 Phase 6)
+    screenshot_block = build_screenshot_block(running)
+
+    # Return text block + optional image block
+    # Image blocks go in messages array (not system) via LensRendering
+    if screenshot_block do
+      [%{type: "text", text: context_text}, screenshot_block]
+    else
+      [%{type: "text", text: context_text}]
+    end
   end
 
   @doc """
@@ -565,18 +693,36 @@ defmodule Koalemos.Lenses.WireframeEditor do
   end
   defp build_design_dom_section(_), do: nil
 
-  defp build_live_dom_section(_designed, %{dom_tree: live_tree, captured_at: timestamp}) when not is_nil(live_tree) do
+  defp build_live_dom_section(_designed, %{dom_tree: live_tree, captured_at: timestamp, differs_from_designed: differs}) when not is_nil(live_tree) do
     age = format_timestamp_age(timestamp)
 
-    """
+    Logger.debug("[WireframeEditor] Building LIVE DOM section with tree: #{inspect(Map.keys(live_tree))}")
+
+    formatted_tree = format_dom_tree(live_tree, 0, %{})
+    Logger.info("[WireframeEditor] Formatted tree length: #{String.length(formatted_tree)} chars")
+
+    # Show status based on comparison with designed state
+    status = if differs do
+      "Status: DIFFERS FROM DESIGN ⚠️  (user or JavaScript modified the page)"
+    else
+      "Status: MATCHES DESIGN ✓"
+    end
+
+    result = """
     === LIVE DOM STATE (captured #{age}) ===
 
-    Status: MATCHES DESIGN ✓
+    #{status}
 
-    #{format_dom_tree(live_tree, 0, %{})}
+    #{formatted_tree}
     """
+
+    Logger.info("[WireframeEditor] LIVE DOM section length: #{String.length(result)} chars")
+    result
   end
-  defp build_live_dom_section(_designed, _running), do: nil
+  defp build_live_dom_section(_designed, running) do
+    Logger.warning("[WireframeEditor] build_live_dom_section skipped - running: #{inspect(Map.keys(running || %{}))}")
+    nil
+  end
 
   defp build_functions_section(%{custom_functions: functions}) when map_size(functions) > 0 do
     function_list = Enum.map_join(functions, "\n\n", fn {name, code} ->
@@ -663,21 +809,68 @@ defmodule Koalemos.Lenses.WireframeEditor do
   defp build_init_scripts_section(_), do: nil
 
   defp build_console_section(%{console_output: logs}) when length(logs) > 0 do
-    recent_logs = Enum.take(logs, 10)
+    Logger.debug("[WireframeEditor] Building console section with #{length(logs)} messages")
+
+    # Count errors and warnings (Sprint 7 Phase 6)
+    error_count = Enum.count(logs, fn log -> Map.get(log, :level) == "error" end)
+    warn_count = Enum.count(logs, fn log -> Map.get(log, :level) == "warn" end)
+
+    # Show last 20 messages (user preference)
+    recent_logs = Enum.take(logs, 20)
+
+    # Format with visual indicators (Sprint 7 Phase 6)
     log_list = Enum.map_join(recent_logs, "\n", fn log ->
-      level = String.upcase(Map.get(log, :level, "log"))
+      level = Map.get(log, :level, "log")
+      level_upper = String.upcase(level)
       message = Map.get(log, :message, "")
       timestamp = format_timestamp_age(Map.get(log, :timestamp))
-      "[#{level}] (#{timestamp}) #{message}"
+
+      # Add visual indicator based on level
+      indicator = case level do
+        "error" -> "❌"
+        "warn" -> "⚠️"
+        _ -> "ℹ️"
+      end
+
+      "#{indicator} [#{level_upper}] (#{timestamp}) #{message}"
     end)
 
-    """
-    === CONSOLE OUTPUT (last 10 messages) ===
+    # Build summary line
+    summary_parts = []
+    summary_parts = if error_count > 0, do: [summary_parts, "#{error_count} error(s)"], else: summary_parts
+    summary_parts = if warn_count > 0, do: [summary_parts, "#{warn_count} warning(s)"], else: summary_parts
 
+    summary = if length(List.flatten(summary_parts)) > 0 do
+      "\nSummary: " <> Enum.join(List.flatten(summary_parts), ", ")
+    else
+      ""
+    end
+
+    """
+    === CONSOLE OUTPUT (last 20 messages) ===
+#{summary}
     #{log_list}
     """
   end
-  defp build_console_section(_), do: nil
+  defp build_console_section(running) do
+    Logger.debug("[WireframeEditor] No console messages to display. Running state: #{inspect(Map.keys(running))}")
+    nil
+  end
+
+  # Build screenshot image block (Sprint 7 Phase 6)
+  # Returns image block in format expected by Anthropic provider
+  # Will be added to messages array (not system) by LensRendering
+  defp build_screenshot_block(%{screenshot: screenshot_data}) when not is_nil(screenshot_data) do
+    %{
+      type: "image",
+      source: %{
+        type: "base64",
+        media_type: "image/png",
+        data: screenshot_data
+      }
+    }
+  end
+  defp build_screenshot_block(_), do: nil
 
   defp build_tools_guide do
     """
@@ -774,6 +967,22 @@ defmodule Koalemos.Lenses.WireframeEditor do
   end
 
   defp format_timestamp_age(nil), do: "unknown"
+
+  # Handle JavaScript timestamps (milliseconds since epoch)
+  defp format_timestamp_age(timestamp) when is_integer(timestamp) do
+    now_ms = System.system_time(:millisecond)
+    diff_ms = now_ms - timestamp
+    seconds_ago = div(diff_ms, 1000)
+
+    cond do
+      seconds_ago < 5 -> "just now"
+      seconds_ago < 60 -> "#{seconds_ago}s ago"
+      seconds_ago < 3600 -> "#{div(seconds_ago, 60)}m ago"
+      true -> "#{div(seconds_ago, 3600)}h ago"
+    end
+  end
+
+  # Handle DateTime structs
   defp format_timestamp_age(timestamp) when is_struct(timestamp, DateTime) do
     seconds_ago = DateTime.diff(DateTime.utc_now(), timestamp)
     cond do
@@ -783,6 +992,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
       true -> "#{div(seconds_ago, 3600)}h ago"
     end
   end
+
   defp format_timestamp_age(_), do: "unknown"
 
   # Broadcast DOM tree updates via PubSub for live preview updates
@@ -826,19 +1036,4 @@ defmodule Koalemos.Lenses.WireframeEditor do
   end
   defp broadcast_dom_update_if_needed(_result, _tool_name, _routine_id), do: :ok
 
-  # Helper to get lens_state with defaults (TODO: will be used when tools are implemented)
-  defp _get_lens_state(context) do
-    Map.get(context, :lens_state, %{
-      designed: %{
-        dom_tree: nil,
-        custom_css: %{},
-        custom_functions: %{},
-        custom_variables: %{},
-        init_scripts: %{},
-        metadata: %{}
-      },
-      running: %{},
-      modifications: []
-    })
-  end
 end
