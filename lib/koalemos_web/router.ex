@@ -28,6 +28,7 @@ defmodule KoalemosWeb.Router do
     live "/test/persona", PersonaTestLive
     live "/test/parsing", ParsingTestLive
     live "/test/wireframe", WireframeTestLive
+    live "/test/lens-combinator", LensCombinatorLive
 
     # Wireframe preview (LiveView in iframe)
     live "/wireframe-preview/:routine_id", WireframePreviewLive
