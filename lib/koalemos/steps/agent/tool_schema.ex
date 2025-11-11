@@ -6,8 +6,18 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
   - tool_descriptions: Array of tool schemas for LLM API
   - tool_map: Map of tool_name → {module, tool_atom} for execution lookup
 
+  ## Hybrid Lens Configuration
+
+  This step implements the hybrid config pattern:
+  - Base lenses from `context[:lenses]` (set at routine initialization)
+  - Config lenses from `config_sources` (per-step overrides/additions)
+  - Merged locally for this step only (doesn't modify context)
+
   ## Context Input
-  - active_lenses (or lenses): List of lens configurations
+  - lenses: List of lens configurations
+
+  ## Input Config
+  - lenses: Optional list of lenses to add or override for this step
 
   ## Context Output
   - tool_descriptions: List of tool schemas for LLM
@@ -24,16 +34,22 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
   """
 
   require Logger
+  alias Koalemos.ConfigMerge
 
   @doc """
   Collects tools from lenses and builds tool schemas.
   """
-  def execute(_config, state) do
-    lenses_config = state.context[:active_lenses] || state.context[:lenses] || []
+  def execute(config_sources, state) do
+    # Hybrid pattern: base lenses from context + config lenses
+    base_lenses = state.context[:lenses] || []
+    config_lenses = ConfigMerge.get_key(config_sources, :lenses, [])
+
+    # Merge lenses (config overrides base for same module)
+    active_lenses = ConfigMerge.merge_lenses(base_lenses, config_lenses)
 
     try do
       # Collect all tools from all lens modules
-      all_tools = collect_tools_from_lens_configs(lenses_config)
+      all_tools = collect_tools_from_lens_configs(active_lenses)
 
       # Build tool descriptions with context
       tool_descriptions = build_tool_descriptions(all_tools, state.context)
@@ -58,16 +74,18 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
     Enum.flat_map(lenses_config, fn
       # String format: "ModuleName"
       module_name when is_binary(module_name) ->
-        get_tools_from_module_name(module_name)
+        get_tools_from_module_name(module_name, %{})
 
       # List format: ["ModuleName", config]
-      [module_name, _config] when is_binary(module_name) ->
-        get_tools_from_module_name(module_name)
+      [module_name, config] when is_binary(module_name) ->
+        get_tools_from_module_name(module_name, config)
     end)
   end
 
   # Get tools from a module name with proper error checking
-  defp get_tools_from_module_name(module_name) do
+  # Config parameter is extracted but not used yet - reserved for future
+  # where lenses might conditionally expose tools based on config
+  defp get_tools_from_module_name(module_name, _config) do
     try do
       module = Module.safe_concat([module_name])
 

@@ -28,21 +28,28 @@ defmodule Koalemos.Steps.System.Action do
   If the action is not defined or fails, returns an error tuple.
   """
 
-  def execute(config, state) do
-    action = config.action
+  alias Koalemos.ConfigMerge
+
+  def execute(config_sources, state) do
+    # Extract action from config sources (runtime overrides static)
+    action = ConfigMerge.get_key(config_sources, :action)
     routine_module = state.current_routine_module
 
-    try do
-      apply(routine_module, :handle_action, [action, state])
-    rescue
-      UndefinedFunctionError ->
-        {:error, "Action #{action} not defined in #{routine_module}"}
+    if action == nil do
+      {:error, "No action specified in config"}
+    else
+      try do
+        apply(routine_module, :handle_action, [action, state])
+      rescue
+        UndefinedFunctionError ->
+          {:error, "Action #{action} not defined in #{routine_module}"}
 
-      FunctionClauseError ->
-        {:error, "Action #{action} has invalid arguments in #{routine_module}"}
+        FunctionClauseError ->
+          {:error, "Action #{action} has invalid arguments in #{routine_module}"}
 
-      error ->
-        {:error, "Action #{action} failed: #{Exception.message(error)}"}
+        error ->
+          {:error, "Action #{action} failed: #{Exception.message(error)}"}
+      end
     end
   end
 end

@@ -353,46 +353,185 @@
 
 ---
 
-## Milestone 4: WireframeEditor Lens + Supporting Lenses
+## Milestone 4: Advanced Lens System 🔄 IN PROGRESS
 
-**Goal:** Full lens system with rich context and tools
+**Status:** Sprint 7 of 8 In Progress (75% estimated)
+**Started:** November 2, 2025
+**Goal:** Build three advanced lenses (PersonaLens, SequentialThinking, WireframeEditor) with comprehensive test infrastructure and modular architecture
 
 **Why This Scope:**
-- All infrastructure ready (M2 UI, M3 screenshots/parsers)
-- Focus purely on lens logic and tools
-- Supporting lenses are small and straightforward
+- Test infrastructure first prevents debugging nightmares
+- Modular WireframeEditor architecture (no 1500-line monoliths)
+- Tool execution infrastructure for lens tools
+- Agent-as-node pattern for complex operations
+- Complex wireframe as validation target throughout
 
-**Components:**
-- [ ] **WireframeEditor Lens** (~2,000 lines)
-  - [ ] Port from Flo (1,986 lines - may need adjustments)
-  - [ ] Context generation (uses HTMLParser, caches)
-  - [ ] Tool definitions (DOM manipulation, analysis)
-  - [ ] Screenshot integration (uses M3 screenshot tool)
-  - [ ] State management
+**Detailed Plan:** See `docs/milestones/M4.md` for complete sprint breakdown
 
-- [ ] **Supporting Lenses** (~600 lines total)
-  - [ ] PersonaLens (~200 lines) - Agent personality/instructions
-  - [ ] Scratchpad (~100 lines) - Working memory
-  - [ ] SequentialThinking (~250 lines) - Step-by-step reasoning
-  - [ ] Workflow (~50 lines) - Phase management
+### Completed
 
-- [ ] **Integration** (~400 lines)
-  - [ ] Wire all lenses to test routine
-  - [ ] Test tool execution
-  - [ ] Test context generation
-  - [ ] Verify screenshot flow
+- [x] **Sprint 1: Test Infrastructure Foundation** (~400 lines) ✅ Nov 2
+  - [x] Sample HTML files (simple, medium, complex wireframes)
+  - [x] WireframeTestLive - Interactive test page at `/test/wireframe`
+  - [x] WireframeTestRoutine - Test routine with sample loading
+  - [x] Manual validation checklist
+  - [x] Complex wireframe as validation target documented
+
+- [x] **Sprint 2: PersonaLens** (~290 lines) ✅ Nov 3
+  - [x] Context-only lens (following flo's pattern - simpler than planned)
+  - [x] 5 hardcoded personas: professional, casual, technical, creative, empathetic
+  - [x] PersonaTestRoutine for manual testing
+  - [x] Full test coverage (42 tests)
+  - [x] No tools needed - works through system prompt injection
+
+- [x] **Sprint 3: SequentialThinking** (~300 lines) ✅ Nov 4
+  - [x] Ported from MCP server with full MIT license attribution
+  - [x] Adapted to Koalemos lens interface (provide_context, execute_tool)
+  - [x] Step-by-step reasoning with dynamic thought progression
+  - [x] Single tool: sequential_thinking (4 required + 5 optional parameters)
+  - [x] Context shows only current chain (replaces previous chain on reset)
+  - [x] Brief tool results (no thought echo to reduce redundancy)
+  - [x] State management: thought_history and branches in lens_state
+  - [x] Support for revisions and branching (advanced features)
+  - [x] ThinkingTestRoutine for manual testing
+  - [x] Full test coverage (19 tests, 100% coverage)
+  - [x] Future architecture documented in BACKLOG (request/result pairs)
+
+- [x] **Sprint 4: WireframeEditor Preview Infrastructure** (~340 lines) ✅ Nov 5
+  - [x] **Pivoted from original plan** - Built infrastructure over DOM tools
+  - [x] WireframePreviewLive - LiveView in iframe (flo's architecture)
+  - [x] WireframeStateCache - ETS cache for lens_state by routine_id
+  - [x] WireframeTestLive updates - iframe src instead of srcdoc
+  - [x] WireframeTestRoutine - Tool execution infrastructure ready
+  - [x] Route for `/wireframe-preview/:routine_id`
+  - [x] PubSub broadcasting for DOM tree updates
+  - [x] HTML escaping fixes (Plug.HTML vs Phoenix.HTML)
+  - [x] Manual validation - All sample wireframes load and render
+  - [x] Context validation - `provide_context/2` shows complete DOM tree
+  - [x] 15 wireframe routine tests passing
+  - [x] **Deferred to Sprint 5:** Core module, DOM Handler, DOM tools
+
+### Lessons Learned (Sprint 4)
+
+**1. Validate Infrastructure Before Building Features**
+Building the preview system first helped us discover HTML escaping issues and timing problems early. This saved time compared to implementing tools without a way to test them visually.
+
+**2. Adopt Proven Patterns When Available**
+Using flo's LiveView-in-iframe architecture gave us confidence and a working reference. No need to design from scratch when a proven solution exists.
+
+**3. Test Pages Are Invaluable**
+The interactive test page at `/test/wireframe` made it easy to spot problems visually and validate fixes immediately. Manual validation complements automated testing.
+
+**4. Pivot When Reality Differs from Plan**
+Original Sprint 4 plan called for DOM tools, but infrastructure needs revealed themselves during implementation. Pivoting to build foundation first was the right decision.
+
+**5. Cache + PubSub Solves Timing Issues**
+Combining WireframeStateCache (for initial load) with PubSub (for updates) elegantly solved the iframe mount timing problem. Both patterns will be useful as the system grows.
+
+### Completed (continued)
+
+- [x] **Sprint 5: WireframeEditor Core + DOM Tools** (~400 lines) ✅ Nov 5
+  - [x] Fixed batch operation accumulation in all DOM tools
+  - [x] Implemented element replacement functionality
+  - [x] Added PubSub broadcasting for live updates
+  - [x] Built chat interface for agent interaction
+  - [x] Added CSS rendering to preview
+  - [x] **All 9 tools functional** (CSS already complete)
+  - [x] See `docs/sprints/sprint-5-summary.md` for full details
+
+- [x] **Sprint 6: JavaScript Rendering + Critical Fixes** (~680 lines) ✅ Nov 7
+  - [x] JavaScript rendering in preview (variables, functions, handlers, init scripts)
+  - [x] JavaScriptUpdater LiveView hook for dynamic updates
+  - [x] Auto-reload system for init script changes
+  - [x] JavaScript syntax validation (NodeJS integration)
+  - [x] **6 Critical Bug Fixes:** Boolean serialization, nested children, auto-IDs, init script timing, JS validation, argument validation
+  - [x] Context clarity improvements
+  - [x] Integration tests
+  - [x] **8 of 9 tools tested and working** (trigger_interaction deferred)
+  - [x] See `docs/sprints/sprint-6-summary.md` for full details
+
+### Deferred from Sprint 6
+
+**Infrastructure & Integration Work:**
+- [ ] **trigger_interaction tool implementation** - Requires client-side infrastructure for server-to-client interaction triggers and element highlighting/selection
+- [ ] **Console capture integration (ConsoleCache)** - May be significant work to get console capture correct
+- [ ] **Screenshot integration** - Connect with existing screenshot infrastructure from M3
+- [ ] **Better integration test scenarios (Test 12)** - Multi-tool workflows and complex agent interactions
+
+**Performance Optimizations (Nice-to-have):**
+- [ ] Server-side diff for push events - Only broadcast changed parts of state
+- [ ] Smart diffing for variables/functions - Don't re-send unchanged code
+- [ ] Soft reload for init scripts - Reset state without browser reload
+
+**Bug Investigation:**
+- [ ] Investigate document.title change issue in init scripts - Browser ignores title changes, low priority
+
+### In Progress / Todo
+
+- [x] **Sprint 7: WireframeEditor Feedback Loop & Integration** (~1,000 lines) 🔄 **IN PROGRESS**
+  - [ ] State snapshot infrastructure (~200 lines)
+    - [ ] Current state capture orchestration
+    - [ ] Preview state broadcaster
+    - [ ] Client-side state capture
+    - [ ] Two-state model (designed vs current)
+  - [ ] trigger_interaction tool (~150 lines)
+    - [ ] Server-side implementation
+    - [ ] Preview interaction handler
+    - [ ] Client-side execution (click, fill, submit, js)
+    - [ ] Completes all 9 tools
+  - [ ] Console integration (~150 lines)
+    - [ ] Console interception in preview
+    - [ ] Integration with ConsoleCache
+    - [ ] Console output in context
+  - [ ] Screenshot integration (~100 lines)
+    - [ ] Blocking screenshot capture
+    - [ ] Screenshots in state snapshots
+    - [ ] Automatic inclusion in context
+  - [ ] Enhanced context (~200 lines)
+    - [ ] State capture before LLM requests
+    - [ ] Designed vs current state display
+    - [ ] Diff highlighting
+    - [ ] Console error highlighting
+  - [ ] Integration tests (~200 lines)
+    - [ ] Tic-tac-toe test (agent plays game it built)
+    - [ ] Form interaction test
+    - [ ] Error recovery test
+    - [ ] Complex chain test
+  - [ ] See `docs/sprints/sprint-7-plan.md` for full details
+
+- [ ] **Sprint 8: Advanced Patterns & M4 Completion** (~500 lines)
+  - [ ] Context enhancements (modification history, suggestions)
+  - [ ] Testing utilities (helpers, fixtures, assertions)
+  - [ ] Agent-as-node pattern (complex multi-step operations)
+  - [ ] Final M4 documentation
+  - [ ] M4 tagged and complete (v0.4.0)
 
 **Dependencies:** M2 (LiveView), M3 (screenshots + parsers)
 
-**Test Criteria:**
-- ✅ WireframeEditor provides context from parsed HTML
-- ✅ Tools execute and manipulate DOM
-- ✅ Screenshots captured when tool requests
-- ✅ Supporting lenses integrate correctly
-- ✅ Lens system works end-to-end
+**Key Decisions:**
+- **Modular WireframeEditor:** 5 separate modules (Core, DOM, JavaScript, CSS, Testing, Context) instead of monolithic file
+- **Leverage Existing Parsers:** Use HTMLParser, JavaScriptParser, CSSParser - don't reimplement parsing
+- **Two-Version State Management:** Track designed source (being edited) vs running preview (live state)
+- **Tool Execution in Sprint 4:** Copy ThinkingTestRoutine pattern for immediate testing capability
+- **JavaScriptParser Improvements in Sprint 5:** Fix extraction issues revealed by complex wireframe
+- **Manual Verification Throughout:** Update test page each sprint, build reusable patterns
+- **Tool Execution Tiers:** Direct execution (Sprint 4), agent-as-node pattern (Sprint 7) for complex operations
+- **Validation Target:** Complex wireframe used throughout development as demo showcase
+- **Cache Integration:** Use DOMStateCache, ConsoleCache, VariableStateCache, ScreenshotCache for state snapshots
 
-**Lines:** ~3,000
-**Status:** Todo
+**Test Criteria:**
+- ✅ All 3 lenses fully functional (PersonaLens, SequentialThinking, WireframeEditor)
+- ✅ Tool execution works from Sprint 4 onward (not deferred to Sprint 7)
+- ✅ Two-version state management tracks designed vs running
+- ✅ JavaScriptParser can extract all content from complex wireframe
+- ✅ Agent-as-node pattern enables multi-step tool orchestration (Sprint 7)
+- ✅ Complex wireframe fully parsed and editable via all handlers
+- ✅ Manual verification page functional and updated each sprint
+- ✅ Test coverage ≥ 80% for new code
+- ✅ Round-trip fidelity (parse → modify → serialize → parse matches)
+
+**Lines:** ~3,800 lines (reduced by 500 due to leveraging existing parsers)
+**Status:** Sprint 1-3 Complete, Sprint 4-8 Todo
 
 ---
 
@@ -995,6 +1134,558 @@ Two ObserverTest tests occasionally fail depending on test execution order and t
 - Consider pattern for all stateful GenServer tests
 - Document best practices for testing stateful systems
 - Add test isolation guide to CONTRIBUTING.md
+
+### Lens Tool Execution Request/Result Pairs
+**Status:** Deferred (identified during M4 Sprint 3 - SequentialThinking, November 2025)
+
+**Problem:**
+When lenses provide both context and tools, there's redundancy in the message array. Tool calls contain full argument details (e.g., complete thought text in `sequential_thinking` tool), and then the same information appears in context provided by the lens. This creates duplicate information in the message history.
+
+**Current approach (MVP):**
+- Tool calls stored in message array with full arguments
+- Lens provides context showing current reasoning chain
+- Tool results are brief JSON (status, metadata only)
+- Accept redundancy for simplicity - ship fast, iterate later
+
+**Example redundancy:**
+```elixir
+# Message array contains full tool call
+%{
+  role: "assistant",
+  content: [
+    %{
+      type: "tool_use",
+      name: "sequential_thinking",
+      input: %{
+        "thought" => "Breaking down the problem into steps...",  # FULL TEXT
+        "thought_number" => 1,
+        "total_thoughts" => 3
+      }
+    }
+  ]
+}
+
+# Context also shows the thought text
+## Current Thinking Chain
+1. Breaking down the problem into steps...  # DUPLICATE
+```
+
+**Future architecture: Request/Result Pairs**
+
+Change lens tool execution semantics to return both a stripped request and result:
+
+```elixir
+# Current signature
+@callback execute_tool(name :: String.t(), args :: map(), state :: map()) ::
+  {:ok, result :: term(), lens_updates :: keyword()} | {:error, term()}
+
+# Future signature
+@callback execute_tool(name :: String.t(), args :: map(), state :: map()) ::
+  {:ok, {request_summary :: map(), result :: term()}, lens_updates :: keyword()}
+  | {:error, term()}
+```
+
+**How it works:**
+
+1. **Lens knows its context** - Since the lens provides context, it knows what information is redundant
+2. **Return stripped request** - Lens returns summary of request without redundant details
+3. **Return full result** - Result can be as detailed as needed
+4. **Store pair in messages** - Message array stores the {request_summary, result} pair
+
+**Example implementation:**
+```elixir
+def execute_tool("sequential_thinking", args, state) do
+  # ... execute thinking logic ...
+
+  # Strip redundant thought text from request
+  request_summary = %{
+    tool: "sequential_thinking",
+    thought_number: args["thought_number"],
+    total_thoughts: args["total_thoughts"]
+    # Omit "thought" text - it's in context already
+  }
+
+  result = %{
+    status: "ok",
+    thought: args["thought_number"],
+    total: args["total_thoughts"],
+    continue: args["next_thought_needed"]
+  }
+
+  {:ok, {request_summary, result}, lens_updates}
+end
+```
+
+**Benefits:**
+- ✅ Eliminates redundancy between context and messages
+- ✅ Lens controls what's essential vs. what's already shown
+- ✅ Reduces message array size for long reasoning chains
+- ✅ Each lens optimizes for its own context strategy
+- ✅ Backward compatible - single result still works
+
+**Long-term vision: ToolLens**
+
+Eventually, tool request/result pairs could be:
+- Tracked separately from main message flow
+- Displayed via dedicated ToolLens (optional context)
+- Shown/hidden based on user preference
+- Aggregated/summarized for long tool chains
+
+**Why deferred:**
+- Current approach works for MVP
+- Need experience with multiple tool lenses first
+- Requires updating message handling throughout engine
+- Should understand common patterns before optimizing
+- Better to validate lens concept, then reduce redundancy
+
+**Future considerations:**
+- After implementing more tool lenses (M4 Sprint 4-7), evaluate patterns
+- Consider if all lenses need this or just stateful tool lenses
+- Think about UI for showing/hiding tool details
+- May want configurable verbosity (debug vs. production)
+- Integration with future observability/debugging tools
+
+### WireframeEditor Context Display & State Capture
+**Status:** Deferred (identified during M4 Sprint 7 - November 9, 2025)
+
+**Problem:**
+The "Show Agent Context" UI button and the actual agent LLM request capture state independently, resulting in:
+1. Duplicate snapshot requests (wasteful)
+2. Inconsistent views (UI shows stale, agent sees fresh)
+3. Confusion about what the agent actually sees
+
+**Current workaround:**
+When "Show Agent Context" button is clicked, regenerate context with fresh state capture. This works but:
+- Captures state twice per turn (once for agent, once for UI)
+- UI context may differ from what agent actually saw
+- No guarantee of temporal consistency
+
+**Better architecture:**
+UI should display the ACTUAL context that was sent to the LLM in the most recent request, not regenerate it:
+
+```elixir
+# Store actual sent context in routine state
+context.last_llm_context = %{
+  text: "...",  # What was actually sent
+  captured_at: DateTime.utc_now(),
+  turn_number: 5
+}
+
+# UI retrieves and displays exactly what agent saw
+def show_agent_context(routine_id) do
+  get_last_llm_context(routine_id)
+end
+```
+
+**Benefits:**
+- ✅ Single source of truth
+- ✅ No duplicate captures
+- ✅ UI shows EXACTLY what agent saw
+- ✅ Can track context over time (history viewer)
+
+**Why deferred:**
+- Current approach works for Sprint 7
+- Need to implement context history tracking first
+- Requires Engine changes to store sent contexts
+- Should wait until M4 complete to evaluate patterns
+
+**Future considerations:**
+- Context history viewer (see what agent saw on each turn)
+- Diff viewer (show context changes between turns)
+- Time-travel debugging (replay from specific context)
+
+### Live DOM Snapshot Scope & Format
+**Status:** Deferred (identified during M4 Sprint 7 - November 9, 2025)
+
+**Problem 1: Snapshot captures too much**
+Current DOM snapshot captures the entire iframe body, including LiveView wrapper elements (flash-group, phx-* attributes, etc.). Should only capture the actual wireframe content:
+
+```javascript
+// Current: captures everything
+this.serializeDOM(document.body)
+
+// Should be: capture only wireframe root
+const wireframeRoot = document.getElementById('root')
+this.serializeDOM(wireframeRoot)
+```
+
+**Problem 2: Inconsistent rendering format**
+Designed DOM shows clean format:
+```
+- auto-div-4: <div> .logo | Content: "Complex Dashboard"
+```
+
+Live DOM shows verbose format:
+```
+- auto-div-4: <div> .logo | class: logo, id: auto-div-4 | Content: "Complex Dashboard"
+```
+
+The designed format is better because:
+- Classes shown inline with dot notation (.logo)
+- ID already in line prefix (auto-div-4:)
+- No redundant attribute listing
+
+**Current workaround:**
+Accept the inconsistency and extra verbosity. Filter noise manually.
+
+**Better architecture:**
+
+1. **Scoped capture:**
+```javascript
+captureCompleteState(opts = {}) {
+  // Find wireframe root element
+  const wireframeRoot = document.getElementById(opts.rootId || 'root')
+  if (!wireframeRoot) {
+    console.warn('[StateCapture] Wireframe root not found')
+    return
+  }
+
+  // Capture only the wireframe content
+  const dom_tree = this.serializeDOM(wireframeRoot)
+  // ...
+}
+```
+
+2. **Unified format_dom_tree:**
+Share the same formatting logic between designed and live DOM. Currently using two different code paths:
+- Designed: `format_dom_tree(tree, indent, handlers)` - clean output
+- Live: `format_dom_tree(tree, indent, %{})` - verbose output
+
+Both should use the same formatter with the same output style.
+
+**Benefits:**
+- ✅ Cleaner context (no LiveView noise)
+- ✅ Consistent presentation (easier to compare)
+- ✅ Less token usage (removes redundant attributes)
+- ✅ Better agent experience (focused on actual wireframe)
+
+**Why deferred:**
+- Current approach works for Sprint 7 (agent can see changes)
+- Need to test with various wireframe structures first
+- Should understand what root element patterns emerge
+- Format unification requires careful refactoring
+
+**Future considerations:**
+- Make root selector configurable per wireframe
+- Add visual diff highlighting (designed vs live)
+- Consider showing only CHANGED elements in live view
+- Extract common formatting to shared module
+
+### Live DOM Form Element Values
+**Status:** Deferred (identified during M4 Sprint 7 Phase 4 - November 9, 2025)
+
+**Problem:**
+Current DOM snapshot captures element attributes but not runtime form element values. When a user types into an input field or selects an option, the agent cannot see these values in the live DOM tree.
+
+**Example:**
+```html
+<!-- HTML design -->
+<input type="text" id="username" placeholder="Enter name">
+
+<!-- User types "Alice" -->
+<!-- Agent sees: <input> type: text, placeholder: Enter name -->
+<!-- Agent should see: <input> type: text, placeholder: Enter name, value: "Alice" -->
+```
+
+**Impact:**
+- Agent cannot verify form interactions worked correctly
+- Cannot see what user entered before form submission
+- Cannot debug form validation issues
+- Testing forms (like tic-tac-toe game state) is incomplete
+
+**Current workaround:**
+None. Form values are invisible to the agent in current snapshot implementation.
+
+**Better architecture:**
+Enhance `serializeDOM` to capture runtime values for form elements:
+
+```javascript
+serializeDOM(element) {
+  // ... existing code ...
+
+  // Capture runtime form values
+  const formData = {}
+
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    if (element.value) {
+      formData.value = element.value
+    }
+    if (element.type === 'checkbox' || element.type === 'radio') {
+      formData.checked = element.checked
+    }
+  } else if (element.tagName === 'SELECT') {
+    formData.selectedIndex = element.selectedIndex
+    formData.value = element.value
+  }
+
+  return {
+    tag: element.tagName.toLowerCase(),
+    id: element.id || null,
+    classes: Array.from(element.classList || []),
+    attributes: attributes,
+    formData: Object.keys(formData).length > 0 ? formData : null,
+    content: content,
+    children: children
+  }
+}
+```
+
+**Rendering in context:**
+```
+- username-input: <input> #username | type: text, placeholder: "Enter name" | VALUE: "Alice"
+- terms-checkbox: <input> #terms | type: checkbox | CHECKED: true
+```
+
+**Benefits:**
+- ✅ Agent sees complete runtime state
+- ✅ Can verify form interactions
+- ✅ Can test input validation logic
+- ✅ Better debugging of interactive features
+- ✅ Essential for game state tracking (tic-tac-toe)
+
+**Why deferred:**
+- Phase 4 focuses on console integration
+- Need to design consistent format for form data
+- Should test with various form element types first
+- May want to highlight changed values vs defaults
+
+**Future considerations:**
+- Highlight values that differ from default/placeholder
+- Capture contenteditable element content
+- Track focus state (which element has focus)
+- Capture selection ranges in text inputs
+
+### WireframeEditor Console Isolation Strategy
+**Status:** Deferred - Using discipline-based approach for M4 (identified November 9, 2025)
+
+**Problem:**
+Console interception in wireframe preview captures ALL console output, including infrastructure logging from JavaScriptUpdater hook, StateCapture, Interaction handlers, etc. Agent sees infrastructure messages instead of just wireframe output:
+
+Example of current pollution:
+```
+[LOG] [JavaScriptUpdater] Processing handler updates: {...}
+[LOG] [StateCapture] Capturing complete state...
+[LOG] [JavaScriptUpdater] Added click handler to refresh-btn
+```
+
+Agent should only see console output from the wireframe itself (user code + browser errors).
+
+**Architectural Options Considered:**
+
+**Option A: Nested LiveView Iframes (3 LiveView connections)**
+- Main editor page (wireframe_test_live.ex)
+- Outer preview iframe (wireframe_preview_live.ex with hook)
+- Inner content iframe (wireframe_content_live.ex - NEW)
+
+Architecture:
+```
+wireframe_test_live.ex
+  └─ <iframe src="/wireframe/preview/:id"> (LiveView with hook)
+       └─ <iframe src="/wireframe/content/:id"> (LiveView, no hook)
+            └─ Just wireframe DOM (LiveView patches, no reload)
+```
+
+✅ Complete architectural isolation
+✅ Real-time updates via LiveView patching (no blink)
+✅ All wireframe console output captured (including browser errors)
+❌ 3 LiveView connections per user (resource intensive)
+❌ Additional complexity (new LiveView module)
+
+**Option B: Manual DOM Patching in JavaScript**
+- Outer iframe: LiveView with hook
+- Inner iframe: Static HTML (no LiveView)
+- Hook manually patches inner DOM on updates
+
+Architecture:
+```
+wireframe_preview_live.ex
+  └─ <iframe srcdoc="...static HTML...">
+       └─ Hook receives PubSub events
+       └─ Hook manually diffs and patches DOM
+```
+
+✅ Only 2 LiveView connections
+✅ Console isolation
+✅ Closest to "metal" (how user would see static HTML)
+✅ Real-time updates (if patching is smart)
+❌ Reimplementing LiveView's DOM diffing in JavaScript (complex)
+❌ srcdoc changes cause iframe reload (blink on major updates)
+
+Note: flo uses variant of this approach (hook-based DOM manipulation, no isolation)
+
+**Option C: INFRASTRUCTURE_CONSOLE Discipline (CURRENT CHOICE)**
+- Module-level constant at top of wireframe_hooks.js
+- All infrastructure code uses INFRASTRUCTURE_CONSOLE.log()
+- Wireframe code uses regular console.log() (gets intercepted)
+
+Implementation:
+```javascript
+// Top of wireframe_hooks.js
+const INFRASTRUCTURE_CONSOLE = {
+  log: console.log.bind(console),
+  warn: console.warn.bind(console),
+  error: console.error.bind(console)
+}
+
+// Hook code uses:
+INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] ...")
+
+// Wireframe code uses:
+console.log("Hello") // Gets intercepted and sent to agent
+```
+
+✅ Simplest implementation (~30 line changes)
+✅ Only 2 LiveView connections
+✅ Real-time updates work perfectly
+✅ No architectural changes
+❌ Requires discipline (developers must use INFRASTRUCTURE_CONSOLE)
+❌ Easy to accidentally leak logs (use wrong console)
+❌ Doesn't capture browser-generated errors in infrastructure code
+
+**Option D: Hybrid Approach**
+- Inner iframe starts static
+- Major changes (DOM structure): reload inner iframe (blink acceptable)
+- Minor changes (CSS, handlers, variables): hook patches manually
+
+✅ 2 LiveView connections
+❌ Complex decision logic (what's "major" vs "minor"?)
+❌ Still has occasional blinks
+❌ Partial console isolation
+
+**Decision: Option C for M4 Demo**
+
+Rationale:
+- M4 demo timeline prioritizes working solution over perfect architecture
+- Only ~28 console.log calls to update in hook code
+- Blink-free real-time editing is critical for demo impact
+- Can revisit post-M4 with Option A or B if needed
+
+**Current Implementation Status:**
+- Console interception: ✅ Working (Phase 4 complete)
+- Infrastructure pollution: ❌ Not fixed yet
+- Need to update 28 console calls to use INFRASTRUCTURE_CONSOLE
+
+**Why Deferred:**
+- M4 Sprint 7 focused on getting console integration working
+- Cleaning up infrastructure logs is polish, not blocker
+- Demo can show agent seeing wireframe errors even with some noise
+- Post-M4: Can implement Option A (nested LiveViews) properly
+
+**Future Implementation Path (Post-M4):**
+
+Recommended: **Option A - Nested LiveView Iframes**
+
+Benefits over Option C:
+- Architectural isolation (impossible to leak)
+- Captures ALL wireframe output (including browser warnings)
+- No developer discipline required
+- Cleaner separation of concerns
+
+Implementation estimate: ~350 lines across 4 files
+- New: wireframe_content_live.ex (~100 lines)
+- Modified: wireframe_preview_live.ex (~100 lines)
+- Modified: wireframe_hooks.js (~150 lines)
+- Modified: router.ex (~10 lines)
+
+Alternative: **Option B - Manual DOM Patching**
+
+Benefits:
+- Closest to "bare metal" experience
+- Only 2 connections
+- Good learning exercise (understand LiveView diffing)
+
+Challenges:
+- Need efficient DOM diffing algorithm in JavaScript
+- Handle all element types (text nodes, attributes, event listeners)
+- May have edge cases LiveView handles that we miss
+
+Could reference flo's implementation as starting point.
+
+**Consequences of Current Approach (Option C):**
+
+**For M4 Demo:**
+- Agent will see some infrastructure logs mixed with wireframe output
+- Still demonstrates console integration capability
+- Wireframe errors and user console.log() work correctly
+
+**For Production:**
+- Need developer education (use INFRASTRUCTURE_CONSOLE in hooks)
+- Risk of accidental pollution in new features
+- Not fully automatic/architectural
+
+**For Maintenance:**
+- Every new hook feature must remember to use INFRASTRUCTURE_CONSOLE
+- Could add ESLint rule: "no bare console.log in wireframe_hooks.js"
+- Alternatively, create wrapper: all hooks extend BaseHook that provides this.log()
+
+**Testing Implications:**
+- Integration tests should verify infrastructure logs DON'T appear in agent context
+- Should verify wireframe logs DO appear
+- Test coverage for "pollution detection"
+
+### WireframeEditor Inline DOM Diff Highlighting
+**Status:** Deferred from M4 Sprint 7 Phase 6 (identified November 9, 2025)
+
+**Problem:**
+When the live DOM differs from the designed state, the agent receives both trees but no visual highlighting of what specifically changed. This makes it harder for the agent to quickly identify modifications.
+
+**Attempted Solution (Sprint 7 Phase 6):**
+Implemented inline diff markers (`+` for added, `~` for modified elements) directly in the DOM tree display with annotations like `[Modified: text: "old" → "new"]`.
+
+**What Worked:**
+- ✅ Diff detection: Successfully compares designed vs live DOM trees
+- ✅ Status indication: Shows "DIFFERS FROM DESIGN ⚠️" when changes exist
+- ✅ Diff computation: MapSet-based algorithm correctly identifies added/removed/modified elements
+- ✅ Change description: Accurately detects content, class, and value changes
+
+**What Didn't Work:**
+- ❌ Inline display: Diff markers not appearing in formatted output despite correct computation
+- ❌ Debugging complexity: Deep recursion in `format_dom_tree` made it difficult to trace rendering flow
+- ❌ Field mismatch: Designed tree uses `:content`, live tree sometimes uses `:text`, created edge cases
+- ❌ Annotation timing: `describe_element_changes` called correctly but changes description returned empty
+
+**Root Cause:**
+The `format_dom_tree/4` recursive function needs to pass diff info through entire tree, adding an extra parameter to every recursive call. The inline marker injection point is deep in recursion, making it hard to debug when markers don't appear. Field naming inconsistencies between designed (`:content`, `:classes`) and live (`:text`, `:class`) required careful handling.
+
+**Current State:**
+- Diff feature code removed to keep codebase clean
+- Agent receives accurate designed and live DOM trees
+- Status line correctly indicates when trees differ
+- Screenshots provide visual context
+- Enhanced console display shows errors/warnings (✅ delivered in Phase 6)
+
+**Future Approach:**
+When revisiting this feature:
+
+1. **Separate diff formatting from tree formatting**: Instead of trying to add diff markers inline during recursive tree formatting, consider:
+   - First format the tree normally
+   - Then post-process the formatted string to add diff markers
+   - Or build a separate diff view that highlights changes
+
+2. **Normalize data structures first**: Before computing diffs, normalize both trees to use consistent field names (`:content` vs `:text`, `:classes` vs `:class`)
+
+3. **Simpler annotation strategy**: Instead of inline markers, consider:
+   - A separate "Changes" section at the top listing modifications
+   - Element IDs in the main tree that link to change descriptions
+   - Side-by-side diff view (designed | live)
+
+4. **Test with simpler cases**: Start with single-element changes before tackling full tree diffs
+
+5. **Use external diff library**: Consider using a proven diff algorithm library rather than custom implementation
+
+**Related Files:**
+- `lib/koalemos/lenses/wireframe_editor/core.ex` - Context building and tree formatting
+- Removed code available in git history from Nov 9 2025 (Sprint 7 Phase 6 commits)
+
+**Estimated Effort:**
+2-3 hours with fresh perspective and simplified approach (separate diff section or post-processing)
+
+**Why Deferred:**
+- Inline markers proved more complex than anticipated due to recursive tree formatting
+- Current approach (two complete trees + status) provides sufficient debugging information
+- Agent can compare trees manually
+- M4 demo timeline prioritizes working features over perfect UX
+- Can revisit post-M4 with clearer requirements and simpler architecture
 
 ---
 

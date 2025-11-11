@@ -23,11 +23,11 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
     test "collects context from single lens (string format)" do
       state = %{
         context: %{
-          active_lenses: ["Koalemos.Steps.Agent.LensRenderingTest.TestLens"]
+          lenses: ["Koalemos.Steps.Agent.LensRenderingTest.TestLens"]
         }
       }
 
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
+      assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert diff == [add_or_update: %{
         lens_text_contexts: ["Test lens context block 1", "Test lens context block 2"],
         lens_image_contexts: []
@@ -37,14 +37,14 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
     test "collects context from multiple lenses (string format)" do
       state = %{
         context: %{
-          active_lenses: [
+          lenses: [
             "Koalemos.Steps.Agent.LensRenderingTest.TestLens",
             "Koalemos.Steps.Agent.LensRenderingTest.AnotherLens"
           ]
         }
       }
 
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
+      assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: images}] = diff
       assert length(contexts) == 3
       assert "Test lens context block 1" in contexts
@@ -56,13 +56,13 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
     test "collects context from lens with config (list format)" do
       state = %{
         context: %{
-          active_lenses: [
+          lenses: [
             ["Koalemos.Steps.Agent.LensRenderingTest.TestLens", %{some: "config"}]
           ]
         }
       }
 
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
+      assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: images}] = diff
       assert length(contexts) == 2
       assert images == []
@@ -71,7 +71,7 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
     test "handles lens without provide_context gracefully" do
       state = %{
         context: %{
-          active_lenses: [
+          lenses: [
             "Koalemos.Steps.Agent.LensRenderingTest.TestLens",
             "Koalemos.Steps.Agent.LensRenderingTest.LensWithoutProvideContext"
           ]
@@ -79,7 +79,7 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
       }
 
       # Should succeed but only get contexts from TestLens
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
+      assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: images}] = diff
       assert length(contexts) == 2  # Only from TestLens
       assert images == []
@@ -88,23 +88,8 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
     test "returns empty list when no lenses configured" do
       state = %{context: %{}}
 
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
+      assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert diff == [add_or_update: %{lens_text_contexts: [], lens_image_contexts: []}]
-    end
-
-    test "uses active_lenses key first, then lenses key" do
-      state = %{
-        context: %{
-          active_lenses: ["Koalemos.Steps.Agent.LensRenderingTest.TestLens"],
-          lenses: ["Koalemos.Steps.Agent.LensRenderingTest.AnotherLens"]
-        }
-      }
-
-      # Should use active_lenses, not lenses
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
-      assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: _}] = diff
-      assert "Test lens context block 1" in contexts
-      refute "Another lens context" in contexts
     end
 
     test "uses lenses key when active_lenses not present" do
@@ -114,7 +99,7 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
         }
       }
 
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
+      assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: _}] = diff
       assert "Another lens context" in contexts
     end
@@ -122,11 +107,11 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
     test "returns error when lens module not found" do
       state = %{
         context: %{
-          active_lenses: ["NonExistent.Lens.Module"]
+          lenses: ["NonExistent.Lens.Module"]
         }
       }
 
-      assert {:error, error_msg} = LensRendering.execute(%{}, state)
+      assert {:error, error_msg} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert error_msg =~ "Lens context rendering failed"
       assert error_msg =~ "not an already existing atom"
     end
@@ -141,12 +126,12 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
 
       state = %{
         context: %{
-          active_lenses: ["Koalemos.Steps.Agent.LensRenderingTest.StatefulLens"],
+          lenses: ["Koalemos.Steps.Agent.LensRenderingTest.StatefulLens"],
           test_value: "custom"
         }
       }
 
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
+      assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: _}] = diff
       assert "Context with value: custom" in contexts
     end
@@ -160,14 +145,14 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
 
       state = %{
         context: %{
-          active_lenses: [
+          lenses: [
             "Koalemos.Steps.Agent.LensRenderingTest.TestLens",
             "Koalemos.Steps.Agent.LensRenderingTest.MultiBlockLens"
           ]
         }
       }
 
-      assert {:ok, diff} = LensRendering.execute(%{}, state)
+      assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: _}] = diff
       assert length(contexts) == 5  # 2 from TestLens + 3 from MultiBlockLens
     end

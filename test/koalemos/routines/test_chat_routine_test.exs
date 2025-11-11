@@ -49,34 +49,36 @@ defmodule Koalemos.Routines.TestChatRoutineTest do
       context = TestChatRoutine.initial_context()
 
       assert context.messages == []
-      assert context.active_lenses == ["Koalemos.Lenses.TestLensScreenshot"]
+      assert context.lenses == ["Koalemos.Lenses.TestLensScreenshot"]
       assert context.llm_provider == "anthropic"
       assert context.llm_model == "claude-haiku-4-5"
       assert context.max_tokens == 2000
       assert context.temperature == 0.7
     end
 
-    test "merges user context with defaults" do
+    test "Engine merges user context with defaults" do
+      # Engine calls initial_context/0 and merges with user-provided context
+      defaults = TestChatRoutine.initial_context()
       user_context = %{
         messages: [%{role: "user", content: "test"}],
         temperature: 0.9,
         custom_field: "custom_value"
       }
 
-      context = TestChatRoutine.initial_context(user_context)
+      merged = Map.merge(defaults, user_context)
 
       # User values override defaults
-      assert context.messages == [%{role: "user", content: "test"}]
-      assert context.temperature == 0.9
+      assert merged.messages == [%{role: "user", content: "test"}]
+      assert merged.temperature == 0.9
 
       # Custom fields are included
-      assert context.custom_field == "custom_value"
+      assert merged.custom_field == "custom_value"
 
       # Defaults are still present for non-overridden fields
-      assert context.active_lenses == ["Koalemos.Lenses.TestLensScreenshot"]
-      assert context.llm_provider == "anthropic"
-      assert context.llm_model == "claude-haiku-4-5"
-      assert context.max_tokens == 2000
+      assert merged.lenses == ["Koalemos.Lenses.TestLensScreenshot"]
+      assert merged.llm_provider == "anthropic"
+      assert merged.llm_model == "claude-haiku-4-5"
+      assert merged.max_tokens == 2000
     end
   end
 end

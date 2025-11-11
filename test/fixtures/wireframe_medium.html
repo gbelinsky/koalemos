@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medium Wireframe</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+        }
+
+        nav {
+            background-color: #444;
+            padding: 0.5rem;
+        }
+
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            gap: 1rem;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Medium Complexity Wireframe</h1>
+        <p>A multi-section page with styling</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#home">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#services">Services</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="home" class="card">
+            <h2>Welcome Section</h2>
+            <p>This is the home section with some introductory text.</p>
+            <button class="button">Get Started</button>
+        </section>
+
+        <section id="about" class="card">
+            <h2>About Us</h2>
+            <p>Learn more about what we do and why we do it.</p>
+            <ul>
+                <li>Feature 1</li>
+                <li>Feature 2</li>
+                <li>Feature 3</li>
+            </ul>
+        </section>
+
+        <section id="services" class="card">
+            <h2>Our Services</h2>
+            <div class="services-grid">
+                <div class="service-item">
+                    <h3>Service A</h3>
+                    <p>Description of service A</p>
+                </div>
+                <div class="service-item">
+                    <h3>Service B</h3>
+                    <p>Description of service B</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="card">
+            <h2>Contact Us</h2>
+            <form style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; flex-direction: column;">
+                    <label for="name" style="margin-bottom: 0.5rem; font-weight: 500;">Name:</label>
+                    <input type="text" id="name" name="name" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+
+                <div style="display: flex; flex-direction: column;">
+                    <label for="email" style="margin-bottom: 0.5rem; font-weight: 500;">Email:</label>
+                    <input type="email" id="email" name="email" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+
+                <div style="display: flex; flex-direction: column;">
+                    <label for="message" style="margin-bottom: 0.5rem; font-weight: 500;">Message:</label>
+                    <textarea id="message" name="message" rows="4" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; resize: vertical;"></textarea>
+                </div>
+
+                <button type="submit" class="button" style="margin-top: 0.5rem;">Send Message</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Test Wireframe. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Form state (using window.* for parseability)
+        window.formData = {
+            name: '',
+            email: '',
+            message: ''
+        };
+
+        // Update form data function
+        window.updateFormData = function(field, value) {
+            window.formData[field] = value;
+            console.log('Form updated:', window.formData);
+        };
+
+        // Handle form submission
+        window.handleSubmit = function(event) {
+            event.preventDefault();
+            console.log('Form submitted:', window.formData);
+            alert('Thank you for your message, ' + window.formData.name + '!');
+
+            // Reset form
+            document.getElementById('name').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('message').value = '';
+            window.formData = { name: '', email: '', message: '' };
+        };
+
+        // Attach event listeners (parseable pattern - direct attachment)
+        document.getElementById('name').addEventListener('input', function(e) {
+            window.updateFormData('name', e.target.value);
+        });
+
+        document.getElementById('email').addEventListener('input', function(e) {
+            window.updateFormData('email', e.target.value);
+        });
+
+        document.getElementById('message').addEventListener('input', function(e) {
+            window.updateFormData('message', e.target.value);
+        });
+
+        // Find the form and attach submit handler
+        var forms = document.querySelectorAll('form');
+        if (forms.length > 0) {
+            forms[0].addEventListener('submit', function(e) {
+                window.handleSubmit(e);
+            });
+        }
+    </script>
+</body>
+</html>

@@ -59,18 +59,16 @@ defmodule Koalemos.Routines.TestChatRoutine do
 
   @doc """
   Returns default initial context for the routine.
-  Merges provided context with defaults.
+  Engine will auto-call this and merge with user-provided context.
   """
-  def initial_context(user_context \\ %{}) do
-    defaults = %{
+  def initial_context do
+    %{
       messages: [],
-      active_lenses: ["Koalemos.Lenses.TestLensScreenshot"],
+      lenses: ["Koalemos.Lenses.TestLensScreenshot"],
       llm_provider: "anthropic",
       llm_model: "claude-haiku-4-5",
       max_tokens: 2000,
       temperature: 0.7
     }
-
-    Map.merge(defaults, user_context)
   end
 end

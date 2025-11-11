@@ -21,6 +21,7 @@ defmodule Koalemos.Application do
       Koalemos.Caches.DOMStateCache,        # Live DOM trees
       Koalemos.Caches.ConsoleCache,         # Console messages with rate limiting
       Koalemos.Caches.VariableStateCache,   # Runtime variable values
+      Koalemos.Caches.WireframeStateCache,  # Lens state for wireframe preview
       # NodeJS Supervisor - for JavaScript parsing
       {NodeJS.Supervisor, [path: Path.join([:code.priv_dir(:koalemos), "nodejs"]), pool_size: 4]}
     ]

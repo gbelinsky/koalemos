@@ -86,6 +86,238 @@ defmodule KoalemosWeb.TestIndexLive do
             </div>
           </a>
 
+          <!-- Sequential Thinking Test Page -->
+          <a
+            href="/test/thinking"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-teal-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                  />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">
+                  Sequential Thinking Test
+                </h2>
+                <p class="text-slate-600 mb-3">
+                  Test step-by-step reasoning with the SequentialThinking lens. Try complex problems and watch the AI break down its thought process. Supports revision and branching.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-teal-100 text-teal-700 rounded">
+                    Chat
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    SequentialThinking
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Step-by-step
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
+          <!-- Persona Test Page -->
+          <a
+            href="/test/persona"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">
+                  Persona Lens Test
+                </h2>
+                <p class="text-slate-600 mb-3">
+                  Experiment with dimensional persona configurations. Select tone, expertise areas, and communication style to see how AI responses change with different personas.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Chat
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-pink-100 text-pink-700 rounded">
+                    PersonaLens
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    Dimensional Config
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
+          <!-- Wireframe Test Page -->
+          <a
+            href="/test/wireframe"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+                  />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">
+                  Wireframe Test Environment
+                </h2>
+                <p class="text-slate-600 mb-3">
+                  Test infrastructure for M4 WireframeEditor lens. Load and preview sample HTML wireframes (simple, medium, complex). Foundation for future DOM/JavaScript/CSS manipulation tools.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    M4 Sprint 1
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Wireframe Preview
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                    Test Infrastructure
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
+          <!-- Lens Combinator Test Page -->
+          <a
+            href="/test/lens-combinator"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-amber-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+                  />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">
+                  Multi-Lens Testing Interface
+                </h2>
+                <p class="text-slate-600 mb-3">
+                  Sprint 8: Test lens combinations. Select multiple lenses (PersonaLens, SequentialThinking, WireframeEditor), configure options, and validate they work together without conflicts.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded">
+                    Sprint 8
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Multi-Lens
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    Integration Testing
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-slate-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
           <!-- Parsing Integration Test Page -->
           <a
             href="/test/parsing"

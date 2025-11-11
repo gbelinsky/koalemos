@@ -102,12 +102,15 @@ defmodule Koalemos.Engine.Orchestrator do
       state
     else
       step_module = step_config.type
-      static_config = step_config[:config] || %{}
-      dynamic_config = get_in(state, [:context, :config, state.current_step]) || %{}
-      config = Map.merge(static_config, dynamic_config)
+
+      # Collect config sources instead of merging
+      config_sources = %{
+        static: step_config[:config] || %{},
+        runtime: get_in(state, [:context, :config, state.current_step]) || %{}
+      }
 
       EventRecorder.record_event(state, "step_started", %{
-        metadata: %{step_module: step_module, config: config}
+        metadata: %{step_module: step_module, config_sources: config_sources}
       })
 
       # Ensure module is loaded before checking if it's a sub-routine
@@ -116,7 +119,7 @@ defmodule Koalemos.Engine.Orchestrator do
       # Setup step execution - capture both state and diff
       {state_after_setup, setup_diff} =
         if function_exported?(step_module, :setup, 2) do
-          StepUtils.call_step_function_with_diff(step_module, :setup, [config], state)
+          StepUtils.call_step_function_with_diff(step_module, :setup, [config_sources], state)
         else
           {state, []}
         end
@@ -124,7 +127,7 @@ defmodule Koalemos.Engine.Orchestrator do
       # Record setup and fire context_changed if setup was called and returned a diff
       if function_exported?(step_module, :setup, 2) do
         EventRecorder.record_event(state_after_setup, "step_setup", %{
-          metadata: %{step_module: step_module, config: config}
+          metadata: %{step_module: step_module, config_sources: config_sources}
         })
 
         # Fire context_changed event if setup modified context
@@ -147,14 +150,17 @@ defmodule Koalemos.Engine.Orchestrator do
 
         new_state
       else
-        latest_dynamic = get_in(state_after_setup, [:context, :config, state_after_setup.current_step]) || %{}
-        config_for_execute = Map.merge(config, latest_dynamic)
+        # Re-collect config sources (setup may have modified runtime config)
+        config_sources_for_execute = %{
+          static: config_sources.static,
+          runtime: get_in(state_after_setup, [:context, :config, state_after_setup.current_step]) || %{}
+        }
 
         Task.start(fn ->
           result =
             try do
               apply(step_module, :execute, [
-                config_for_execute,
+                config_sources_for_execute,
                 state_after_setup
               ])
             rescue

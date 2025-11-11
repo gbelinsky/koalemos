@@ -110,14 +110,25 @@ defmodule Koalemos.EngineManagerTest do
   end
 
   describe "list_routines/0" do
-    test "returns empty list when no routines" do
-      # Stop any existing routines first
+    test "returns empty list when no routines from this test" do
+      # Get baseline count (may have routines from other tests due to async execution)
+      initial_routines = EngineManager.list_routines()
+      initial_count = length(initial_routines)
+
+      # Stop any manager-test routines from this test file
       EngineManager.list_routines()
+      |> Enum.filter(fn info -> String.starts_with?(info.id, "manager-test-") end)
       |> Enum.each(fn info -> EngineManager.stop_routine(info.id) end)
 
+      # Wait for cleanup
       :timer.sleep(50)
 
-      assert EngineManager.list_routines() == []
+      # Verify no manager-test routines remain (other test routines may still exist)
+      remaining_manager_routines =
+        EngineManager.list_routines()
+        |> Enum.filter(fn info -> String.starts_with?(info.id, "manager-test-") end)
+
+      assert remaining_manager_routines == []
     end
 
     test "returns list of running routines", %{routine_id: routine_id} do

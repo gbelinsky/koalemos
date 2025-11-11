@@ -153,6 +153,18 @@ function parseJavaScript(code) {
         nodesToRemove.add(index);
       }
 
+      // Extract top-level function declarations (function name() { ... })
+      if (node.type === 'FunctionDeclaration' && node.id?.name) {
+        const name = node.id.name;
+        // Extract the full function code
+        const [funcStart, funcEnd] = node.range;
+        const functionCode = code.substring(funcStart, funcEnd);
+        functions[name] = functionCode;
+
+        // Mark this node for removal from init script
+        nodesToRemove.add(index);
+      }
+
     });
 
     // Transform the AST to remove handlers (this modifies the tree in place)
@@ -237,4 +249,32 @@ function parseJavaScript(code) {
   }
 }
 
-module.exports = { parseJavaScript };
+/**
+ * Validate JavaScript function syntax.
+ * Returns {valid: true} or {valid: false, error: "message"}
+ */
+function validateFunction(code) {
+  try {
+    // Try to create a function from the code
+    new Function(`return (${code});`);
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: error.message };
+  }
+}
+
+/**
+ * Validate init script syntax.
+ * Returns {valid: true} or {valid: false, error: "message"}
+ */
+function validateInitScript(code) {
+  try {
+    // Try to parse as a script (not wrapped in function)
+    new Function(code);
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: error.message };
+  }
+}
+
+module.exports = { parseJavaScript, validateFunction, validateInitScript };

@@ -24,7 +24,14 @@ defmodule KoalemosWeb.Router do
     live "/test", TestIndexLive
     live "/test/sample", SamplesLive
     live "/test/screenshot", ScreenshotTestLive
+    live "/test/thinking", ThinkingTestLive
+    live "/test/persona", PersonaTestLive
     live "/test/parsing", ParsingTestLive
+    live "/test/wireframe", WireframeTestLive
+    live "/test/lens-combinator", LensCombinatorLive
+
+    # Wireframe preview (LiveView in iframe)
+    live "/wireframe-preview/:routine_id", WireframePreviewLive
   end
 
   # Other scopes may use custom stacks.

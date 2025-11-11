@@ -63,11 +63,11 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "collects tools from single lens (string format)" do
       state = %{
         context: %{
-          active_lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.SimpleLens"]
+          lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.SimpleLens"]
         }
       }
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       assert length(updates.tool_descriptions) == 1
@@ -80,14 +80,14 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "collects tools from multiple lenses" do
       state = %{
         context: %{
-          active_lenses: [
+          lenses: [
             "Koalemos.Steps.Agent.ToolSchemaTest.SimpleLens",
             "Koalemos.Steps.Agent.ToolSchemaTest.MultiToolLens"
           ]
         }
       }
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       assert length(updates.tool_descriptions) == 3
@@ -102,13 +102,13 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "uses list format with config" do
       state = %{
         context: %{
-          active_lenses: [
+          lenses: [
             ["Koalemos.Steps.Agent.ToolSchemaTest.SimpleLens", %{some: "config"}]
           ]
         }
       }
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       assert length(updates.tool_descriptions) == 1
@@ -118,12 +118,12 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "uses context-aware info/2 when available" do
       state = %{
         context: %{
-          active_lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.ContextAwareLens"],
+          lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.ContextAwareLens"],
           mode: "advanced"
         }
       }
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       description = hd(updates.tool_descriptions).description
@@ -133,11 +133,11 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "falls back to info/1 for lenses without info/2" do
       state = %{
         context: %{
-          active_lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.SimpleLens"]
+          lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.SimpleLens"]
         }
       }
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       assert hd(updates.tool_descriptions).name == "test_tool"
@@ -146,7 +146,7 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "handles lens without tools/0 gracefully" do
       state = %{
         context: %{
-          active_lenses: [
+          lenses: [
             "Koalemos.Steps.Agent.ToolSchemaTest.SimpleLens",
             "Koalemos.Steps.Agent.ToolSchemaTest.LensWithoutTools"
           ]
@@ -154,7 +154,7 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
       }
 
       # Should succeed but only get tools from SimpleLens
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       assert length(updates.tool_descriptions) == 1
@@ -164,27 +164,11 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "returns empty tools when no lenses configured" do
       state = %{context: %{}}
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       assert updates.tool_descriptions == []
       assert updates.tool_map == %{}
-    end
-
-    test "uses active_lenses key first, then lenses key" do
-      state = %{
-        context: %{
-          active_lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.SimpleLens"],
-          lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.MultiToolLens"]
-        }
-      }
-
-      # Should use active_lenses, not lenses
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
-      assert [add_or_update: updates] = diff
-
-      assert length(updates.tool_descriptions) == 1
-      assert hd(updates.tool_descriptions).name == "test_tool"
     end
 
     test "uses lenses key when active_lenses not present" do
@@ -194,7 +178,7 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
         }
       }
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       assert length(updates.tool_descriptions) == 2
@@ -203,11 +187,11 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "returns error when lens module not found" do
       state = %{
         context: %{
-          active_lenses: ["NonExistent.Lens.Module"]
+          lenses: ["NonExistent.Lens.Module"]
         }
       }
 
-      assert {:error, error_msg} = ToolSchema.execute(%{}, state)
+      assert {:error, error_msg} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert error_msg =~ "Tool schema extraction failed"
       assert error_msg =~ "not an already existing atom"
     end
@@ -215,11 +199,11 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "builds correct tool_map structure" do
       state = %{
         context: %{
-          active_lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.MultiToolLens"]
+          lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.MultiToolLens"]
         }
       }
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       assert updates.tool_map["tool_one"] == {MultiToolLens, :tool_one}
@@ -229,11 +213,11 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
     test "tool_descriptions match tool_map keys" do
       state = %{
         context: %{
-          active_lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.MultiToolLens"]
+          lenses: ["Koalemos.Steps.Agent.ToolSchemaTest.MultiToolLens"]
         }
       }
 
-      assert {:ok, diff} = ToolSchema.execute(%{}, state)
+      assert {:ok, diff} = ToolSchema.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: updates] = diff
 
       description_names = Enum.map(updates.tool_descriptions, & &1.name) |> MapSet.new()
