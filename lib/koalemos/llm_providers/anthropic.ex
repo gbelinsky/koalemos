@@ -63,12 +63,20 @@ defmodule Koalemos.LLMProviders.Anthropic do
       |> Enum.map(&Utils.strip_metadata/1)
       |> Utils.filter_empty_assistant_messages()
 
-    # Prepend image contexts as user messages (not saved to history)
+    # Append image contexts as user messages at the END (not saved to history)
+    # Include descriptive text to emphasize these are current/live views
+    # Placed at end so agent sees them most recently and pays more attention
     image_messages = Enum.map(image_contexts, fn img ->
-      %{role: "user", content: [img]}
+      %{
+        role: "user",
+        content: [
+          %{type: "text", text: "Live screen view - current visual state of the wireframe:"},
+          img
+        ]
+      }
     end)
 
-    all_messages = image_messages ++ filtered_messages
+    all_messages = filtered_messages ++ image_messages
 
     # Get model parameters from config with defaults
     model = config[:model] || @default_model

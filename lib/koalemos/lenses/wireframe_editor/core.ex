@@ -297,7 +297,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
                 parent_id: %{type: "string", description: "ID of parent element"},
                 tag: %{type: "string", description: "HTML tag (div, button, etc.)"},
                 id: %{type: "string", description: "Unique ID for new element"},
-                content: %{type: "string", description: "Text content"},
+                content: %{type: "string", description: "Text content (plain text only, NOT innerHTML)"},
                 classes: %{
                   type: "array",
                   items: %{type: "string"},
@@ -305,11 +305,16 @@ defmodule Koalemos.Lenses.WireframeEditor do
                 },
                 attributes: %{
                   type: "object",
-                  description: "HTML attributes (type, placeholder, href, etc.)"
+                  description: "HTML attributes (type, placeholder, href, value, etc.) Note: Use manage_css for styling, not inline 'style' attribute"
                 },
                 handlers: %{
                   type: "object",
                   description: "Event handlers as {event: function_name}"
+                },
+                children: %{
+                  type: "array",
+                  description: "Nested child elements (recursive - each child has same structure)",
+                  items: %{type: "object"}
                 },
                 position: %{
                   type: "string",
@@ -331,14 +336,24 @@ defmodule Koalemos.Lenses.WireframeEditor do
           },
           replace_elements: %{
             type: "array",
-            description: "Elements to replace",
+            description: "Elements to replace. WARNING: If new_element doesn't specify 'children', the old element's children will be LOST. To keep children, include them in new_element.children or use modify_classes/manage_attributes instead.",
             items: %{
               type: "object",
               properties: %{
                 element_id: %{type: "string", description: "ID of element to replace"},
                 new_element: %{
                   type: "object",
-                  description: "New element structure (same format as add_elements)"
+                  description: "New element structure with properties: tag, id, content, classes, attributes, handlers, children",
+                  properties: %{
+                    tag: %{type: "string", description: "HTML tag"},
+                    id: %{type: "string", description: "Element ID (can be same or different)"},
+                    content: %{type: "string", description: "Text content (plain text only, NOT innerHTML)"},
+                    classes: %{type: "array", items: %{type: "string"}, description: "CSS classes"},
+                    attributes: %{type: "object", description: "HTML attributes (value, type, etc.) Note: Use manage_css for styling"},
+                    handlers: %{type: "object", description: "Event handlers"},
+                    children: %{type: "array", description: "Child elements (preserves old children if omitted)", items: %{type: "object"}}
+                  },
+                  required: ["tag", "id"]
                 }
               },
               required: ["element_id", "new_element"]

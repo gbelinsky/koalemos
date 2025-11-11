@@ -650,11 +650,24 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
       element_id = Map.get(replacement, "element_id")
       new_element_spec = Map.get(replacement, "new_element")
 
+      # Find the old element to preserve its children if not specified in new_element
+      old_element = find_element_by_id(current_tree, element_id)
+
+      # Preserve children from old element if new_element doesn't specify children
+      merged_spec = case {Map.get(new_element_spec, "children"), old_element} do
+        {nil, %{children: old_children}} when old_children != [] ->
+          # New element doesn't specify children, but old element has them - preserve them
+          Map.put(new_element_spec, "children", convert_elements_to_specs(old_children))
+        _ ->
+          # Either new element specifies children explicitly, or old element has no children
+          new_element_spec
+      end
+
       # Collect all existing IDs from the tree for uniqueness checking
       used_ids = collect_all_ids(current_tree)
 
       # Build element with auto-generated IDs for children without IDs
-      {new_element, _counter} = build_element_from_spec_with_ids(new_element_spec, used_ids, 1)
+      {new_element, _counter} = build_element_from_spec_with_ids(merged_spec, used_ids, 1)
 
       case replace_element(current_tree, element_id, new_element) do
         {:ok, updated_tree} ->
@@ -752,6 +765,30 @@ defmodule Koalemos.Lenses.WireframeEditor.DOMHandler do
     end
   end
   defp collect_all_ids(_), do: MapSet.new()
+
+  # Find element by ID in tree
+  defp find_element_by_id(%{id: id} = element, target_id) when id == target_id, do: element
+  defp find_element_by_id(%{children: children}, target_id) when is_list(children) do
+    Enum.find_value(children, fn child -> find_element_by_id(child, target_id) end)
+  end
+  defp find_element_by_id(_, _target_id), do: nil
+
+  # Convert element structs to specs (for preserving children in replace)
+  defp convert_elements_to_specs(elements) when is_list(elements) do
+    Enum.map(elements, &convert_element_to_spec/1)
+  end
+
+  defp convert_element_to_spec(%{} = element) do
+    %{
+      "tag" => Map.get(element, :tag),
+      "id" => Map.get(element, :id),
+      "content" => Map.get(element, :content),
+      "classes" => Map.get(element, :classes, []),
+      "attributes" => Map.get(element, :attributes, %{}),
+      "handlers" => Map.get(element, :handlers, %{}),
+      "children" => convert_elements_to_specs(Map.get(element, :children, []))
+    }
+  end
 
   # Ensure ID is unique by appending -1, -2, etc. if needed
   defp ensure_unique_id(proposed_id, used_ids) do

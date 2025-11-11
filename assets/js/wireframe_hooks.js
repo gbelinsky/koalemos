@@ -510,6 +510,20 @@ WireframeHooks.JavaScriptUpdater = {
       }
     })
 
+    // For form inputs, capture current value (not just the static attribute)
+    // This captures dynamic state like user-entered text
+    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
+      if (element.value !== undefined && element.value !== '') {
+        attributes['value'] = element.value
+      }
+      // For checkboxes/radios, capture checked state
+      if (element.type === 'checkbox' || element.type === 'radio') {
+        if (element.checked) {
+          attributes['checked'] = 'true'
+        }
+      }
+    }
+
     // Get text content (only if element has no children or only text nodes)
     let content = null
     if (element.childNodes.length === 1 && element.childNodes[0].nodeType === 3) {
