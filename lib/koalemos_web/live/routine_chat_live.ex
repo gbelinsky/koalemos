@@ -41,61 +41,70 @@ defmodule KoalemosWeb.RoutineChatLive do
     model = Map.get(params, "model", "claude-haiku-4-5")
 
     # Subscribe to routine events and load state (only once)
-    socket = if connected?(socket) && socket.assigns.routine_id == nil do
-      Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
-      Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
-      # M3 Sprint 3: Subscribe to screenshot requests
-      Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:request:#{routine_id}")
+    socket =
+      if connected?(socket) && socket.assigns.routine_id == nil do
+        Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
+        Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
+        # M3 Sprint 3: Subscribe to screenshot requests
+        Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:request:#{routine_id}")
 
-      # Try to start the routine (will return existing pid if already running)
-      # Engine auto-calls initial_context/0 and merges with user context
-      user_context = %{
-        llm_provider: provider,
-        llm_model: model
-      }
+        # Try to start the routine (will return existing pid if already running)
+        # Engine auto-calls initial_context/0 and merges with user context
+        user_context = %{
+          llm_provider: provider,
+          llm_model: model
+        }
 
-      case EngineManager.start_routine(routine_id, TestChatRoutine, user_context) do
-        {:ok, _pid} ->
-          Logger.info("Started routine #{routine_id} with #{provider}/#{model}")
-        {:error, reason} ->
-          Logger.error("Failed to start routine #{routine_id}: #{inspect(reason)}")
+        case EngineManager.start_routine(routine_id, TestChatRoutine, user_context) do
+          {:ok, _pid} ->
+            Logger.info("Started routine #{routine_id} with #{provider}/#{model}")
+
+          {:error, reason} ->
+            Logger.error("Failed to start routine #{routine_id}: #{inspect(reason)}")
+        end
+
+        # Load existing messages, config, and state if routine was already running
+        case EngineManager.get_routine(routine_id) do
+          {:ok, routine_info} ->
+            Logger.info(
+              "Loaded routine state: status=#{routine_info.status}, step=#{inspect(routine_info.current_step)}, messages=#{length(routine_info.messages)}"
+            )
+
+            # Extract actual config from routine context
+            actual_provider = routine_info.context[:llm_provider] || provider
+            actual_model = routine_info.context[:llm_model] || model
+
+            # Extract error from context if present
+            error = routine_info.context[:error]
+
+            socket
+            |> assign(messages: routine_info.messages)
+            |> assign(status: routine_info.status)
+            |> assign(current_step: routine_info.current_step)
+            |> assign(last_error: error)
+            |> assign(
+              config: %{
+                llm_provider: actual_provider,
+                model: actual_model,
+                max_tokens: 2000,
+                temperature: 0.7
+              }
+            )
+
+          {:error, _} ->
+            # New routine, use URL params
+            assign(socket,
+              config: %{
+                llm_provider: provider,
+                model: model,
+                max_tokens: 2000,
+                temperature: 0.7
+              }
+            )
+        end
+      else
+        socket
       end
-
-      # Load existing messages, config, and state if routine was already running
-      case EngineManager.get_routine(routine_id) do
-        {:ok, routine_info} ->
-          Logger.info("Loaded routine state: status=#{routine_info.status}, step=#{inspect(routine_info.current_step)}, messages=#{length(routine_info.messages)}")
-
-          # Extract actual config from routine context
-          actual_provider = routine_info.context[:llm_provider] || provider
-          actual_model = routine_info.context[:llm_model] || model
-
-          # Extract error from context if present
-          error = routine_info.context[:error]
-
-          socket
-          |> assign(messages: routine_info.messages)
-          |> assign(status: routine_info.status)
-          |> assign(current_step: routine_info.current_step)
-          |> assign(last_error: error)
-          |> assign(config: %{
-            llm_provider: actual_provider,
-            model: actual_model,
-            max_tokens: 2000,
-            temperature: 0.7
-          })
-        {:error, _} ->
-          # New routine, use URL params
-          assign(socket, config: %{
-            llm_provider: provider,
-            model: model,
-            max_tokens: 2000,
-            temperature: 0.7
-          })
-      end
-    else
-      socket
-    end
 
     {:noreply, assign(socket, routine_id: routine_id)}
   end
@@ -111,7 +120,9 @@ defmodule KoalemosWeb.RoutineChatLive do
     routine_id = socket.assigns.routine_id
     data = screenshot_data["data"]
 
-    Logger.info("[RoutineChatLive] Screenshot captured for #{routine_id}, #{byte_size(data)} bytes")
+    Logger.info(
+      "[RoutineChatLive] Screenshot captured for #{routine_id}, #{byte_size(data)} bytes"
+    )
 
     # Store in ScreenshotCache
     case Koalemos.Caches.ScreenshotCache.put(routine_id, data) do
@@ -124,6 +135,7 @@ defmodule KoalemosWeb.RoutineChatLive do
           "screenshot:response:#{routine_id}",
           {:screenshot_ready, routine_id}
         )
+
         Logger.debug("[RoutineChatLive] Broadcast screenshot_ready notification")
 
       error ->
@@ -164,8 +176,14 @@ defmodule KoalemosWeb.RoutineChatLive do
   end
 
   @impl true
-  def handle_info({:user_input_submitted, %{text: text, images: images, include_screenshot: include_screenshot}}, socket) do
-    Logger.info("User input submitted: text=#{text}, images=#{length(images)}, screenshot=#{include_screenshot}")
+  def handle_info(
+        {:user_input_submitted,
+         %{text: text, images: images, include_screenshot: include_screenshot}},
+        socket
+      ) do
+    Logger.info(
+      "User input submitted: text=#{text}, images=#{length(images)}, screenshot=#{include_screenshot}"
+    )
 
     # Send user input to routine
     data = %{text: text, images: images, include_screenshot: include_screenshot}
@@ -193,11 +211,12 @@ defmodule KoalemosWeb.RoutineChatLive do
     # If there's an error in the completion, treat it as an error state
     status = if error, do: :error, else: :completed
 
-    socket = socket
-    |> assign(status: status)
-    |> assign(last_error: error)
-    |> assign(current_step: nil)
-    |> add_event("routine_completed", %{error: error})
+    socket =
+      socket
+      |> assign(status: status)
+      |> assign(last_error: error)
+      |> assign(current_step: nil)
+      |> add_event("routine_completed", %{error: error})
 
     {:noreply, socket}
   end
@@ -207,10 +226,11 @@ defmodule KoalemosWeb.RoutineChatLive do
     error_msg = get_in(event, [:metadata, :reason]) || "Unknown error"
     Logger.error("Routine error: #{error_msg}")
 
-    socket = socket
-    |> assign(status: :error, last_error: error_msg)
-    |> assign(current_step: nil)
-    |> add_event("error", %{message: error_msg})
+    socket =
+      socket
+      |> assign(status: :error, last_error: error_msg)
+      |> assign(current_step: nil)
+      |> add_event("error", %{message: error_msg})
 
     {:noreply, socket}
   end
@@ -220,9 +240,10 @@ defmodule KoalemosWeb.RoutineChatLive do
     step = event.step_id
     step_module = get_in(event, [:metadata, :step_module])
 
-    socket = socket
-    |> assign(current_step: step)
-    |> add_event("step_started", %{step: step, module: step_module})
+    socket =
+      socket
+      |> assign(current_step: step)
+      |> add_event("step_started", %{step: step, module: step_module})
 
     {:noreply, socket}
   end
@@ -245,7 +266,10 @@ defmodule KoalemosWeb.RoutineChatLive do
       # Trigger screenshot capture via JavaScript hook
       {:noreply, push_event(socket, "trigger_screenshot_capture", %{})}
     else
-      Logger.warning("[RoutineChatLive] Screenshot request for wrong routine: #{requested_id} (current: #{socket.assigns.routine_id})")
+      Logger.warning(
+        "[RoutineChatLive] Screenshot request for wrong routine: #{requested_id} (current: #{socket.assigns.routine_id})"
+      )
+
       {:noreply, socket}
     end
   end
@@ -283,15 +307,15 @@ defmodule KoalemosWeb.RoutineChatLive do
               </svg>
             </a>
             <h1 class="text-xl font-semibold text-slate-800">koalemos chat</h1>
-
-            <!-- Compact Config Display -->
+            
+    <!-- Compact Config Display -->
             <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
               <div class="flex flex-col">
                 <div class="text-xs text-slate-500 leading-tight">
-                  <%= @config.llm_provider %>
+                  {@config.llm_provider}
                 </div>
                 <div class="text-sm font-medium text-slate-700 leading-tight">
-                  <%= @config.model %>
+                  {@config.model}
                 </div>
               </div>
               <button
@@ -310,26 +334,26 @@ defmodule KoalemosWeb.RoutineChatLive do
             ]}>
               <div class={["w-2 h-2 rounded-full flex-shrink-0", status_dot_class(@status)]}></div>
               <span class={["text-sm flex-1 text-center", status_text_class(@status)]}>
-                <%= status_text(@status) %>
+                {status_text(@status)}
               </span>
             </div>
             <!-- Current Step (fixed width) -->
             <%= if @current_step do %>
               <div class="text-xs text-slate-500 font-mono w-32 text-right">
-                step: <%= @current_step %>
+                step: {@current_step}
               </div>
             <% else %>
               <div class="w-32"></div>
             <% end %>
             <!-- Routine ID (small, subtle) -->
             <div class="text-xs text-slate-400 font-mono">
-              <%= @routine_id %>
+              {@routine_id}
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Debug Panel (collapsible) -->
+      
+    <!-- Debug Panel (collapsible) -->
       <%= if @show_debug do %>
         <div class="bg-slate-800 text-white border-b border-slate-700">
           <div class="max-w-6xl mx-auto px-4 py-2">
@@ -339,21 +363,21 @@ defmodule KoalemosWeb.RoutineChatLive do
                 <div class="flex-1">
                   <div class="text-xs font-bold text-red-400 mb-1">LAST ERROR</div>
                   <div class="text-xs text-red-300 bg-red-900/30 px-2 py-1 rounded">
-                    <%= @last_error %>
+                    {@last_error}
                   </div>
                 </div>
               <% end %>
-
-              <!-- Recent Events -->
+              
+    <!-- Recent Events -->
               <div class="flex-1">
                 <div class="text-xs font-bold text-slate-300 mb-1">RECENT EVENTS</div>
                 <div class="text-xs space-y-1 max-h-20 overflow-y-auto">
                   <%= for event <- Enum.take(@recent_events, 5) do %>
                     <div class="flex gap-2">
-                      <span class="text-slate-500"><%= format_time(event.time) %></span>
-                      <span class="text-blue-400"><%= event.type %></span>
+                      <span class="text-slate-500">{format_time(event.time)}</span>
+                      <span class="text-blue-400">{event.type}</span>
                       <%= if event.details[:step] do %>
-                        <span class="text-slate-400">→ <%= event.details.step %></span>
+                        <span class="text-slate-400">→ {event.details.step}</span>
                       <% end %>
                     </div>
                   <% end %>
@@ -363,8 +387,8 @@ defmodule KoalemosWeb.RoutineChatLive do
           </div>
         </div>
       <% end %>
-
-      <!-- Chat Panel (fills remaining space) -->
+      
+    <!-- Chat Panel (fills remaining space) -->
       <!-- M3 Sprint 3: ScreenshotCapture hook wraps chat panel -->
       <div
         id="chat-screenshot-target"
@@ -385,8 +409,8 @@ defmodule KoalemosWeb.RoutineChatLive do
           />
         </div>
       </div>
-
-      <!-- Start Session Modal -->
+      
+    <!-- Start Session Modal -->
       <.live_component
         module={StartSessionModal}
         id="start-session-modal"

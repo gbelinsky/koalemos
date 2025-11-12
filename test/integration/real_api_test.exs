@@ -22,16 +22,23 @@ defmodule Koalemos.Integration.RealAPITest do
       # Start SimpleCredentialManager if not running
       case GenServer.whereis(Koalemos.SimpleCredentialManager) do
         nil ->
-          case GenServer.start_link(Koalemos.SimpleCredentialManager, [], name: Koalemos.SimpleCredentialManager) do
+          case GenServer.start_link(Koalemos.SimpleCredentialManager, [],
+                 name: Koalemos.SimpleCredentialManager
+               ) do
             {:ok, _pid} -> :ok
             {:error, {:already_started, _pid}} -> :ok
           end
-        _pid -> :ok
+
+        _pid ->
+          :ok
       end
 
       :ok
     else
-      IO.puts("\nSkipping real API test - credentials not available at .koalemos/.credentials.json")
+      IO.puts(
+        "\nSkipping real API test - credentials not available at .koalemos/.credentials.json"
+      )
+
       :skip
     end
   end
@@ -39,7 +46,9 @@ defmodule Koalemos.Integration.RealAPITest do
   describe "Anthropic API integration" do
     test "makes simple text request and gets response" do
       case check_credentials() do
-        :skip -> :ok
+        :skip ->
+          :ok
+
         :ok ->
           # Simple state with one message
           state = %{
@@ -73,9 +82,11 @@ defmodule Koalemos.Integration.RealAPITest do
           assert is_list(response["content"])
 
           # Should have text content
-          text_blocks = Enum.filter(response["content"], fn block ->
-            block["type"] == "text"
-          end)
+          text_blocks =
+            Enum.filter(response["content"], fn block ->
+              block["type"] == "text"
+            end)
+
           assert length(text_blocks) > 0
 
           # Verify text is present
@@ -87,14 +98,19 @@ defmodule Koalemos.Integration.RealAPITest do
 
     test "handles tool calls correctly" do
       case check_credentials() do
-        :skip -> :ok
+        :skip ->
+          :ok
+
         :ok ->
           # State with message requesting tool use and tools available
           state = %{
             routine_id: "test-#{:erlang.unique_integer([:positive])}",
             context: %{
               messages: [
-                %{role: "user", content: [%{type: "text", text: "Use the echo tool to echo: test123"}]}
+                %{
+                  role: "user",
+                  content: [%{type: "text", text: "Use the echo tool to echo: test123"}]
+                }
               ],
               llm_provider: "anthropic",
               llm_model: "claude-3-5-haiku-20241022",
@@ -125,7 +141,10 @@ defmodule Koalemos.Integration.RealAPITest do
           # Parse response
           parse_state = %{routine_id: state.routine_id, context: updated_state.context}
           assert {:ok, parse_diff} = ResponseParsing.execute(%{}, parse_state)
-          final_state = Koalemos.Engine.ContextManager.apply_context_diff!(parse_state, parse_diff)
+
+          final_state =
+            Koalemos.Engine.ContextManager.apply_context_diff!(parse_state, parse_diff)
+
           final_context = final_state.context
 
           # May or may not have tool calls depending on LLM behavior
@@ -181,16 +200,19 @@ defmodule Koalemos.Integration.RealAPITest do
   describe "lens context integration" do
     test "lens text contexts included in request" do
       case check_credentials() do
-        :skip -> :ok
+        :skip ->
+          :ok
+
         :ok ->
           # Use TestLens to provide context
           lens_state = %{context: %{}}
           lens_contexts = Koalemos.Lenses.TestLensScreenshot.provide_context(lens_state)
 
           # Separate into text and images
-          text_contexts = Enum.filter(lens_contexts, fn block ->
-            is_binary(block) || (is_map(block) && Map.get(block, :type) == "text")
-          end)
+          text_contexts =
+            Enum.filter(lens_contexts, fn block ->
+              is_binary(block) || (is_map(block) && Map.get(block, :type) == "text")
+            end)
 
           state = %{
             routine_id: "test-#{:erlang.unique_integer([:positive])}",

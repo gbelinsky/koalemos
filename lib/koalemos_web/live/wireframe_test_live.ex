@@ -33,7 +33,7 @@ defmodule KoalemosWeb.WireframeTestLive do
   alias Koalemos.Integrations.ParsingIntegration
   alias Koalemos.Lenses.WireframeEditor
   alias Koalemos.{EngineManager, Engine}
-  alias Koalemos.Routines.WireframeTestRoutine
+  alias Koalemos.Routines.{WireframeTestRoutine, WireframeDesignRoutine}
   alias KoalemosWeb.ChatPanel
 
   @fixtures_path "test/fixtures"
@@ -41,6 +41,11 @@ defmodule KoalemosWeb.WireframeTestLive do
     {"simple", "Simple Wireframe", "wireframe_simple.html"},
     {"medium", "Medium Wireframe", "wireframe_medium.html"},
     {"complex", "Complex Wireframe", "wireframe_complex.html"}
+  ]
+
+  @available_routines [
+    {WireframeTestRoutine, "Basic Test Routine", "Simple agent loop with WireframeEditor tools"},
+    {WireframeDesignRoutine, "Design Routine (M5)", "Semantic routing with sub-routines"}
   ]
 
   @impl true
@@ -52,6 +57,8 @@ defmodule KoalemosWeb.WireframeTestLive do
        current_html: nil,
        current_sample: nil,
        available_samples: @available_samples,
+       available_routines: @available_routines,
+       selected_routine: WireframeDesignRoutine,
        loaded_html: nil,
        error_message: nil,
        lens_state: nil,
@@ -99,6 +106,7 @@ defmodule KoalemosWeb.WireframeTestLive do
 
           # Also broadcast for any already-mounted previews
           dom_tree = get_in(lens_state, [:designed, :dom_tree])
+
           Phoenix.PubSub.broadcast(
             Koalemos.PubSub,
             "wireframe_updates:#{routine_id}",
@@ -150,16 +158,23 @@ defmodule KoalemosWeb.WireframeTestLive do
   @impl true
   def handle_event("toggle_context", _params, socket) do
     new_show_context = !socket.assigns.show_context
-    Logger.info("[WireframeTestLive] Toggling context drawer from #{socket.assigns.show_context} to #{new_show_context}")
+
+    Logger.info(
+      "[WireframeTestLive] Toggling context drawer from #{socket.assigns.show_context} to #{new_show_context}"
+    )
 
     # When OPENING the drawer, regenerate context with current live state
-    socket = if new_show_context && socket.assigns.lens_state do
-      Logger.info("[WireframeTestLive] Regenerating agent_context with live state capture")
-      agent_context = regenerate_agent_context(socket.assigns.lens_state, socket.assigns.routine_id)
-      assign(socket, agent_context: agent_context)
-    else
-      socket
-    end
+    socket =
+      if new_show_context && socket.assigns.lens_state do
+        Logger.info("[WireframeTestLive] Regenerating agent_context with live state capture")
+
+        agent_context =
+          regenerate_agent_context(socket.assigns.lens_state, socket.assigns.routine_id)
+
+        assign(socket, agent_context: agent_context)
+      else
+        socket
+      end
 
     {:noreply, assign(socket, show_context: new_show_context)}
   end
@@ -187,11 +202,25 @@ defmodule KoalemosWeb.WireframeTestLive do
   end
 
   @impl true
+  def handle_event("select_routine", %{"routine" => routine_name}, socket) do
+    routine_module =
+      case routine_name do
+        "WireframeTestRoutine" -> WireframeTestRoutine
+        "WireframeDesignRoutine" -> WireframeDesignRoutine
+        _ -> WireframeTestRoutine
+      end
+
+    Logger.info("[WireframeTestLive] Selected routine: #{inspect(routine_module)}")
+    {:noreply, assign(socket, selected_routine: routine_module)}
+  end
+
+  @impl true
   def handle_event("start_agent", _params, socket) do
     Logger.info("[WireframeTestLive] Starting agent for routine #{socket.assigns.routine_id}")
 
     routine_id = socket.assigns.routine_id
     loaded_html = socket.assigns.loaded_html
+    selected_routine = socket.assigns.selected_routine
 
     if routine_id && loaded_html && !socket.assigns.agent_running do
       # Subscribe to routine events
@@ -200,18 +229,21 @@ defmodule KoalemosWeb.WireframeTestLive do
         Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
       end
 
-      # Start the WireframeTestRoutine with the loaded wireframe HTML
+      # Start the selected routine with the loaded wireframe HTML
       # The routine's setup/2 will parse it and create lens_state
       user_context = %{
         routine_id: routine_id,
         llm_provider: "anthropic",
-        llm_model: "claude-haiku-4-5",
+        # Using sonnet for M5 routing
+        llm_model: "claude-sonnet-4-5",
         max_tokens: 64000,
         temperature: 0.7,
         wireframe_html: loaded_html
       }
 
-      case EngineManager.start_routine(routine_id, WireframeTestRoutine, user_context) do
+      Logger.info("[WireframeTestLive] Starting routine: #{inspect(selected_routine)}")
+
+      case EngineManager.start_routine(routine_id, selected_routine, user_context) do
         {:ok, _pid} ->
           Logger.info("[WireframeTestLive] Started agent successfully")
 
@@ -285,8 +317,14 @@ defmodule KoalemosWeb.WireframeTestLive do
   end
 
   @impl true
-  def handle_info({:user_input_submitted, %{text: text, images: images, include_screenshot: include_screenshot}}, socket) do
-    Logger.info("[WireframeTestLive] User input submitted: text=#{text}, images=#{length(images)}")
+  def handle_info(
+        {:user_input_submitted,
+         %{text: text, images: images, include_screenshot: include_screenshot}},
+        socket
+      ) do
+    Logger.info(
+      "[WireframeTestLive] User input submitted: text=#{text}, images=#{length(images)}"
+    )
 
     # Send user input to routine
     data = %{text: text, images: images, include_screenshot: include_screenshot}
@@ -349,42 +387,56 @@ defmodule KoalemosWeb.WireframeTestLive do
   end
 
   @impl true
-  def handle_info({:routine_event, %{event_type: "context_changed", context_diff: context_diff}}, socket) do
+  def handle_info(
+        {:routine_event, %{event_type: "context_changed", context_diff: context_diff}},
+        socket
+      ) do
     Logger.info("[WireframeTestLive] Received context_changed event")
 
     # Log structure without huge data
-    diff_summary = Enum.map(context_diff, fn
-      {op, data} when is_map(data) -> {op, Map.keys(data)}
-      [op, data] when is_map(data) -> [op, Map.keys(data)]
-      other -> other
-    end)
+    diff_summary =
+      Enum.map(context_diff, fn
+        {op, data} when is_map(data) -> {op, Map.keys(data)}
+        [op, data] when is_map(data) -> [op, Map.keys(data)]
+        other -> other
+      end)
+
     Logger.debug("[WireframeTestLive] context_diff operations: #{inspect(diff_summary)}")
 
     # Extract lens_state from context_diff if present
-    socket = case extract_lens_state_from_diff(context_diff) do
-      {:ok, lens_state} ->
-        Logger.info("[WireframeTestLive] ✓ Found lens_state in context_diff, updating cache and agent_context")
+    socket =
+      case extract_lens_state_from_diff(context_diff) do
+        {:ok, lens_state} ->
+          Logger.info(
+            "[WireframeTestLive] ✓ Found lens_state in context_diff, updating cache and agent_context"
+          )
 
-        # Check if DOM tree has classes to verify
-        dom_tree = get_in(lens_state, [:designed, :dom_tree])
-        Logger.debug("[WireframeTestLive] DOM tree present: #{not is_nil(dom_tree)}")
+          # Check if DOM tree has classes to verify
+          dom_tree = get_in(lens_state, [:designed, :dom_tree])
+          Logger.debug("[WireframeTestLive] DOM tree present: #{not is_nil(dom_tree)}")
 
-        # Update cache
-        if socket.assigns.routine_id do
-          Koalemos.Caches.WireframeStateCache.put_state(socket.assigns.routine_id, lens_state)
-          Logger.info("[WireframeTestLive] Updated cache for routine #{socket.assigns.routine_id}")
-        end
+          # Update cache
+          if socket.assigns.routine_id do
+            Koalemos.Caches.WireframeStateCache.put_state(socket.assigns.routine_id, lens_state)
 
-        # Regenerate agent context with live state capture
-        agent_context = regenerate_agent_context(lens_state, socket.assigns.routine_id)
-        Logger.info("[WireframeTestLive] Regenerated agent_context (#{String.length(agent_context)} chars)")
+            Logger.info(
+              "[WireframeTestLive] Updated cache for routine #{socket.assigns.routine_id}"
+            )
+          end
 
-        assign(socket, lens_state: lens_state, agent_context: agent_context)
+          # Regenerate agent context with live state capture
+          agent_context = regenerate_agent_context(lens_state, socket.assigns.routine_id)
 
-      :not_found ->
-        Logger.warning("[WireframeTestLive] ✗ No lens_state found in context_diff")
-        socket
-    end
+          Logger.info(
+            "[WireframeTestLive] Regenerated agent_context (#{String.length(agent_context)} chars)"
+          )
+
+          assign(socket, lens_state: lens_state, agent_context: agent_context)
+
+        :not_found ->
+          Logger.warning("[WireframeTestLive] ✗ No lens_state found in context_diff")
+          socket
+      end
 
     {:noreply, socket}
   end
@@ -419,7 +471,7 @@ defmodule KoalemosWeb.WireframeTestLive do
             <%= if @current_html do %>
               <div class="text-sm text-green-600">
                 <span class="font-medium">Loaded:</span>
-                <span class="font-mono"><%= @current_html %></span>
+                <span class="font-mono">{@current_html}</span>
               </div>
             <% end %>
             <a
@@ -461,153 +513,198 @@ defmodule KoalemosWeb.WireframeTestLive do
         <% else %>
           <!-- Control Panel (when agent not running) -->
           <div class="w-1/3 border-r border-slate-300 bg-white flex flex-col p-4 overflow-auto">
-          <div class="space-y-6">
-            <!-- File Upload -->
-            <div>
-              <h2 class="text-lg font-semibold text-slate-800 mb-3">Load HTML File</h2>
-              <form phx-change="validate" class="space-y-2">
-                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 hover:border-blue-400 transition-colors">
-                  <.live_file_input upload={@uploads.html_file} class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
-                  <p class="text-xs text-slate-500 mt-2">HTML or HTM files only (max 1MB)</p>
-                </div>
-              </form>
-            </div>
-
-            <!-- Sample Selection -->
-            <div>
-              <h2 class="text-lg font-semibold text-slate-800 mb-3">Or Choose Sample</h2>
-              <div class="space-y-2">
-                <%= for {id, name, _filename} <- @available_samples do %>
-                  <button
-                    phx-click="load_sample"
-                    phx-value-sample={id}
-                    class={[
-                      "w-full px-4 py-3 rounded-lg border-2 transition-all text-left",
-                      if(@current_sample == id,
-                        do: "border-blue-500 bg-blue-50 text-blue-900",
-                        else: "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50"
-                      )
-                    ]}
-                  >
-                    <div class="font-medium"><%= name %></div>
-                    <div class="text-xs text-slate-500 mt-1">
-                      Click to load and preview
-                    </div>
-                  </button>
-                <% end %>
+            <div class="space-y-6">
+              <!-- File Upload -->
+              <div>
+                <h2 class="text-lg font-semibold text-slate-800 mb-3">Load HTML File</h2>
+                <form phx-change="validate" class="space-y-2">
+                  <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 hover:border-blue-400 transition-colors">
+                    <.live_file_input
+                      upload={@uploads.html_file}
+                      class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                    />
+                    <p class="text-xs text-slate-500 mt-2">HTML or HTM files only (max 1MB)</p>
+                  </div>
+                </form>
               </div>
-            </div>
-            <!-- Actions -->
-            <div>
-              <h2 class="text-lg font-semibold text-slate-800 mb-3">Actions</h2>
-              <div class="space-y-2">
-                <%= if @agent_running do %>
+              
+    <!-- Sample Selection -->
+              <div>
+                <h2 class="text-lg font-semibold text-slate-800 mb-3">Or Choose Sample</h2>
+                <div class="space-y-2">
+                  <%= for {id, name, _filename} <- @available_samples do %>
+                    <button
+                      phx-click="load_sample"
+                      phx-value-sample={id}
+                      class={[
+                        "w-full px-4 py-3 rounded-lg border-2 transition-all text-left",
+                        if(@current_sample == id,
+                          do: "border-blue-500 bg-blue-50 text-blue-900",
+                          else:
+                            "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+                        )
+                      ]}
+                    >
+                      <div class="font-medium">{name}</div>
+                      <div class="text-xs text-slate-500 mt-1">
+                        Click to load and preview
+                      </div>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+              <!-- Routine Selection -->
+              <div>
+                <h2 class="text-lg font-semibold text-slate-800 mb-3">Select Routine</h2>
+                <div class="space-y-2">
+                  <%= for {module, name, description} <- @available_routines do %>
+                    <button
+                      phx-click="select_routine"
+                      phx-value-routine={module |> Module.split() |> List.last()}
+                      disabled={@agent_running}
+                      class={[
+                        "w-full px-4 py-3 rounded-lg border-2 transition-all text-left",
+                        if(@agent_running,
+                          do: "opacity-50 cursor-not-allowed",
+                          else: ""
+                        ),
+                        if(@selected_routine == module,
+                          do: "border-green-500 bg-green-50",
+                          else: "border-slate-200 bg-white hover:border-green-300"
+                        )
+                      ]}
+                    >
+                      <div class="flex items-center justify-between">
+                        <div class="font-medium text-slate-800">{name}</div>
+                        <%= if @selected_routine == module do %>
+                          <div class="text-green-600">✓</div>
+                        <% end %>
+                      </div>
+                      <div class="text-xs text-slate-500 mt-1">{description}</div>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+              
+    <!-- Actions -->
+              <div>
+                <h2 class="text-lg font-semibold text-slate-800 mb-3">Actions</h2>
+                <div class="space-y-2">
+                  <%= if @agent_running do %>
+                    <button
+                      phx-click="stop_agent"
+                      class="w-full px-4 py-2 rounded-lg font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
+                    >
+                      Stop Agent
+                    </button>
+                  <% else %>
+                    <button
+                      phx-click="start_agent"
+                      disabled={is_nil(@loaded_html)}
+                      class={[
+                        "w-full px-4 py-2 rounded-lg font-medium transition-colors",
+                        if(is_nil(@loaded_html),
+                          do: "bg-slate-100 text-slate-400 cursor-not-allowed",
+                          else: "bg-green-600 text-white hover:bg-green-700"
+                        )
+                      ]}
+                    >
+                      Start Agent
+                    </button>
+                  <% end %>
                   <button
-                    phx-click="stop_agent"
-                    class="w-full px-4 py-2 rounded-lg font-medium transition-colors bg-red-600 text-white hover:bg-red-700"
-                  >
-                    Stop Agent
-                  </button>
-                <% else %>
-                  <button
-                    phx-click="start_agent"
+                    phx-click="clear_wireframe"
                     disabled={is_nil(@loaded_html)}
                     class={[
                       "w-full px-4 py-2 rounded-lg font-medium transition-colors",
                       if(is_nil(@loaded_html),
                         do: "bg-slate-100 text-slate-400 cursor-not-allowed",
-                        else: "bg-green-600 text-white hover:bg-green-700"
+                        else: "bg-red-600 text-white hover:bg-red-700"
                       )
                     ]}
                   >
-                    Start Agent
+                    Clear Preview
                   </button>
-                <% end %>
-                <button
-                  phx-click="clear_wireframe"
-                  disabled={is_nil(@loaded_html)}
-                  class={[
-                    "w-full px-4 py-2 rounded-lg font-medium transition-colors",
-                    if(is_nil(@loaded_html),
-                      do: "bg-slate-100 text-slate-400 cursor-not-allowed",
-                      else: "bg-red-600 text-white hover:bg-red-700"
-                    )
-                  ]}
-                >
-                  Clear Preview
-                </button>
-              </div>
-            </div>
-            <!-- Status -->
-            <div>
-              <h2 class="text-lg font-semibold text-slate-800 mb-3">Status</h2>
-              <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-sm">
-                <div class="flex justify-between">
-                  <span class="text-slate-600">Current Sample:</span>
-                  <span class="font-mono text-slate-800">
-                    <%= @current_sample || "None" %>
-                  </span>
                 </div>
-                <%= if @loaded_html do %>
+              </div>
+              <!-- Status -->
+              <div>
+                <h2 class="text-lg font-semibold text-slate-800 mb-3">Status</h2>
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-sm">
                   <div class="flex justify-between">
-                    <span class="text-slate-600">HTML Size:</span>
+                    <span class="text-slate-600">Current Sample:</span>
                     <span class="font-mono text-slate-800">
-                      <%= format_bytes(byte_size(@loaded_html)) %>
+                      {@current_sample || "None"}
                     </span>
                   </div>
-                <% end %>
-                <div class="flex justify-between">
-                  <span class="text-slate-600">Agent Status:</span>
-                  <span class={[
-                    "font-mono text-sm font-medium",
-                    if(@agent_running, do: "text-green-600", else: "text-slate-600")
-                  ]}>
-                    <%= if @agent_running, do: "🟢 Running", else: "⚪ Idle" %>
-                  </span>
-                </div>
-                <%= if @routine_id do %>
+                  <%= if @loaded_html do %>
+                    <div class="flex justify-between">
+                      <span class="text-slate-600">HTML Size:</span>
+                      <span class="font-mono text-slate-800">
+                        {format_bytes(byte_size(@loaded_html))}
+                      </span>
+                    </div>
+                  <% end %>
                   <div class="flex justify-between">
-                    <span class="text-slate-600">Routine ID:</span>
+                    <span class="text-slate-600">Selected Routine:</span>
                     <span class="font-mono text-xs text-slate-800">
-                      <%= String.slice(@routine_id, 0..20) %>...
+                      {@selected_routine |> Module.split() |> List.last()}
                     </span>
                   </div>
-                <% end %>
-              </div>
-            </div>
-            <!-- Error Display -->
-            <%= if @error_message || @last_error do %>
-              <div class="bg-red-50 border border-red-200 rounded-lg p-3">
-                <div class="flex items-start">
-                  <div class="text-red-600 mr-2">⚠</div>
-                  <div class="text-sm text-red-800">
-                    <%= @error_message || @last_error %>
+                  <div class="flex justify-between">
+                    <span class="text-slate-600">Agent Status:</span>
+                    <span class={[
+                      "font-mono text-sm font-medium",
+                      if(@agent_running, do: "text-green-600", else: "text-slate-600")
+                    ]}>
+                      {if @agent_running, do: "🟢 Running", else: "⚪ Idle"}
+                    </span>
                   </div>
+                  <%= if @routine_id do %>
+                    <div class="flex justify-between">
+                      <span class="text-slate-600">Routine ID:</span>
+                      <span class="font-mono text-xs text-slate-800">
+                        {String.slice(@routine_id, 0..20)}...
+                      </span>
+                    </div>
+                  <% end %>
                 </div>
               </div>
-            <% end %>
-            <!-- Sprint Progress -->
-            <div class="border-t border-slate-200 pt-4">
-              <h2 class="text-sm font-semibold text-green-600 mb-2">✓ Sprint 4 Complete:</h2>
-              <ul class="text-xs text-slate-600 space-y-1 list-disc list-inside">
-                <li>WireframeEditor lens integration</li>
-                <li>HTML parsing & DOM tree visualization</li>
-                <li>Agent context rendering</li>
-                <li>9 control tools registered</li>
-              </ul>
-              <h2 class="text-sm font-semibold text-slate-500 mb-2 mt-3">Coming in Future Sprints:</h2>
-              <ul class="text-xs text-slate-500 space-y-1 list-disc list-inside">
-                <li>Interactive tool execution UI</li>
-                <li>Real-time DOM modification testing</li>
-                <li>JavaScript & CSS editors</li>
-                <li>Live agent sessions</li>
-              </ul>
+              <!-- Error Display -->
+              <%= if @error_message || @last_error do %>
+                <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div class="flex items-start">
+                    <div class="text-red-600 mr-2">⚠</div>
+                    <div class="text-sm text-red-800">
+                      {@error_message || @last_error}
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+              <!-- Sprint Progress -->
+              <div class="border-t border-slate-200 pt-4">
+                <h2 class="text-sm font-semibold text-green-600 mb-2">✓ Sprint 4 Complete:</h2>
+                <ul class="text-xs text-slate-600 space-y-1 list-disc list-inside">
+                  <li>WireframeEditor lens integration</li>
+                  <li>HTML parsing & DOM tree visualization</li>
+                  <li>Agent context rendering</li>
+                  <li>9 control tools registered</li>
+                </ul>
+                <h2 class="text-sm font-semibold text-slate-500 mb-2 mt-3">
+                  Coming in Future Sprints:
+                </h2>
+                <ul class="text-xs text-slate-500 space-y-1 list-disc list-inside">
+                  <li>Interactive tool execution UI</li>
+                  <li>Real-time DOM modification testing</li>
+                  <li>JavaScript & CSS editors</li>
+                  <li>Live agent sessions</li>
+                </ul>
+              </div>
             </div>
           </div>
-        </div>
         <% end %>
-
-        <!-- Preview Panel (right side) - always full height -->
+        
+    <!-- Preview Panel (right side) - always full height -->
         <div class="w-2/3 bg-slate-50 flex flex-col relative">
           <!-- Preview Section -->
           <div class="flex-1 flex flex-col border-b border-slate-300">
@@ -639,8 +736,8 @@ defmodule KoalemosWeb.WireframeTestLive do
                 <span class="font-medium">Agent Context</span>
                 <span class="text-xs">▲</span>
               </button>
-
-              <!-- Iframe - stable because parent has no structural changes -->
+              
+    <!-- Iframe - stable because parent has no structural changes -->
               <%= if @routine_id do %>
                 <iframe
                   id="wireframe-preview"
@@ -653,8 +750,8 @@ defmodule KoalemosWeb.WireframeTestLive do
               <% else %>
                 <div class="w-full h-full"></div>
               <% end %>
-
-              <!-- Empty State (shown when no routine_id) -->
+              
+    <!-- Empty State (shown when no routine_id) -->
               <div class={"h-full flex items-center justify-center #{if @routine_id, do: "hidden", else: ""}"}>
                 <div class="text-center text-slate-400">
                   <div class="text-6xl mb-4">📄</div>
@@ -666,15 +763,21 @@ defmodule KoalemosWeb.WireframeTestLive do
               </div>
             </div>
           </div>
-
-          <!-- Agent Context Drawer (slides up from bottom with bounce) -->
-          <div class={"absolute bottom-0 left-0 right-0 #{if @show_context, do: "translate-y-0", else: "translate-y-full"}"} style="height: 60%; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
+          
+    <!-- Agent Context Drawer (slides up from bottom with bounce) -->
+          <div
+            class={"absolute bottom-0 left-0 right-0 #{if @show_context, do: "translate-y-0", else: "translate-y-full"}"}
+            style="height: 60%; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);"
+          >
             <div class="h-full flex flex-col bg-slate-900">
-              <div class="bg-green-700 px-4 py-3 border-b border-green-600 flex items-center justify-between cursor-pointer" phx-click="toggle_context">
+              <div
+                class="bg-green-700 px-4 py-3 border-b border-green-600 flex items-center justify-between cursor-pointer"
+                phx-click="toggle_context"
+              >
                 <h2 class="text-sm font-medium text-white">🤖 Agent Context (What the Agent Sees)</h2>
                 <%= if @agent_context do %>
                   <button class="text-xs text-green-200 hover:text-white transition-colors px-3 py-1 bg-green-600 rounded">
-                    <%= if @show_context, do: "▼ Hide", else: "▲ Show" %>
+                    {if @show_context, do: "▼ Hide", else: "▲ Show"}
                   </button>
                 <% end %>
               </div>
@@ -692,8 +795,8 @@ defmodule KoalemosWeb.WireframeTestLive do
               </div>
             </div>
           </div>
-
-          <!-- Toggle Button (when drawer is closed and agent not running) -->
+          
+    <!-- Toggle Button (when drawer is closed and agent not running) -->
           <%= if @agent_context && !@show_context && !@agent_running do %>
             <button
               phx-click="toggle_context"
@@ -731,7 +834,10 @@ defmodule KoalemosWeb.WireframeTestLive do
                 {:ok, {content, entry.client_name}}
 
               {:error, reason} ->
-                Logger.error("[WireframeTestLive] Failed to read uploaded file: #{inspect(reason)}")
+                Logger.error(
+                  "[WireframeTestLive] Failed to read uploaded file: #{inspect(reason)}"
+                )
+
                 {:postpone, :error}
             end
           end)
@@ -751,6 +857,7 @@ defmodule KoalemosWeb.WireframeTestLive do
 
               # Also broadcast for any already-mounted previews
               dom_tree = get_in(lens_state, [:designed, :dom_tree])
+
               Phoenix.PubSub.broadcast(
                 Koalemos.PubSub,
                 "wireframe_updates:#{routine_id}",
@@ -811,11 +918,12 @@ defmodule KoalemosWeb.WireframeTestLive do
 
         # Extract text from context blocks
         # May include image block (Sprint 7 Phase 6), but we only display text in UI
-        agent_context = case context_blocks do
-          [%{type: "text", text: text}] -> text
-          [%{type: "text", text: text}, _image_block] -> text
-          _ -> "No context generated"
-        end
+        agent_context =
+          case context_blocks do
+            [%{type: "text", text: text}] -> text
+            [%{type: "text", text: text}, _image_block] -> text
+            _ -> "No context generated"
+          end
 
         {lens_state, agent_context}
 
@@ -857,8 +965,10 @@ defmodule KoalemosWeb.WireframeTestLive do
 
             # Broadcast DOM tree update
             dom_tree = get_in(lens_state, [:designed, :dom_tree])
+
             if dom_tree do
               Logger.info("[WireframeTestLive] Broadcasting DOM update from message")
+
               Phoenix.PubSub.broadcast(
                 Koalemos.PubSub,
                 "wireframe_updates:#{socket.assigns.routine_id}",
@@ -901,61 +1011,79 @@ defmodule KoalemosWeb.WireframeTestLive do
   defp extract_lens_state_from_diff(diff) when is_list(diff) do
     Logger.debug("[WireframeTestLive] Extracting lens_state from #{length(diff)} diff operations")
 
-    result = Enum.reduce_while(diff, :not_found, fn operation, _acc ->
-      case operation do
-        # Handle both serialized (string) and non-serialized (atom) formats
-        ["add_or_update", updates] when is_map(updates) ->
-          keys = Map.keys(updates)
-          Logger.debug("[WireframeTestLive] Checking [\"add_or_update\", ...] with keys: #{inspect(keys)}")
-          case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
-            nil ->
-              Logger.debug("[WireframeTestLive] No lens_state key found")
-              {:cont, :not_found}
-            lens_state ->
-              Logger.info("[WireframeTestLive] ✓ Found lens_state in [\"add_or_update\", ...]")
-              {:halt, {:ok, lens_state}}
-          end
+    result =
+      Enum.reduce_while(diff, :not_found, fn operation, _acc ->
+        case operation do
+          # Handle both serialized (string) and non-serialized (atom) formats
+          ["add_or_update", updates] when is_map(updates) ->
+            keys = Map.keys(updates)
 
-        [:add_or_update, updates] when is_map(updates) ->
-          keys = Map.keys(updates)
-          Logger.debug("[WireframeTestLive] Checking [:add_or_update, ...] with keys: #{inspect(keys)}")
-          case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
-            nil ->
-              Logger.debug("[WireframeTestLive] No lens_state key found")
-              {:cont, :not_found}
-            lens_state ->
-              Logger.info("[WireframeTestLive] ✓ Found lens_state in [:add_or_update, ...]")
-              {:halt, {:ok, lens_state}}
-          end
+            Logger.debug(
+              "[WireframeTestLive] Checking [\"add_or_update\", ...] with keys: #{inspect(keys)}"
+            )
 
-        {:add_or_update, updates} when is_map(updates) ->
-          keys = Map.keys(updates)
-          Logger.debug("[WireframeTestLive] Checking {:add_or_update, ...} with keys: #{inspect(keys)}")
-          case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
-            nil ->
-              Logger.debug("[WireframeTestLive] No :lens_state key found")
-              {:cont, :not_found}
-            lens_state ->
-              Logger.info("[WireframeTestLive] ✓ Found :lens_state in {:add_or_update, ...}")
-              {:halt, {:ok, lens_state}}
-          end
+            case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
+              nil ->
+                Logger.debug("[WireframeTestLive] No lens_state key found")
+                {:cont, :not_found}
 
-        [op | _] ->
-          Logger.debug("[WireframeTestLive] Skipping list operation: #{inspect(op)}")
-          {:cont, :not_found}
+              lens_state ->
+                Logger.info("[WireframeTestLive] ✓ Found lens_state in [\"add_or_update\", ...]")
+                {:halt, {:ok, lens_state}}
+            end
 
-        {op, _} ->
-          Logger.debug("[WireframeTestLive] Skipping tuple operation: #{inspect(op)}")
-          {:cont, :not_found}
+          [:add_or_update, updates] when is_map(updates) ->
+            keys = Map.keys(updates)
 
-        other ->
-          Logger.debug("[WireframeTestLive] Skipping unknown operation: #{inspect(other)}")
-          {:cont, :not_found}
-      end
-    end)
+            Logger.debug(
+              "[WireframeTestLive] Checking [:add_or_update, ...] with keys: #{inspect(keys)}"
+            )
+
+            case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
+              nil ->
+                Logger.debug("[WireframeTestLive] No lens_state key found")
+                {:cont, :not_found}
+
+              lens_state ->
+                Logger.info("[WireframeTestLive] ✓ Found lens_state in [:add_or_update, ...]")
+                {:halt, {:ok, lens_state}}
+            end
+
+          {:add_or_update, updates} when is_map(updates) ->
+            keys = Map.keys(updates)
+
+            Logger.debug(
+              "[WireframeTestLive] Checking {:add_or_update, ...} with keys: #{inspect(keys)}"
+            )
+
+            case Map.get(updates, :lens_state) || Map.get(updates, "lens_state") do
+              nil ->
+                Logger.debug("[WireframeTestLive] No :lens_state key found")
+                {:cont, :not_found}
+
+              lens_state ->
+                Logger.info("[WireframeTestLive] ✓ Found :lens_state in {:add_or_update, ...}")
+                {:halt, {:ok, lens_state}}
+            end
+
+          [op | _] ->
+            Logger.debug("[WireframeTestLive] Skipping list operation: #{inspect(op)}")
+            {:cont, :not_found}
+
+          {op, _} ->
+            Logger.debug("[WireframeTestLive] Skipping tuple operation: #{inspect(op)}")
+            {:cont, :not_found}
+
+          other ->
+            Logger.debug("[WireframeTestLive] Skipping unknown operation: #{inspect(other)}")
+            {:cont, :not_found}
+        end
+      end)
 
     case result do
-      {:ok, _} -> result
+      {:ok, _} ->
+        result
+
       :not_found ->
         Logger.debug("[WireframeTestLive] ✗ lens_state not found in any operation")
         :not_found

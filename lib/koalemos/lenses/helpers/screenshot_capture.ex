@@ -227,45 +227,55 @@ defmodule Koalemos.Lenses.Helpers.ScreenshotCapture do
 
     # Spawn Task to handle async screenshot request
     # This keeps screenshot logic out of Engine's message queue
-    task = Task.async(fn ->
-      # Subscribe to response topic
-      Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:response:#{routine_id}")
+    task =
+      Task.async(fn ->
+        # Subscribe to response topic
+        Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:response:#{routine_id}")
 
-      # 1. Broadcast PubSub request to trigger screenshot capture in LiveView
-      Phoenix.PubSub.broadcast(
-        Koalemos.PubSub,
-        "screenshot:request:#{routine_id}",
-        {:screenshot_request, %{routine_id: routine_id, timestamp: DateTime.utc_now()}}
-      )
+        # 1. Broadcast PubSub request to trigger screenshot capture in LiveView
+        Phoenix.PubSub.broadcast(
+          Koalemos.PubSub,
+          "screenshot:request:#{routine_id}",
+          {:screenshot_request, %{routine_id: routine_id, timestamp: DateTime.utc_now()}}
+        )
 
-      # 2. Wait for screenshot capture to complete (with timeout)
-      receive do
-        {:screenshot_ready, ^routine_id} ->
-          Logger.debug("[ScreenshotCapture] Screenshot ready notification received for #{routine_id}")
+        # 2. Wait for screenshot capture to complete (with timeout)
+        receive do
+          {:screenshot_ready, ^routine_id} ->
+            Logger.debug(
+              "[ScreenshotCapture] Screenshot ready notification received for #{routine_id}"
+            )
 
-          # 3. Retrieve from ScreenshotCache
-          case ScreenshotCache.get(routine_id) do
-            {:ok, base64_data} ->
-              # Return formatted image content block
-              {:ok, %{
-                type: "image",
-                source: %{
-                  type: "base64",
-                  media_type: "image/png",
-                  data: base64_data
-                }
-              }}
+            # 3. Retrieve from ScreenshotCache
+            case ScreenshotCache.get(routine_id) do
+              {:ok, base64_data} ->
+                # Return formatted image content block
+                {:ok,
+                 %{
+                   type: "image",
+                   source: %{
+                     type: "base64",
+                     media_type: "image/png",
+                     data: base64_data
+                   }
+                 }}
 
-            {:error, reason} ->
-              Logger.error("[ScreenshotCapture] Failed to retrieve screenshot from cache: #{inspect(reason)}")
-              {:error, :cache_retrieval_failed}
-          end
-      after
-        @timeout_ms ->
-          Logger.warning("[ScreenshotCapture] Screenshot capture timeout after #{@timeout_ms}ms for #{routine_id}")
-          {:error, :timeout}
-      end
-    end)
+              {:error, reason} ->
+                Logger.error(
+                  "[ScreenshotCapture] Failed to retrieve screenshot from cache: #{inspect(reason)}"
+                )
+
+                {:error, :cache_retrieval_failed}
+            end
+        after
+          @timeout_ms ->
+            Logger.warning(
+              "[ScreenshotCapture] Screenshot capture timeout after #{@timeout_ms}ms for #{routine_id}"
+            )
+
+            {:error, :timeout}
+        end
+      end)
 
     # Wait for task (slightly longer than receive timeout to avoid race)
     Task.await(task, @timeout_ms + 1000)

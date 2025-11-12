@@ -9,7 +9,7 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
       assigns = %{
         message: %{
           content: "Hello world",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         expanded_images: MapSet.new()
       }
@@ -25,7 +25,7 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
       assigns = %{
         message: %{
           content: "**Bold** and _italic_",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         expanded_images: MapSet.new()
       }
@@ -43,7 +43,7 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
             %{type: "text", text: "Check this out"},
             %{type: "image", source: %{data: "abc123", media_type: "image/png"}}
           ],
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         expanded_images: MapSet.new()
       }
@@ -52,7 +52,8 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
 
       assert html =~ "Check this out"
       assert html =~ "data:image/png;base64,abc123"
-      assert html =~ "h-12"  # Thumbnail size
+      # Thumbnail size
+      assert html =~ "h-12"
     end
 
     test "renders user message with images expanded" do
@@ -65,7 +66,7 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
             %{type: "text", text: "Check this out"},
             %{type: "image", source: %{data: "abc123", media_type: "image/png"}}
           ],
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         expanded_images: expanded_set,
         card_id: card_id
@@ -75,16 +76,18 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
 
       assert html =~ "Check this out"
       assert html =~ "data:image/png;base64,abc123"
-      assert html =~ "w-full"  # Full width for expanded
+      # Full width for expanded
+      assert html =~ "w-full"
       assert html =~ "collapse_image"
-      assert html =~ "▲"  # Collapse button
+      # Collapse button
+      assert html =~ "▲"
     end
 
     test "generates card_id if not provided" do
       assigns = %{
         message: %{
           content: "Test",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         expanded_images: MapSet.new()
       }
@@ -98,7 +101,7 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
       assigns = %{
         message: %{
           content: "Test",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         expanded_images: MapSet.new(),
         card_id: "custom_id"
@@ -115,7 +118,7 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
           content: [
             %{type: "image", source: %{data: "abc123", media_type: "image/png"}}
           ],
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         expanded_images: MapSet.new()
       }
@@ -134,7 +137,7 @@ defmodule KoalemosWeb.MessageCards.UserCardTest do
             %{type: "text", text: "Text"},
             %{type: "image", source: %{data: "abc", media_type: "image/png"}}
           ],
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         expanded_images: MapSet.new()
       }

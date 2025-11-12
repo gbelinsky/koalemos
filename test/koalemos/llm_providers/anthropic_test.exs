@@ -20,7 +20,8 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
       config = %{model: "test-model", max_tokens: 100, temperature: 0.5}
 
       # Will fail with connection error, but we can verify message filtering happens
-      result = Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       # Should get connection error, not success
       assert {:error, error_msg} = result
@@ -46,12 +47,12 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
       config = %{model: "test-model"}
 
       # Will fail with connection error
-      result = Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, error_msg} = result
       assert error_msg =~ "Connection refused" or error_msg =~ "Request failed"
     end
-
   end
 
   describe "call/6 - system content building" do
@@ -121,7 +122,15 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
       tool_descriptions = []
 
       # Will fail with connection error but request body is built correctly
-      result = Anthropic.call(messages, credentials, tool_descriptions, %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(
+          messages,
+          credentials,
+          tool_descriptions,
+          %{text: [], images: []},
+          config,
+          "routine-123"
+        )
 
       assert {:error, _} = result
     end
@@ -153,7 +162,15 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
       ]
 
       # Will fail with connection error but request body includes tools
-      result = Anthropic.call(messages, credentials, tool_descriptions, %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(
+          messages,
+          credentials,
+          tool_descriptions,
+          %{text: [], images: []},
+          config,
+          "routine-123"
+        )
 
       assert {:error, _} = result
     end
@@ -173,7 +190,8 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
       config = %{}
 
       # Should use default model claude-sonnet-4-5-20250929
-      result = Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -191,7 +209,8 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
       config = %{model: "test-model"}
 
       # Should use defaults: max_tokens=16384, temperature=0.1
-      result = Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, _} = result
     end
@@ -210,7 +229,8 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
 
       config = %{model: "test-model"}
 
-      result = Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, error_msg} = result
       assert is_binary(error_msg)
@@ -229,7 +249,8 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
 
       config = %{model: "test-model"}
 
-      result = Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       assert {:error, error_msg} = result
       assert is_binary(error_msg)
@@ -251,7 +272,8 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
 
       config = %{model: "test-model"}
 
-      result = Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       # Should attempt to use x-api-key header
       assert {:error, _} = result
@@ -269,7 +291,8 @@ defmodule Koalemos.LLMProviders.AnthropicTest do
 
       config = %{model: "test-model"}
 
-      result = Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
+      result =
+        Anthropic.call(messages, credentials, [], %{text: [], images: []}, config, "routine-123")
 
       # Should attempt to use authorization header
       assert {:error, _} = result

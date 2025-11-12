@@ -46,8 +46,7 @@ defmodule Koalemos.LLMProvider.Utils do
   def filter_empty_assistant_messages(messages) do
     Enum.reject(messages, fn msg ->
       msg.role == "assistant" &&
-      (msg.content == [] || msg.content == "" || msg.content == nil)
+        (msg.content == [] || msg.content == "" || msg.content == nil)
     end)
   end
-
 end

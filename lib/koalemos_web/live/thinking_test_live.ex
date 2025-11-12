@@ -79,11 +79,12 @@ defmodule KoalemosWeb.ThinkingTestLive do
     error = get_in(event, [:metadata, :final_context, :error])
     status = if error, do: :error, else: :completed
 
-    socket = socket
-    |> assign(status: status)
-    |> assign(last_error: error)
-    |> assign(current_step: nil)
-    |> add_event("routine_completed", %{error: error})
+    socket =
+      socket
+      |> assign(status: status)
+      |> assign(last_error: error)
+      |> assign(current_step: nil)
+      |> add_event("routine_completed", %{error: error})
 
     {:noreply, socket}
   end
@@ -93,10 +94,11 @@ defmodule KoalemosWeb.ThinkingTestLive do
     error_msg = get_in(event, [:metadata, :reason]) || "Unknown error"
     Logger.error("[ThinkingTestLive] Routine error: #{error_msg}")
 
-    socket = socket
-    |> assign(status: :error, last_error: error_msg)
-    |> assign(current_step: nil)
-    |> add_event("error", %{message: error_msg})
+    socket =
+      socket
+      |> assign(status: :error, last_error: error_msg)
+      |> assign(current_step: nil)
+      |> add_event("error", %{message: error_msg})
 
     {:noreply, socket}
   end
@@ -107,9 +109,10 @@ defmodule KoalemosWeb.ThinkingTestLive do
     step_module = get_in(event, [:metadata, :step_module])
     Logger.debug("[ThinkingTestLive] Step started: #{step} (#{inspect(step_module)})")
 
-    socket = socket
-    |> assign(current_step: step)
-    |> add_event("step_started", %{step: step, module: step_module})
+    socket =
+      socket
+      |> assign(current_step: step)
+      |> add_event("step_started", %{step: step, module: step_module})
 
     {:noreply, socket}
   end
@@ -179,7 +182,7 @@ defmodule KoalemosWeb.ThinkingTestLive do
             <!-- Current Step -->
             <%= if @current_step do %>
               <div class="text-xs text-slate-500 font-mono">
-                step: <%= @current_step %>
+                step: {@current_step}
               </div>
             <% else %>
               <div class="text-xs text-slate-400 font-mono">
@@ -188,7 +191,7 @@ defmodule KoalemosWeb.ThinkingTestLive do
             <% end %>
             <!-- Routine ID -->
             <div class="text-xs text-slate-400 font-mono">
-              <%= @routine_id %>
+              {@routine_id}
             </div>
             <a
               href="/test"
@@ -220,7 +223,7 @@ defmodule KoalemosWeb.ThinkingTestLive do
                 <div class="flex-1">
                   <div class="text-xs font-bold text-red-400 mb-1">LAST ERROR</div>
                   <div class="text-xs text-red-300 bg-red-900/30 px-2 py-1 rounded">
-                    <%= @last_error %>
+                    {@last_error}
                   </div>
                 </div>
               <% end %>
@@ -231,10 +234,10 @@ defmodule KoalemosWeb.ThinkingTestLive do
                   <div class="text-xs space-y-1 max-h-20 overflow-y-auto">
                     <%= for event <- Enum.take(@recent_events, 5) do %>
                       <div class="flex gap-2">
-                        <span class="text-slate-500"><%= format_time(event.time) %></span>
-                        <span class="text-blue-400"><%= event.type %></span>
+                        <span class="text-slate-500">{format_time(event.time)}</span>
+                        <span class="text-blue-400">{event.type}</span>
                         <%= if event.details[:step] do %>
-                          <span class="text-slate-400">→ <%= event.details.step %></span>
+                          <span class="text-slate-400">→ {event.details.step}</span>
                         <% end %>
                       </div>
                     <% end %>

@@ -122,8 +122,8 @@ defmodule KoalemosWeb.StartSessionModal do
             <p class="text-slate-600 mb-6">
               ready to begin a new conversation?
             </p>
-
-            <!-- Provider Selection -->
+            
+    <!-- Provider Selection -->
             <form phx-change="update_config" phx-target={@myself}>
               <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-700 mb-2">
@@ -239,14 +239,14 @@ defmodule KoalemosWeb.StartSessionModal do
                   <%= if @ollama_status == :error do %>
                     <div class="p-3 bg-red-50 border border-red-200 rounded-lg mb-3">
                       <p class="text-sm text-red-700">
-                        <%= @ollama_error %>
+                        {@ollama_error}
                       </p>
                     </div>
                   <% end %>
                   <%= if @ollama_error && @ollama_status == :connected do %>
                     <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mb-3">
                       <p class="text-sm text-yellow-700">
-                        <%= @ollama_error %>
+                        {@ollama_error}
                       </p>
                     </div>
                   <% end %>
@@ -265,7 +265,7 @@ defmodule KoalemosWeb.StartSessionModal do
                     >
                       <%= if length(@ollama_models) > 0 do %>
                         <%= for model <- @ollama_models do %>
-                          <option value={model} selected={@model == model}><%= model %></option>
+                          <option value={model} selected={@model == model}>{model}</option>
                         <% end %>
                       <% else %>
                         <option value="">No models available</option>
@@ -274,7 +274,7 @@ defmodule KoalemosWeb.StartSessionModal do
                   </form>
                   <p class="mt-1 text-xs text-slate-500">
                     <%= if @ollama_status == :connected && length(@ollama_models) > 0 do %>
-                      <%= length(@ollama_models) %> model(s) available
+                      {length(@ollama_models)} model(s) available
                     <% else %>
                       Waiting for Ollama connection...
                     <% end %>
@@ -370,10 +370,11 @@ defmodule KoalemosWeb.StartSessionModal do
     save_config(socket)
 
     # Generate truly unique routine ID with timestamp and random component
-    routine_id = "routine-#{System.system_time(:millisecond)}-#{:rand.uniform(999999)}"
+    routine_id = "routine-#{System.system_time(:millisecond)}-#{:rand.uniform(999_999)}"
 
     # Navigate with provider and model as query params
-    url = "/chat/#{routine_id}?provider=#{socket.assigns.provider}&model=#{URI.encode_www_form(socket.assigns.model)}"
+    url =
+      "/chat/#{routine_id}?provider=#{socket.assigns.provider}&model=#{URI.encode_www_form(socket.assigns.model)}"
 
     send(self(), {:close_modal})
     {:noreply, push_navigate(socket, to: url)}

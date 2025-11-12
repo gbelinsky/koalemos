@@ -94,7 +94,11 @@ defmodule Koalemos.Engine.EventHandlerTest do
     test "handles event immediately if step is waiting", %{state: state} do
       # Set up waiting state
       {test_pid, _} = spawn_monitor(fn -> receive do: (:done -> :ok) end)
-      state = %{state | waiting_for: %{event_types: [:user_input], from: {test_pid, make_ref()}, timer_ref: nil}}
+
+      state = %{
+        state
+        | waiting_for: %{event_types: [:user_input], from: {test_pid, make_ref()}, timer_ref: nil}
+      }
 
       {:noreply, new_state} = EventHandler.handle_external_event(:user_input, "hello", state)
 
@@ -110,7 +114,15 @@ defmodule Koalemos.Engine.EventHandlerTest do
 
     test "ignores event if waiting for different type", %{state: state} do
       {test_pid, _} = spawn_monitor(fn -> receive do: (:done -> :ok) end)
-      state = %{state | waiting_for: %{event_types: [:http_response], from: {test_pid, make_ref()}, timer_ref: nil}}
+
+      state = %{
+        state
+        | waiting_for: %{
+            event_types: [:http_response],
+            from: {test_pid, make_ref()},
+            timer_ref: nil
+          }
+      }
 
       {:noreply, new_state} = EventHandler.handle_external_event(:user_input, "hello", state)
 
@@ -128,7 +140,11 @@ defmodule Koalemos.Engine.EventHandlerTest do
 
       state = %{
         state
-        | waiting_for: %{event_types: [:user_input], from: {test_pid, make_ref()}, timer_ref: timer_ref}
+        | waiting_for: %{
+            event_types: [:user_input],
+            from: {test_pid, make_ref()},
+            timer_ref: timer_ref
+          }
       }
 
       {:noreply, _new_state} = EventHandler.handle_external_event(:user_input, "hello", state)
@@ -139,7 +155,11 @@ defmodule Koalemos.Engine.EventHandlerTest do
 
     test "records context_changed event when event is handled", %{state: state} do
       {test_pid, _} = spawn_monitor(fn -> receive do: (:done -> :ok) end)
-      state = %{state | waiting_for: %{event_types: [:user_input], from: {test_pid, make_ref()}, timer_ref: nil}}
+
+      state = %{
+        state
+        | waiting_for: %{event_types: [:user_input], from: {test_pid, make_ref()}, timer_ref: nil}
+      }
 
       EventHandler.handle_external_event(:user_input, "hello", state)
 
@@ -161,7 +181,8 @@ defmodule Koalemos.Engine.EventHandlerTest do
       {test_pid, _} = spawn_monitor(fn -> receive do: (:done -> :ok) end)
       from = {test_pid, make_ref()}
 
-      {:reply, final_state, _} = EventHandler.handle_get_event([:user_input], nil, [], from, state)
+      {:reply, final_state, _} =
+        EventHandler.handle_get_event([:user_input], nil, [], from, state)
 
       # Context should be updated
       assert final_state.context.user_message == "hello"
@@ -174,7 +195,8 @@ defmodule Koalemos.Engine.EventHandlerTest do
       {test_pid, _} = spawn_monitor(fn -> receive do: (:done -> :ok) end)
       from = {test_pid, make_ref()}
 
-      {:noreply, waiting_state} = EventHandler.handle_get_event([:user_input], nil, [], from, state)
+      {:noreply, waiting_state} =
+        EventHandler.handle_get_event([:user_input], nil, [], from, state)
 
       # Should be waiting
       assert is_map(waiting_state.waiting_for)
@@ -187,7 +209,8 @@ defmodule Koalemos.Engine.EventHandlerTest do
       {test_pid, _} = spawn_monitor(fn -> receive do: (:done -> :ok) end)
       from = {test_pid, make_ref()}
 
-      {:noreply, waiting_state} = EventHandler.handle_get_event([:user_input], 5000, [], from, state)
+      {:noreply, waiting_state} =
+        EventHandler.handle_get_event([:user_input], 5000, [], from, state)
 
       # Should have timer (timer_ref is {:ok, ref} tuple from :timer.send_after)
       assert is_tuple(waiting_state.waiting_for.timer_ref)
@@ -219,7 +242,8 @@ defmodule Koalemos.Engine.EventHandlerTest do
 
       diff = [add: %{setup_value: 42}]
 
-      {:reply, final_state, _} = EventHandler.handle_get_event([:user_input], nil, diff, from, state)
+      {:reply, final_state, _} =
+        EventHandler.handle_get_event([:user_input], nil, diff, from, state)
 
       # Both diff and event handling should be applied
       assert final_state.context.setup_value == 42
@@ -294,10 +318,12 @@ defmodule Koalemos.Engine.EventHandlerTest do
       {test_pid, _} = spawn_monitor(fn -> receive do: (:done -> :ok) end)
       from = {test_pid, make_ref()}
 
-      {:noreply, waiting_state} = EventHandler.handle_get_event([:user_input], nil, [], from, state)
+      {:noreply, waiting_state} =
+        EventHandler.handle_get_event([:user_input], nil, [], from, state)
 
       # External event arrives
-      {:noreply, final_state} = EventHandler.handle_external_event(:user_input, "hello", waiting_state)
+      {:noreply, final_state} =
+        EventHandler.handle_external_event(:user_input, "hello", waiting_state)
 
       # Should be handled
       assert final_state.waiting_for == nil
@@ -312,7 +338,8 @@ defmodule Koalemos.Engine.EventHandlerTest do
       {test_pid, _} = spawn_monitor(fn -> receive do: (:done -> :ok) end)
       from = {test_pid, make_ref()}
 
-      {:reply, final_state, _} = EventHandler.handle_get_event([:user_input], nil, [], from, buffered_state)
+      {:reply, final_state, _} =
+        EventHandler.handle_get_event([:user_input], nil, [], from, buffered_state)
 
       # Should be handled from buffer
       assert final_state.context.user_message == "hello"
@@ -324,7 +351,8 @@ defmodule Koalemos.Engine.EventHandlerTest do
       from = {test_pid, make_ref()}
 
       # Wait with short timeout
-      {:noreply, waiting_state} = EventHandler.handle_get_event([:user_input], 50, [], from, state)
+      {:noreply, waiting_state} =
+        EventHandler.handle_get_event([:user_input], 50, [], from, state)
 
       # Wait for timeout to expire
       :timer.sleep(100)
@@ -355,7 +383,8 @@ defmodule Koalemos.Engine.EventHandlerTest do
       assert EventBuffer.size(final_state.event_buffer) == 2
 
       # Other events still buffered
-      {:found, :event_a, "a", _, _} = EventBuffer.find_and_remove(final_state.event_buffer, [:event_a])
+      {:found, :event_a, "a", _, _} =
+        EventBuffer.find_and_remove(final_state.event_buffer, [:event_a])
     end
   end
 end

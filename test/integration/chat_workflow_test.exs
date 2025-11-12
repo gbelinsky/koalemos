@@ -26,7 +26,9 @@ defmodule Koalemos.Integration.ChatWorkflowTest do
       assert_receive {:routine_event, %{event_type: "step_started", step_id: "render_lens"}}, 1000
 
       # 2. Lens rendering -> moves to llm_request
-      assert_receive {:routine_event, %{event_type: "step_completed", step_id: "render_lens"}}, 1000
+      assert_receive {:routine_event, %{event_type: "step_completed", step_id: "render_lens"}},
+                     1000
+
       assert_receive {:routine_event, %{event_type: "step_started", step_id: "llm_request"}}, 1000
 
       # Get current state to verify messages were added
@@ -52,7 +54,8 @@ defmodule Koalemos.Integration.ChatWorkflowTest do
       Engine.send_external_event(routine_id, :user_input, %{text: "test", images: []})
 
       # Wait for lens_rendering to complete
-      assert_receive {:routine_event, %{event_type: "step_completed", step_id: "render_lens"}}, 1000
+      assert_receive {:routine_event, %{event_type: "step_completed", step_id: "render_lens"}},
+                     1000
 
       # Check that lens context was added
       state = :sys.get_state(pid)
@@ -60,15 +63,16 @@ defmodule Koalemos.Integration.ChatWorkflowTest do
 
       # TestLens should have provided context
       assert length(lens_contexts) > 0
+
       assert Enum.any?(lens_contexts, fn context ->
-        # Context blocks are now maps with type and text fields
-        case context do
-          %{type: "text", text: text} -> String.contains?(text, "TestLens")
-          %{text: text} -> String.contains?(text, "TestLens")
-          text when is_binary(text) -> String.contains?(text, "TestLens")
-          _ -> false
-        end
-      end)
+               # Context blocks are now maps with type and text fields
+               case context do
+                 %{type: "text", text: text} -> String.contains?(text, "TestLens")
+                 %{text: text} -> String.contains?(text, "TestLens")
+                 text when is_binary(text) -> String.contains?(text, "TestLens")
+                 _ -> false
+               end
+             end)
     end
 
     test "accepts multiple user inputs sequentially", %{routine_id: routine_id} do

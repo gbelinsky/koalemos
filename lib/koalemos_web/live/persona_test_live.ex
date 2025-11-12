@@ -83,7 +83,9 @@ defmodule KoalemosWeb.PersonaTestLive do
 
   @impl true
   def handle_event("apply_persona", _params, socket) do
-    Logger.info("[PersonaTestLive] Applying new persona config: #{inspect(socket.assigns.pending_persona)}")
+    Logger.info(
+      "[PersonaTestLive] Applying new persona config: #{inspect(socket.assigns.pending_persona)}"
+    )
 
     # Stop old routine if exists
     if socket.assigns.routine_id do
@@ -161,7 +163,9 @@ defmodule KoalemosWeb.PersonaTestLive do
 
     case EngineManager.start_routine(routine_id, PersonaTestRoutine, user_context) do
       {:ok, _pid} ->
-        Logger.info("[PersonaTestLive] Started routine #{routine_id} with persona: #{inspect(persona_config)}")
+        Logger.info(
+          "[PersonaTestLive] Started routine #{routine_id} with persona: #{inspect(persona_config)}"
+        )
 
       {:error, reason} ->
         Logger.error("[PersonaTestLive] Failed to start routine: #{inspect(reason)}")
@@ -214,7 +218,7 @@ defmodule KoalemosWeb.PersonaTestLive do
                 <div>
                   <span class="text-slate-600">Tone:</span>
                   <span class="ml-2 font-medium text-slate-900">
-                    <%= format_atom(@current_persona.tone) %>
+                    {format_atom(@current_persona.tone)}
                   </span>
                 </div>
                 <div>
@@ -222,7 +226,7 @@ defmodule KoalemosWeb.PersonaTestLive do
                   <div class="mt-1 flex flex-wrap gap-1">
                     <%= for exp <- @current_persona.expertise do %>
                       <span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                        <%= format_atom(exp) %>
+                        {format_atom(exp)}
                       </span>
                     <% end %>
                   </div>
@@ -230,7 +234,7 @@ defmodule KoalemosWeb.PersonaTestLive do
                 <div>
                   <span class="text-slate-600">Style:</span>
                   <span class="ml-2 font-medium text-slate-900">
-                    <%= format_atom(@current_persona.style) %>
+                    {format_atom(@current_persona.style)}
                   </span>
                 </div>
               </div>
@@ -252,7 +256,7 @@ defmodule KoalemosWeb.PersonaTestLive do
                       phx-value-tone={tone}
                       class="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
-                    <span class="text-sm text-slate-700"><%= format_atom(tone) %></span>
+                    <span class="text-sm text-slate-700">{format_atom(tone)}</span>
                   </label>
                 <% end %>
               </div>
@@ -273,7 +277,7 @@ defmodule KoalemosWeb.PersonaTestLive do
                       phx-value-expertise={expertise}
                       class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
-                    <span class="text-sm text-slate-700"><%= format_atom(expertise) %></span>
+                    <span class="text-sm text-slate-700">{format_atom(expertise)}</span>
                   </label>
                 <% end %>
               </div>
@@ -295,7 +299,7 @@ defmodule KoalemosWeb.PersonaTestLive do
                       phx-value-style={style}
                       class="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
-                    <span class="text-sm text-slate-700"><%= format_atom(style) %></span>
+                    <span class="text-sm text-slate-700">{format_atom(style)}</span>
                   </label>
                 <% end %>
               </div>

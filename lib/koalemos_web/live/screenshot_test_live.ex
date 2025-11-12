@@ -83,6 +83,7 @@ defmodule KoalemosWeb.ScreenshotTestLive do
           "screenshot:response:#{routine_id}",
           {:screenshot_ready, routine_id}
         )
+
         Logger.debug("[ScreenshotTestLive] Broadcast screenshot_ready notification")
 
         {:noreply,
@@ -127,7 +128,11 @@ defmodule KoalemosWeb.ScreenshotTestLive do
   end
 
   @impl true
-  def handle_info({:user_input_submitted, %{text: text, images: images, include_screenshot: include_screenshot}}, socket) do
+  def handle_info(
+        {:user_input_submitted,
+         %{text: text, images: images, include_screenshot: include_screenshot}},
+        socket
+      ) do
     Logger.info(
       "[ScreenshotTestLive] User input submitted: text=#{text}, images=#{length(images)}, screenshot=#{include_screenshot}"
     )
@@ -185,13 +190,13 @@ defmodule KoalemosWeb.ScreenshotTestLive do
           <div class="flex items-center gap-4">
             <div class="text-sm text-slate-600">
               <span class="font-medium text-slate-700">Captures:</span>
-              <span class="font-mono"><%= @capture_count %></span>
+              <span class="font-mono">{@capture_count}</span>
             </div>
             <%= if @last_screenshot do %>
               <div class="text-sm text-green-600">
                 <span class="font-medium">Last:</span>
                 <span class="font-mono">
-                  <%= @last_screenshot.width %>x<%= @last_screenshot.height %> (<%= @last_screenshot.size_kb %> KB)
+                  {@last_screenshot.width}x{@last_screenshot.height} ({@last_screenshot.size_kb} KB)
                 </span>
               </div>
             <% end %>

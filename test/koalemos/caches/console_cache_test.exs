@@ -99,7 +99,7 @@ defmodule Koalemos.Caches.ConsoleCacheTest do
 
       # Some should be rate limited
       ok_count = Enum.count(results, &(&1 == :ok))
-      error_count = Enum.count(results, &(match?({:error, :rate_limit}, &1)))
+      error_count = Enum.count(results, &match?({:error, :rate_limit}, &1))
 
       assert ok_count > 0
       assert error_count > 0
@@ -123,7 +123,7 @@ defmodule Koalemos.Caches.ConsoleCacheTest do
 
       # Some should be rejected as duplicates
       ok_count = Enum.count(results, &(&1 == :ok))
-      error_count = Enum.count(results, &(match?({:error, :duplicate_spam}, &1)))
+      error_count = Enum.count(results, &match?({:error, :duplicate_spam}, &1))
 
       assert ok_count > 0
       assert error_count > 0

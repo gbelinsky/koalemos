@@ -14,12 +14,12 @@ defmodule KoalemosWeb.MessageFeedTest do
         %{
           role: "user",
           content: "Hello",
-          metadata: %{id: "msg-1", timestamp: 1234567890}
+          metadata: %{id: "msg-1", timestamp: 1_234_567_890}
         },
         %{
           role: "user",
           content: "Hello",
-          metadata: %{id: "msg-1", timestamp: 1234567890}
+          metadata: %{id: "msg-1", timestamp: 1_234_567_890}
         }
       ]
 
@@ -34,12 +34,12 @@ defmodule KoalemosWeb.MessageFeedTest do
         %{
           role: "user",
           content: "Hello",
-          metadata: %{id: "msg-1", timestamp: 1234567890}
+          metadata: %{id: "msg-1", timestamp: 1_234_567_890}
         },
         %{
           role: "user",
           content: "World",
-          metadata: %{id: "msg-2", timestamp: 1234567891}
+          metadata: %{id: "msg-2", timestamp: 1_234_567_891}
         }
       ]
 
@@ -71,17 +71,17 @@ defmodule KoalemosWeb.MessageFeedTest do
         %{
           role: "user",
           content: "First",
-          metadata: %{id: "msg-1", timestamp: 1234567890}
+          metadata: %{id: "msg-1", timestamp: 1_234_567_890}
         },
         %{
           role: "assistant",
           content: "Second",
-          metadata: %{id: "msg-2", timestamp: 1234567891}
+          metadata: %{id: "msg-2", timestamp: 1_234_567_891}
         },
         %{
           role: "user",
           content: "Third",
-          metadata: %{id: "msg-3", timestamp: 1234567892}
+          metadata: %{id: "msg-3", timestamp: 1_234_567_892}
         }
       ]
 

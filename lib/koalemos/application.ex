@@ -17,22 +17,28 @@ defmodule Koalemos.Application do
       # Observer - for recording routine events
       Koalemos.Engine.Observer,
       # Cache GenServers - for storing wireframe runtime state
-      Koalemos.Caches.ScreenshotCache,      # Screenshot images
-      Koalemos.Caches.DOMStateCache,        # Live DOM trees
-      Koalemos.Caches.ConsoleCache,         # Console messages with rate limiting
-      Koalemos.Caches.VariableStateCache,   # Runtime variable values
-      Koalemos.Caches.WireframeStateCache,  # Lens state for wireframe preview
+      # Screenshot images
+      Koalemos.Caches.ScreenshotCache,
+      # Live DOM trees
+      Koalemos.Caches.DOMStateCache,
+      # Console messages with rate limiting
+      Koalemos.Caches.ConsoleCache,
+      # Runtime variable values
+      Koalemos.Caches.VariableStateCache,
+      # Lens state for wireframe preview
+      Koalemos.Caches.WireframeStateCache,
       # NodeJS Supervisor - for JavaScript parsing
       {NodeJS.Supervisor, [path: Path.join([:code.priv_dir(:koalemos), "nodejs"]), pool_size: 4]}
     ]
 
     # Add credential manager only in non-test environments
     # Tests start their own instances for better isolation
-    children = if Mix.env() != :test do
-      children ++ [Koalemos.SimpleCredentialManager]
-    else
-      children
-    end
+    children =
+      if Mix.env() != :test do
+        children ++ [Koalemos.SimpleCredentialManager]
+      else
+        children
+      end
 
     # Web endpoint
     children = children ++ [KoalemosWeb.Endpoint]

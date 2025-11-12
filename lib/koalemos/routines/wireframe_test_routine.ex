@@ -35,7 +35,16 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   """
 
   alias Koalemos.Steps.User.ChatUserInput
-  alias Koalemos.Steps.Agent.{ToolSchema, LensRendering, LLMRequest, ResponseParsing, ToolLookup, ToolExecution}
+
+  alias Koalemos.Steps.Agent.{
+    ToolSchema,
+    LensRendering,
+    LLMRequest,
+    ResponseParsing,
+    ToolLookup,
+    ToolExecution
+  }
+
   alias Koalemos.Integrations.ParsingIntegration
 
   @fixtures_path "test/fixtures"
@@ -141,10 +150,12 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   def initial_context do
     %{
       messages: [],
-      lenses: ["Koalemos.Lenses.WireframeEditor"],  # WireframeEditor lens
+      # WireframeEditor lens
+      lenses: ["Koalemos.Lenses.WireframeEditor"],
       llm_provider: "anthropic",
       llm_model: "claude-haiku-4-5",
-      max_tokens: 64000,  # Higher token limit for wireframe context
+      # Higher token limit for wireframe context
+      max_tokens: 64000,
       temperature: 0.7,
       wireframe_html: nil,
       wireframe_sample: nil
@@ -160,18 +171,20 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   """
   def setup(_routine_config, state) do
     # Load sample HTML if specified in context
-    updated_context = state.context
+    updated_context =
+      state.context
       |> maybe_load_sample()
       |> parse_and_initialize_lens_state()
 
     # Calculate diff - only return fields that changed
-    changes = Enum.reduce(updated_context, %{}, fn {key, value}, acc ->
-      if Map.get(state.context, key) != value do
-        Map.put(acc, key, value)
-      else
-        acc
-      end
-    end)
+    changes =
+      Enum.reduce(updated_context, %{}, fn {key, value}, acc ->
+        if Map.get(state.context, key) != value do
+          Map.put(acc, key, value)
+        else
+          acc
+        end
+      end)
 
     # Return in ContextManager format: {:add_or_update, map()}
     if map_size(changes) > 0 do
@@ -201,7 +214,8 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   defp load_sample_html(sample_id) do
     case Map.get(@sample_files, sample_id) do
       nil ->
-        {:error, "Unknown sample: #{sample_id}. Available: #{Map.keys(@sample_files) |> Enum.join(", ")}"}
+        {:error,
+         "Unknown sample: #{sample_id}. Available: #{Map.keys(@sample_files) |> Enum.join(", ")}"}
 
       filename ->
         path = Path.join([@fixtures_path, filename])
@@ -217,7 +231,8 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
     require Logger
 
     # Generate a routine ID for cache storage (used by ParsingIntegration)
-    routine_id = Map.get(context, :routine_id, "wireframe-test-#{:erlang.unique_integer([:positive])}")
+    routine_id =
+      Map.get(context, :routine_id, "wireframe-test-#{:erlang.unique_integer([:positive])}")
 
     case ParsingIntegration.parse_wireframe(html, routine_id) do
       {:ok, wireframe} ->

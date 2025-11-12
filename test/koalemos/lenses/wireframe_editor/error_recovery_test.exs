@@ -41,31 +41,42 @@ defmodule Koalemos.Lenses.WireframeEditor.ErrorRecoveryTest do
       WireframeStateCache.put_state(routine_id, lens_state)
 
       # Step 2: Agent triggers increment (will cause error)
-      task = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {result, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "increment-btn"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {result, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "increment-btn"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task)
       assert result =~ "Successfully triggered"
 
       # Step 3: Capture state showing JavaScript error
-      capture_task = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_javascript_error(routine_id, lens_state, "TypeError: Cannot read property 'value' of null")
-      end)
+      capture_task =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {:ok, captured_state} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+          simulate_javascript_error(
+            routine_id,
+            lens_state,
+            "TypeError: Cannot read property 'value' of null"
+          )
+        end)
+
+      {:ok, captured_state} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task)
 
       # Agent should see:
@@ -80,7 +91,8 @@ defmodule Koalemos.Lenses.WireframeEditor.ErrorRecoveryTest do
 
       # - DOM unchanged (error prevented update)
       counter_value = find_element_by_id(captured_state.dom_tree, "counter-value")
-      assert counter_value.content == "0"  # Still 0, didn't increment
+      # Still 0, didn't increment
+      assert counter_value.content == "0"
     end
 
     test "agent detects missing element error and fixes it", %{routine_id: routine_id} do
@@ -89,30 +101,41 @@ defmodule Koalemos.Lenses.WireframeEditor.ErrorRecoveryTest do
       WireframeStateCache.put_state(routine_id, lens_state)
 
       # Try to increment (causes error)
-      task1 = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task1 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {_result1, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "increment-btn"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {_result1, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "increment-btn"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task1)
 
       # Capture state showing error
-      capture_task1 = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_javascript_error(routine_id, lens_state, "TypeError: Cannot read property 'value' of null")
-      end)
+      capture_task1 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {:ok, state1} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+          simulate_javascript_error(
+            routine_id,
+            lens_state,
+            "TypeError: Cannot read property 'value' of null"
+          )
+        end)
+
+      {:ok, state1} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task1)
 
       error_log = Enum.find(state1.console_output, fn log -> log.level == "error" end)
@@ -128,30 +151,36 @@ defmodule Koalemos.Lenses.WireframeEditor.ErrorRecoveryTest do
       ConsoleCache.clear_messages(routine_id)
 
       # Try increment again (should work now)
-      task2 = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task2 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {_result2, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "increment-btn"},
-        %{lens_state: fixed_lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {_result2, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "increment-btn"},
+          %{lens_state: fixed_lens_state, routine_id: routine_id}
+        )
 
       Task.await(task2)
 
       # Capture state showing success
-      capture_task2 = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_successful_increment(routine_id, fixed_lens_state)
-      end)
+      capture_task2 =
+        Task.async(fn ->
+          :timer.sleep(100)
+          simulate_successful_increment(routine_id, fixed_lens_state)
+        end)
 
-      {:ok, state2} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+      {:ok, state2} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task2)
 
       # No errors this time
@@ -164,8 +193,8 @@ defmodule Koalemos.Lenses.WireframeEditor.ErrorRecoveryTest do
 
       # Success log present
       assert Enum.any?(state2.console_output, fn log ->
-        log.level == "log" and String.contains?(log.message, "incremented")
-      end)
+               log.level == "log" and String.contains?(log.message, "incremented")
+             end)
     end
   end
 
@@ -335,7 +364,12 @@ defmodule Koalemos.Lenses.WireframeEditor.ErrorRecoveryTest do
     else
       case tree[:children] do
         children when is_list(children) ->
-          Map.put(tree, :children, Enum.map(children, &update_element_content(&1, target_id, new_content)))
+          Map.put(
+            tree,
+            :children,
+            Enum.map(children, &update_element_content(&1, target_id, new_content))
+          )
+
         _ ->
           tree
       end
@@ -360,8 +394,10 @@ defmodule Koalemos.Lenses.WireframeEditor.ErrorRecoveryTest do
 
   # Helper to find element by ID in DOM tree
   defp find_element_by_id(%{id: id} = element, target_id) when id == target_id, do: element
+
   defp find_element_by_id(%{children: children}, target_id) when is_list(children) do
     Enum.find_value(children, fn child -> find_element_by_id(child, target_id) end)
   end
+
   defp find_element_by_id(_, _), do: nil
 end

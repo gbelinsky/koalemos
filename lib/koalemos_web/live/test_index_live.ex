@@ -25,8 +25,8 @@ defmodule KoalemosWeb.TestIndexLive do
             Manual testing and demonstration pages
           </p>
         </div>
-
-        <!-- Test Pages List -->
+        
+    <!-- Test Pages List -->
         <div class="space-y-4">
           <!-- Screenshot Test Page -->
           <a
@@ -85,8 +85,8 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-
-          <!-- Sequential Thinking Test Page -->
+          
+    <!-- Sequential Thinking Test Page -->
           <a
             href="/test/thinking"
             class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
@@ -143,8 +143,8 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-
-          <!-- Persona Test Page -->
+          
+    <!-- Persona Test Page -->
           <a
             href="/test/persona"
             class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
@@ -201,8 +201,8 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-
-          <!-- Wireframe Test Page -->
+          
+    <!-- Wireframe Test Page -->
           <a
             href="/test/wireframe"
             class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
@@ -259,8 +259,8 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-
-          <!-- Lens Combinator Test Page -->
+          
+    <!-- Lens Combinator Test Page -->
           <a
             href="/test/lens-combinator"
             class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
@@ -317,8 +317,8 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-
-          <!-- Parsing Integration Test Page -->
+          
+    <!-- Parsing Integration Test Page -->
           <a
             href="/test/parsing"
             class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
@@ -378,8 +378,8 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-
-          <!-- Sample Page -->
+          
+    <!-- Sample Page -->
           <a
             href="/test/sample"
             class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border border-slate-200 hover:border-indigo-300"
@@ -434,8 +434,8 @@ defmodule KoalemosWeb.TestIndexLive do
             </div>
           </a>
         </div>
-
-        <!-- Back to Home -->
+        
+    <!-- Back to Home -->
         <div class="mt-12 text-center">
           <a
             href="/"

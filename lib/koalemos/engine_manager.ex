@@ -146,7 +146,9 @@ defmodule Koalemos.EngineManager do
   @spec stop_routine(String.t()) :: :ok | {:error, :not_found}
   def stop_routine(routine_id) do
     case Registry.lookup(Koalemos.RoutineRegistry, routine_id) do
-      [] -> {:error, :not_found}
+      [] ->
+        {:error, :not_found}
+
       [{pid, _value}] ->
         Process.exit(pid, :normal)
         :ok
@@ -176,7 +178,8 @@ defmodule Koalemos.EngineManager do
     |> Enum.map(fn {routine_id, pid, _value} ->
       build_routine_info(routine_id, pid)
     end)
-    |> Enum.filter(& &1)  # Remove any nil results
+    # Remove any nil results
+    |> Enum.filter(& &1)
   end
 
   @doc """
@@ -202,7 +205,9 @@ defmodule Koalemos.EngineManager do
   @spec get_routine(String.t()) :: {:ok, RoutineInfo.t()} | {:error, :not_found}
   def get_routine(routine_id) do
     case Registry.lookup(Koalemos.RoutineRegistry, routine_id) do
-      [] -> {:error, :not_found}
+      [] ->
+        {:error, :not_found}
+
       [{pid, _value}] ->
         case build_routine_info(routine_id, pid) do
           nil -> {:error, :not_found}
@@ -235,7 +240,9 @@ defmodule Koalemos.EngineManager do
   @spec get_routine_state(String.t()) :: {:ok, map()} | {:error, term()}
   def get_routine_state(routine_id) do
     case Registry.lookup(Koalemos.RoutineRegistry, routine_id) do
-      [] -> {:error, :not_found}
+      [] ->
+        {:error, :not_found}
+
       [{pid, _value}] ->
         try do
           state = :sys.get_state(pid)

@@ -44,9 +44,10 @@ defmodule KoalemosWeb.MessageCards.ImageGalleryTest do
     end
 
     test "shows +N more indicator for many images in collapsed state" do
-      images = for i <- 1..5 do
-        %{type: "image", source: %{data: "data#{i}", media_type: "image/png"}}
-      end
+      images =
+        for i <- 1..5 do
+          %{type: "image", source: %{data: "data#{i}", media_type: "image/png"}}
+        end
 
       assigns = %{
         images: images,

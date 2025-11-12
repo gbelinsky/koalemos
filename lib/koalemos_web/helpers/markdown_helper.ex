@@ -24,8 +24,11 @@ defmodule KoalemosWeb.MarkdownHelper do
       {:ok, html, _messages} ->
         # Wrap in a div with markdown-specific styling
         # Uses Tailwind prose plugin for consistent markdown rendering
-        wrapped_html = "<div class=\"markdown-content prose prose-sm prose-slate max-w-none\">#{html}</div>"
+        wrapped_html =
+          "<div class=\"markdown-content prose prose-sm prose-slate max-w-none\">#{html}</div>"
+
         Phoenix.HTML.raw(wrapped_html)
+
       {:error, _html, messages} ->
         # Log the error and return the original text as a fallback
         require Logger
@@ -40,9 +43,11 @@ defmodule KoalemosWeb.MarkdownHelper do
   def safe_markdown_to_html(content, opts \\ [])
   def safe_markdown_to_html(nil, _opts), do: ""
   def safe_markdown_to_html("", _opts), do: ""
+
   def safe_markdown_to_html(content, opts) when is_binary(content) do
     markdown_to_html(content, opts)
   end
+
   def safe_markdown_to_html(content, _opts) do
     # Handle non-string content by converting to string first
     content

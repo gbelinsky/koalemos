@@ -61,7 +61,6 @@ defmodule KoalemosWeb.ParsingTestLive do
 
   @impl true
   def handle_event("parse", %{"html" => html_input}, socket) do
-
     case ParsingIntegration.parse_wireframe(html_input, socket.assigns.routine_id) do
       {:ok, wireframe} ->
         # Get cache contents
@@ -143,12 +142,12 @@ defmodule KoalemosWeb.ParsingTestLive do
           Stores initial state in caches for runtime tracking.
         </p>
       </div>
-
-      <!-- Input Section -->
+      
+    <!-- Input Section -->
       <div class="mb-8">
         <h2 class="text-2xl font-semibold mb-4">Input HTML</h2>
-
-        <!-- File Upload -->
+        
+    <!-- File Upload -->
         <div class="mb-4">
           <form phx-change="validate" phx-submit="load-file" class="flex gap-2 items-end">
             <div class="flex-1">
@@ -165,8 +164,8 @@ defmodule KoalemosWeb.ParsingTestLive do
             </button>
           </form>
         </div>
-
-        <!-- Text Area -->
+        
+    <!-- Text Area -->
         <form phx-submit="parse">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -178,8 +177,8 @@ defmodule KoalemosWeb.ParsingTestLive do
               id="html-input"
             ><%= @html_input %></textarea>
           </div>
-
-          <!-- Action Buttons -->
+          
+    <!-- Action Buttons -->
           <div class="mt-4 flex gap-2">
             <button
               type="submit"
@@ -199,17 +198,17 @@ defmodule KoalemosWeb.ParsingTestLive do
 
         <%= if @error do %>
           <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded">
-            <p class="text-red-800"><%= @error %></p>
+            <p class="text-red-800">{@error}</p>
           </div>
         <% end %>
       </div>
-
-      <!-- Results Section -->
+      
+    <!-- Results Section -->
       <%= if @wireframe do %>
         <div class="border-t pt-8">
           <h2 class="text-2xl font-semibold mb-4">Parsing Results</h2>
-
-          <!-- Parse Statistics -->
+          
+    <!-- Parse Statistics -->
           <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded">
             <h3 class="font-semibold mb-2">Parse Statistics</h3>
             <div class="grid grid-cols-2 gap-4 text-sm">
@@ -217,27 +216,40 @@ defmodule KoalemosWeb.ParsingTestLive do
               <div>
                 <div class="font-semibold text-gray-700 mb-1">JavaScript</div>
                 <ul class="space-y-1 ml-2">
-                  <li>📜 Inline Scripts: <%= @wireframe.parse_results.scripts_parsed %></li>
-                  <li>🔗 External Scripts: <%= Enum.count(@wireframe.scripts, &(&1.type == :external)) %></li>
-                  <li>📦 Variables: <%= map_size(@wireframe.javascript.variables) %></li>
-                  <li>⚙️ Functions: <%= map_size(@wireframe.javascript.functions) %></li>
-                  <li>🖱️ Handlers: <%= map_size(@wireframe.javascript.handlers) %></li>
-                  <li>🚀 Init Scripts: <%= length(@wireframe.javascript.init_scripts |> Enum.filter(&(&1 != ""))) %></li>
+                  <li>📜 Inline Scripts: {@wireframe.parse_results.scripts_parsed}</li>
+                  <li>
+                    🔗 External Scripts: {Enum.count(@wireframe.scripts, &(&1.type == :external))}
+                  </li>
+                  <li>📦 Variables: {map_size(@wireframe.javascript.variables)}</li>
+                  <li>⚙️ Functions: {map_size(@wireframe.javascript.functions)}</li>
+                  <li>🖱️ Handlers: {map_size(@wireframe.javascript.handlers)}</li>
+                  <li>
+                    🚀 Init Scripts: {length(
+                      @wireframe.javascript.init_scripts
+                      |> Enum.filter(&(&1 != ""))
+                    )}
+                  </li>
                   <%= if @wireframe.parse_results.scripts_failed > 0 do %>
-                    <li class="text-red-600">❌ Parse Errors: <%= @wireframe.parse_results.scripts_failed %></li>
+                    <li class="text-red-600">
+                      ❌ Parse Errors: {@wireframe.parse_results.scripts_failed}
+                    </li>
                   <% end %>
                 </ul>
               </div>
-
-              <!-- Styles Column -->
+              
+    <!-- Styles Column -->
               <div>
                 <div class="font-semibold text-gray-700 mb-1">CSS</div>
                 <ul class="space-y-1 ml-2">
-                  <li>🎨 Inline Styles: <%= @wireframe.parse_results.styles_parsed %></li>
-                  <li>🔗 External Stylesheets: <%= Enum.count(@wireframe.styles, &(&1.type == :external)) %></li>
-                  <li>📐 CSS Rules: <%= length(@wireframe.css_rules) %></li>
+                  <li>🎨 Inline Styles: {@wireframe.parse_results.styles_parsed}</li>
+                  <li>
+                    🔗 External Stylesheets: {Enum.count(@wireframe.styles, &(&1.type == :external))}
+                  </li>
+                  <li>📐 CSS Rules: {length(@wireframe.css_rules)}</li>
                   <%= if @wireframe.parse_results.styles_failed > 0 do %>
-                    <li class="text-red-600">❌ Parse Errors: <%= @wireframe.parse_results.styles_failed %></li>
+                    <li class="text-red-600">
+                      ❌ Parse Errors: {@wireframe.parse_results.styles_failed}
+                    </li>
                   <% end %>
                 </ul>
               </div>
@@ -248,14 +260,14 @@ defmodule KoalemosWeb.ParsingTestLive do
                 <div class="text-sm font-semibold text-red-600">Errors:</div>
                 <ul class="text-xs text-red-600 mt-1 ml-4 space-y-1">
                   <%= for error <- @wireframe.parse_results.errors do %>
-                    <li>• <%= error %></li>
+                    <li>• {error}</li>
                   <% end %>
                 </ul>
               </div>
             <% end %>
           </div>
-
-          <!-- Grid Layout for Results -->
+          
+    <!-- Grid Layout for Results -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- DOM Tree -->
             <div class="border rounded p-4">
@@ -264,8 +276,8 @@ defmodule KoalemosWeb.ParsingTestLive do
                 <pre><%= render_dom_tree(@wireframe.dom_tree, 0) %></pre>
               </div>
             </div>
-
-            <!-- JavaScript Variables -->
+            
+    <!-- JavaScript Variables -->
             <div class="border rounded p-4">
               <h3 class="font-semibold text-lg mb-3">JavaScript Variables</h3>
               <%= if map_size(@wireframe.javascript.variables) > 0 do %>
@@ -280,8 +292,8 @@ defmodule KoalemosWeb.ParsingTestLive do
                     <tbody>
                       <%= for {name, value} <- @wireframe.javascript.variables do %>
                         <tr class="border-b">
-                          <td class="p-2 font-mono"><%= name %></td>
-                          <td class="p-2 font-mono"><%= inspect(value) %></td>
+                          <td class="p-2 font-mono">{name}</td>
+                          <td class="p-2 font-mono">{inspect(value)}</td>
                         </tr>
                       <% end %>
                     </tbody>
@@ -291,15 +303,15 @@ defmodule KoalemosWeb.ParsingTestLive do
                 <p class="text-gray-500 text-sm italic">No variables found</p>
               <% end %>
             </div>
-
-            <!-- Functions -->
+            
+    <!-- Functions -->
             <div class="border rounded p-4">
               <h3 class="font-semibold text-lg mb-3">Functions</h3>
               <%= if map_size(@wireframe.javascript.functions) > 0 do %>
                 <div class="space-y-3 overflow-auto max-h-96">
                   <%= for {name, code} <- @wireframe.javascript.functions do %>
                     <div class="bg-gray-50 p-2 rounded">
-                      <div class="font-mono font-semibold text-sm mb-1"><%= name %></div>
+                      <div class="font-mono font-semibold text-sm mb-1">{name}</div>
                       <pre class="text-xs bg-white p-2 rounded overflow-x-auto"><%= code %></pre>
                     </div>
                   <% end %>
@@ -308,8 +320,8 @@ defmodule KoalemosWeb.ParsingTestLive do
                 <p class="text-gray-500 text-sm italic">No functions found</p>
               <% end %>
             </div>
-
-            <!-- Event Handlers -->
+            
+    <!-- Event Handlers -->
             <div class="border rounded p-4">
               <h3 class="font-semibold text-lg mb-3">Event Handlers</h3>
               <%= if map_size(@wireframe.javascript.handlers) > 0 do %>
@@ -317,12 +329,12 @@ defmodule KoalemosWeb.ParsingTestLive do
                   <%= for {element_id, events} <- @wireframe.javascript.handlers do %>
                     <div class="bg-gray-50 p-3 rounded">
                       <div class="font-semibold text-sm mb-2">
-                        Element: <span class="font-mono text-blue-600">#<%= element_id %></span>
+                        Element: <span class="font-mono text-blue-600">#{element_id}</span>
                       </div>
                       <%= for {event_type, handler} <- events do %>
                         <div class="ml-4 mb-2">
                           <div class="text-xs text-gray-600">
-                            on<%= event_type %>(<%= Enum.join(handler.params, ", ") %>)
+                            on{event_type}({Enum.join(handler.params, ", ")})
                           </div>
                           <pre class="text-xs bg-white p-2 rounded mt-1 overflow-x-auto"><%= handler.body %></pre>
                         </div>
@@ -334,8 +346,8 @@ defmodule KoalemosWeb.ParsingTestLive do
                 <p class="text-gray-500 text-sm italic">No event handlers found</p>
               <% end %>
             </div>
-
-            <!-- CSS Rules -->
+            
+    <!-- CSS Rules -->
             <div class="border rounded p-4">
               <h3 class="font-semibold text-lg mb-3">CSS Rules</h3>
               <%= if length(@wireframe.css_rules) > 0 do %>
@@ -343,13 +355,12 @@ defmodule KoalemosWeb.ParsingTestLive do
                   <%= for rule <- @wireframe.css_rules do %>
                     <div class="bg-gray-50 p-2 rounded">
                       <div class="text-sm font-semibold text-blue-700 mb-1">
-                        <%= rule.selector %>
+                        {rule.selector}
                       </div>
                       <div class="ml-4 text-xs space-y-1">
                         <%= for {property, value} <- rule.declarations do %>
                           <div class="bg-white p-1 rounded font-mono">
-                            <span class="text-purple-600"><%= property %></span>:
-                            <span class="text-gray-700"><%= value %></span>;
+                            <span class="text-purple-600"><%= property %></span>: <span class="text-gray-700"><%= value %></span>;
                           </div>
                         <% end %>
                       </div>
@@ -360,8 +371,8 @@ defmodule KoalemosWeb.ParsingTestLive do
                 <p class="text-gray-500 text-sm italic">No CSS rules found</p>
               <% end %>
             </div>
-
-            <!-- Init Scripts -->
+            
+    <!-- Init Scripts -->
             <div class="border rounded p-4">
               <h3 class="font-semibold text-lg mb-3">Init Scripts</h3>
               <% non_empty_init_scripts = Enum.filter(@wireframe.javascript.init_scripts, &(&1 != "")) %>
@@ -370,18 +381,20 @@ defmodule KoalemosWeb.ParsingTestLive do
                   <%= for {script, idx} <- Enum.with_index(non_empty_init_scripts) do %>
                     <div class="bg-gray-50 p-2 rounded">
                       <div class="text-xs font-semibold text-gray-600 mb-1">
-                        Init Script #<%= idx + 1 %>
+                        Init Script #{idx + 1}
                       </div>
                       <pre class="text-xs bg-white p-2 rounded overflow-x-auto"><%= script %></pre>
                     </div>
                   <% end %>
                 </div>
               <% else %>
-                <p class="text-gray-500 text-sm italic">No init scripts (all code was extracted as variables/functions/handlers)</p>
+                <p class="text-gray-500 text-sm italic">
+                  No init scripts (all code was extracted as variables/functions/handlers)
+                </p>
               <% end %>
             </div>
-
-            <!-- External Resources -->
+            
+    <!-- External Resources -->
             <div class="border rounded p-4">
               <h3 class="font-semibold text-lg mb-3">External Resources</h3>
               <% external_scripts = Enum.filter(@wireframe.scripts, &(&1.type == :external)) %>
@@ -393,10 +406,10 @@ defmodule KoalemosWeb.ParsingTestLive do
                       <div class="text-sm font-semibold text-blue-700 mb-2">📜 External Scripts</div>
                       <%= for script <- external_scripts do %>
                         <div class="bg-blue-50 p-2 rounded mb-2 text-xs font-mono">
-                          <div class="font-semibold">src: <%= script.src %></div>
+                          <div class="font-semibold">src: {script.src}</div>
                           <%= if map_size(script.attributes) > 1 do %>
                             <div class="text-gray-600 mt-1">
-                              Attributes: <%= inspect(Map.delete(script.attributes, "src")) %>
+                              Attributes: {inspect(Map.delete(script.attributes, "src"))}
                             </div>
                           <% end %>
                         </div>
@@ -406,13 +419,17 @@ defmodule KoalemosWeb.ParsingTestLive do
 
                   <%= if length(external_styles) > 0 do %>
                     <div>
-                      <div class="text-sm font-semibold text-purple-700 mb-2">🎨 External Stylesheets</div>
+                      <div class="text-sm font-semibold text-purple-700 mb-2">
+                        🎨 External Stylesheets
+                      </div>
                       <%= for style <- external_styles do %>
                         <div class="bg-purple-50 p-2 rounded mb-2 text-xs font-mono">
-                          <div class="font-semibold">href: <%= style.src %></div>
+                          <div class="font-semibold">href: {style.src}</div>
                           <%= if map_size(style.attributes) > 2 do %>
                             <div class="text-gray-600 mt-1">
-                              Attributes: <%= inspect(Map.delete(Map.delete(style.attributes, "href"), "rel")) %>
+                              Attributes: {inspect(
+                                Map.delete(Map.delete(style.attributes, "href"), "rel")
+                              )}
                             </div>
                           <% end %>
                         </div>
@@ -421,18 +438,20 @@ defmodule KoalemosWeb.ParsingTestLive do
                   <% end %>
                 </div>
               <% else %>
-                <p class="text-gray-500 text-sm italic">No external resources (not fetched, just tracked)</p>
+                <p class="text-gray-500 text-sm italic">
+                  No external resources (not fetched, just tracked)
+                </p>
               <% end %>
             </div>
-
-            <!-- Metadata -->
+            
+    <!-- Metadata -->
             <div class="border rounded p-4">
               <h3 class="font-semibold text-lg mb-3">Metadata</h3>
               <div class="text-sm space-y-2">
                 <%= if @wireframe.metadata.title do %>
                   <div>
                     <span class="font-semibold">Title:</span>
-                    <span class="ml-2"><%= @wireframe.metadata.title %></span>
+                    <span class="ml-2">{@wireframe.metadata.title}</span>
                   </div>
                 <% end %>
                 <%= if length(@wireframe.metadata.meta_tags) > 0 do %>
@@ -441,7 +460,7 @@ defmodule KoalemosWeb.ParsingTestLive do
                     <div class="ml-4 mt-1 space-y-1">
                       <%= for meta <- @wireframe.metadata.meta_tags do %>
                         <div class="text-xs font-mono bg-gray-50 p-1 rounded">
-                          <%= inspect(meta) %>
+                          {inspect(meta)}
                         </div>
                       <% end %>
                     </div>
@@ -453,8 +472,8 @@ defmodule KoalemosWeb.ParsingTestLive do
               </div>
             </div>
           </div>
-
-          <!-- Cache Status -->
+          
+    <!-- Cache Status -->
           <div class="mt-8 border-t pt-6">
             <h2 class="text-2xl font-semibold mb-4">Cache Status (Runtime State Tracking)</h2>
             <p class="text-sm text-gray-600 mb-4">
@@ -465,28 +484,30 @@ defmodule KoalemosWeb.ParsingTestLive do
               <!-- DOMStateCache -->
               <div class="border rounded p-4 bg-purple-50">
                 <h3 class="font-semibold text-lg mb-3">DOMStateCache</h3>
-                <p class="text-xs text-gray-600 mb-3">Stores live DOM structure for runtime tracking</p>
+                <p class="text-xs text-gray-600 mb-3">
+                  Stores live DOM structure for runtime tracking
+                </p>
                 <%= if @dom_cache do %>
                   <div class="text-sm space-y-2">
                     <div>
                       <span class="font-semibold">Change Type:</span>
-                      <span class="ml-2"><%= @dom_cache.change_type %></span>
+                      <span class="ml-2">{@dom_cache.change_type}</span>
                     </div>
                     <div>
                       <span class="font-semibold">Cached At:</span>
-                      <span class="ml-2"><%= @dom_cache.cached_at %></span>
+                      <span class="ml-2">{@dom_cache.cached_at}</span>
                     </div>
                     <div>
                       <span class="font-semibold">Root Tag:</span>
-                      <span class="ml-2 font-mono"><%= @dom_cache.live_dom_tree.tag %></span>
+                      <span class="ml-2 font-mono">{@dom_cache.live_dom_tree.tag}</span>
                     </div>
                   </div>
                 <% else %>
                   <p class="text-gray-500 text-sm italic">No DOM cached</p>
                 <% end %>
               </div>
-
-              <!-- VariableStateCache -->
+              
+    <!-- VariableStateCache -->
               <div class="border rounded p-4 bg-yellow-50">
                 <h3 class="font-semibold text-lg mb-3">VariableStateCache</h3>
                 <p class="text-xs text-gray-600 mb-3">Stores runtime variable values (window.*)</p>
@@ -494,34 +515,40 @@ defmodule KoalemosWeb.ParsingTestLive do
                   <div class="text-sm">
                     <div class="font-semibold mb-2">Cached Variables:</div>
                     <div class="bg-white p-2 rounded font-mono text-xs">
-                      <%= inspect(@var_cache, pretty: true) %>
+                      {inspect(@var_cache, pretty: true)}
                     </div>
                   </div>
                 <% else %>
                   <p class="text-gray-500 text-sm italic">No variables cached</p>
                 <% end %>
               </div>
-
-              <!-- ConsoleCache -->
+              
+    <!-- ConsoleCache -->
               <div class="border rounded p-4 bg-green-50">
                 <h3 class="font-semibold text-lg mb-3">ConsoleCache</h3>
-                <p class="text-xs text-gray-600 mb-3">Stores console output during execution (rate-limited)</p>
+                <p class="text-xs text-gray-600 mb-3">
+                  Stores console output during execution (rate-limited)
+                </p>
                 <%= if @console_cache && length(@console_cache) > 0 do %>
                   <div class="text-sm">
-                    <div class="font-semibold mb-2">Messages: <%= length(@console_cache) %></div>
+                    <div class="font-semibold mb-2">Messages: {length(@console_cache)}</div>
                     <div class="bg-white p-2 rounded text-xs max-h-48 overflow-auto">
                       <%= for msg <- Enum.take(@console_cache, 10) do %>
                         <div class="font-mono mb-1 text-gray-700">
-                          [<%= msg.level %>] <%= msg.message %>
+                          [{msg.level}] {msg.message}
                         </div>
                       <% end %>
                       <%= if length(@console_cache) > 10 do %>
-                        <div class="text-gray-500 italic mt-2">... and <%= length(@console_cache) - 10 %> more</div>
+                        <div class="text-gray-500 italic mt-2">
+                          ... and {length(@console_cache) - 10} more
+                        </div>
                       <% end %>
                     </div>
                   </div>
                 <% else %>
-                  <p class="text-gray-500 text-sm italic">No console messages (populated during execution)</p>
+                  <p class="text-gray-500 text-sm italic">
+                    No console messages (populated during execution)
+                  </p>
                 <% end %>
               </div>
             </div>
@@ -539,7 +566,11 @@ defmodule KoalemosWeb.ParsingTestLive do
     indent = String.duplicate("  ", depth)
     tag = node.tag || "unknown"
     id_str = if node.id, do: " id=\"#{node.id}\"", else: ""
-    class_str = if length(node.classes || []) > 0, do: " class=\"#{Enum.join(node.classes, " ")}\"", else: ""
+
+    class_str =
+      if length(node.classes || []) > 0,
+        do: " class=\"#{Enum.join(node.classes, " ")}\"",
+        else: ""
 
     children_html =
       if node.children && length(node.children) > 0 do

@@ -25,7 +25,9 @@ defmodule Koalemos.Steps.Agent.ToolLookupTest do
 
       assert {:ok, diff} = ToolLookup.execute(%{}, state)
       assert diff[:remove] == [:tool_calls]
-      assert [%{id: "call_1", module: TestLens, function: :test_tool}] = diff[:add_or_update][:to_execute]
+
+      assert [%{id: "call_1", module: TestLens, function: :test_tool}] =
+               diff[:add_or_update][:to_execute]
     end
 
     test "resolves multiple valid tool calls" do

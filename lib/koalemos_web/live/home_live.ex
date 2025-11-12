@@ -64,8 +64,8 @@ defmodule KoalemosWeb.HomeLive do
           </a>
         </div>
       </div>
-
-      <!-- Start Session Modal -->
+      
+    <!-- Start Session Modal -->
       <.live_component
         module={StartSessionModal}
         id="start-session-modal"

@@ -26,9 +26,10 @@ defmodule KoalemosWeb.MessageCards.Helpers do
 
       is_list(content) ->
         # Check if this is a tool result list
-        tool_result = Enum.find(content, fn item ->
-          Map.get(item, :type) == "tool_result" || Map.get(item, "type") == "tool_result"
-        end)
+        tool_result =
+          Enum.find(content, fn item ->
+            Map.get(item, :type) == "tool_result" || Map.get(item, "type") == "tool_result"
+          end)
 
         if tool_result do
           # Extract content from tool result

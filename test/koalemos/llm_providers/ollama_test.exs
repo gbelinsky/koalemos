@@ -38,7 +38,14 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         config = %{model: "qwen3", max_tokens: 50, temperature: 0.1}
         routine_id = "test-routine"
 
-        case Ollama.call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
+        case Ollama.call(
+               messages,
+               credentials,
+               tool_descriptions,
+               lens_contexts,
+               config,
+               routine_id
+             ) do
           {:ok, result} ->
             response = extract_response(result)
             assert is_map(response), "Expected response to be extracted from diff format"
@@ -70,7 +77,8 @@ defmodule Koalemos.LLMProviders.OllamaTest do
       # Use different port to simulate connection refused
       credentials = %{
         provider: :ollama,
-        base_url: "http://localhost:11435",  # Different port
+        # Different port
+        base_url: "http://localhost:11435",
         model: "qwen3"
       }
 
@@ -79,8 +87,18 @@ defmodule Koalemos.LLMProviders.OllamaTest do
       config = %{model: "qwen3", max_tokens: 50, temperature: 0.1}
       routine_id = "test-routine"
 
-      assert {:error, error_msg} = Ollama.call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id)
-      assert error_msg =~ "Connection refused" || error_msg =~ "econnrefused" || error_msg =~ "Connection"
+      assert {:error, error_msg} =
+               Ollama.call(
+                 messages,
+                 credentials,
+                 tool_descriptions,
+                 lens_contexts,
+                 config,
+                 routine_id
+               )
+
+      assert error_msg =~ "Connection refused" || error_msg =~ "econnrefused" ||
+               error_msg =~ "Connection"
     end
   end
 
@@ -105,7 +123,9 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 20, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+
         # Response is in diff format now, extract it
         response = extract_response(result)
         assert is_map(response), "Expected llm_response to be extracted from diff"
@@ -137,7 +157,9 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 20, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], lens_contexts, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(messages, credentials, [], lens_contexts, config, "test")
+
         # Response is in diff format now, extract it
         response = extract_response(result)
         assert is_map(response), "Expected llm_response to be extracted from diff"
@@ -158,17 +180,21 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         credentials = %{
           provider: :ollama,
           base_url: @ollama_base_url,
-          model: "llama2"  # Default
+          # Default
+          model: "llama2"
         }
 
         config = %{
-          model: "qwen3",  # Override
+          # Override
+          model: "qwen3",
           max_tokens: 30,
           temperature: 0.1
         }
 
         # Should use qwen3 from config, not llama2 from credentials
-        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+
         # Response is in diff format now, extract it
         response = extract_response(result)
         assert is_map(response), "Expected llm_response to be extracted from diff"
@@ -196,7 +222,9 @@ defmodule Koalemos.LLMProviders.OllamaTest do
           # No model in config
         }
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+
         # Response is in diff format now, extract it
         response = extract_response(result)
         assert is_map(response), "Expected llm_response to be extracted from diff"
@@ -221,7 +249,9 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         # Very low max_tokens should truncate response
         config = %{max_tokens: 10, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+
         response = extract_response(result)
 
         # Response should be present but short due to max_tokens
@@ -249,7 +279,9 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         # Test with different temperature (just verify it doesn't error)
         config = %{max_tokens: 30, temperature: 0.9}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+
         # Response is in diff format now, extract it
         response = extract_response(result)
         assert is_map(response), "Expected llm_response to be extracted from diff"
@@ -291,7 +323,16 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         config = %{max_tokens: 100, temperature: 0.1}
 
         # Request should succeed (whether model uses tools or not)
-        assert {:ok, result} = Ollama.call(messages, credentials, tool_descriptions, %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(
+                   messages,
+                   credentials,
+                   tool_descriptions,
+                   %{text: [], images: []},
+                   config,
+                   "test"
+                 )
+
         # Response is in diff format now, extract it
         response = extract_response(result)
         assert is_map(response), "Expected llm_response to be extracted from diff"
@@ -304,7 +345,12 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         :ok
       else
         messages = [
-          %{role: "user", content: [%{type: "text", text: "What's the weather in Paris? Use the get_weather tool."}]}
+          %{
+            role: "user",
+            content: [
+              %{type: "text", text: "What's the weather in Paris? Use the get_weather tool."}
+            ]
+          }
         ]
 
         credentials = %{
@@ -329,7 +375,16 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 200, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, tool_descriptions, %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(
+                   messages,
+                   credentials,
+                   tool_descriptions,
+                   %{text: [], images: []},
+                   config,
+                   "test"
+                 )
+
         response = extract_response(result)
 
         # Response may or may not contain tool calls depending on model capability
@@ -339,9 +394,10 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         assert is_list(response["content"])
 
         # Check if any tool_use blocks are present and properly formatted
-        tool_uses = Enum.filter(response["content"], fn block ->
-          block["type"] == "tool_use"
-        end)
+        tool_uses =
+          Enum.filter(response["content"], fn block ->
+            block["type"] == "tool_use"
+          end)
 
         # If model returned tool calls, verify format
         if length(tool_uses) > 0 do
@@ -392,7 +448,9 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
       config = %{max_tokens: 50, temperature: 0.1}
 
-      assert {:error, error_msg} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+      assert {:error, error_msg} =
+               Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+
       assert error_msg =~ "Invalid request" || error_msg =~ "Connection"
     end
   end
@@ -415,7 +473,9 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 20, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+
         response = extract_response(result)
 
         # Verify Anthropic format structure
@@ -464,7 +524,9 @@ defmodule Koalemos.LLMProviders.OllamaTest do
 
         config = %{max_tokens: 20, temperature: 0.1}
 
-        assert {:ok, result} = Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+        assert {:ok, result} =
+                 Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test")
+
         response = extract_response(result)
 
         # Usage may or may not be present depending on Ollama version
@@ -500,8 +562,8 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         case Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test") do
           {:ok, result} ->
             # Response is in diff format now, extract it
-        response = extract_response(result)
-        assert is_map(response), "Expected llm_response to be extracted from diff"
+            response = extract_response(result)
+            assert is_map(response), "Expected llm_response to be extracted from diff"
 
           {:error, error_msg} ->
             # Model might not be installed
@@ -530,8 +592,8 @@ defmodule Koalemos.LLMProviders.OllamaTest do
         case Ollama.call(messages, credentials, [], %{text: [], images: []}, config, "test") do
           {:ok, result} ->
             # Response is in diff format now, extract it
-        response = extract_response(result)
-        assert is_map(response), "Expected llm_response to be extracted from diff"
+            response = extract_response(result)
+            assert is_map(response), "Expected llm_response to be extracted from diff"
 
           {:error, error_msg} ->
             # Model might not be installed

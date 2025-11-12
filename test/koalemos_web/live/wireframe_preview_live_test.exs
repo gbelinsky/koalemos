@@ -124,9 +124,13 @@ defmodule KoalemosWeb.WireframePreviewLiveTest do
 
       lens_state = %{
         designed: %{
-          dom_tree: %{tag: "div", id: "app", children: [
-            %{tag: "button", id: "btn", content: "Click"}
-          ]},
+          dom_tree: %{
+            tag: "div",
+            id: "app",
+            children: [
+              %{tag: "button", id: "btn", content: "Click"}
+            ]
+          },
           custom_css: %{},
           custom_functions: %{
             "handleClick" => "function() { window.count++; }"

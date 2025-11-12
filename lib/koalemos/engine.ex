@@ -255,8 +255,7 @@ defmodule Koalemos.Engine do
           "Init failed: Routine module #{routine_module} must implement routine_definition/0"
         )
 
-        {:stop,
-         {:error, "Routine module #{routine_module} must implement routine_definition/0"}}
+        {:stop, {:error, "Routine module #{routine_module} must implement routine_definition/0"}}
 
       error ->
         Logger.error("Init failed: #{Exception.message(error)}")

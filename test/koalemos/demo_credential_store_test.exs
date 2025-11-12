@@ -1,5 +1,6 @@
 defmodule Koalemos.DemoCredentialStoreTest do
-  use ExUnit.Case, async: false  # File operations need sequential execution
+  # File operations need sequential execution
+  use ExUnit.Case, async: false
   alias Koalemos.DemoCredentialStore
 
   @test_path "test/tmp/credentials_test.json"
@@ -120,12 +121,14 @@ defmodule Koalemos.DemoCredentialStoreTest do
       # Verify update
       assert {:ok, config} = DemoCredentialStore.get_provider_config("anthropic")
       assert config["api_key"] == "test-key"
-      assert config["model"] == "claude-3-5-sonnet-20241022"  # Preserves existing
+      # Preserves existing
+      assert config["model"] == "claude-3-5-sonnet-20241022"
     end
 
     test "merges updates with existing config" do
       # Set initial config
-      :ok = DemoCredentialStore.update_provider("openai", %{"api_key" => "key1", "custom" => "value"})
+      :ok =
+        DemoCredentialStore.update_provider("openai", %{"api_key" => "key1", "custom" => "value"})
 
       # Update with partial changes
       :ok = DemoCredentialStore.update_provider("openai", %{"api_key" => "key2"})
@@ -202,9 +205,12 @@ defmodule Koalemos.DemoCredentialStoreTest do
       # Note: Windows doesn't support Unix permissions
       case :os.type() do
         {:unix, _} ->
-          assert stat.mode == 0o100600  # 0o100000 is regular file bit
+          # 0o100000 is regular file bit
+          assert stat.mode == 0o100600
+
         _ ->
-          :ok  # Skip on non-Unix systems
+          # Skip on non-Unix systems
+          :ok
       end
     end
 
@@ -222,11 +228,12 @@ defmodule Koalemos.DemoCredentialStoreTest do
       DemoCredentialStore.load()
 
       # Simulate concurrent updates
-      tasks = for i <- 1..5 do
-        Task.async(fn ->
-          DemoCredentialStore.update_provider("anthropic", %{"counter" => i})
-        end)
-      end
+      tasks =
+        for i <- 1..5 do
+          Task.async(fn ->
+            DemoCredentialStore.update_provider("anthropic", %{"counter" => i})
+          end)
+        end
 
       # All should succeed (one will win, others will retry)
       results = Task.await_many(tasks)
@@ -259,7 +266,7 @@ defmodule Koalemos.DemoCredentialStoreTest do
         "claudeAiOauth" => %{
           "accessToken" => "token123",
           "refreshToken" => "refresh456",
-          "expiresAt" => 1234567890
+          "expiresAt" => 1_234_567_890
         },
         "providers" => %{
           "anthropic" => %{"api_key" => "", "model" => "claude-3-5-sonnet-20241022"}

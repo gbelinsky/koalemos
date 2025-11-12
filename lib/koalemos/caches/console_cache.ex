@@ -48,10 +48,13 @@ defmodule Koalemos.Caches.ConsoleCache do
   # Rate limiting settings
   @max_messages_per_second 15
   @max_duplicate_messages 10
-  @cleanup_interval_ms 30_000  # Clean up rate tracking data every 30 seconds
-  @rate_data_ttl_ms 300_000    # Rate tracking data expires after 5 minutes
+  # Clean up rate tracking data every 30 seconds
+  @cleanup_interval_ms 30_000
+  # Rate tracking data expires after 5 minutes
+  @rate_data_ttl_ms 300_000
   @max_messages_per_routine 500
-  @duplicate_time_window_ms 5000  # Only count duplicates within 5 seconds
+  # Only count duplicates within 5 seconds
+  @duplicate_time_window_ms 5000
 
   # Client API
 
@@ -247,6 +250,7 @@ defmodule Koalemos.Caches.ConsoleCache do
           |> filter_by_timestamp(since)
           |> filter_by_level(level)
           |> Enum.take(limit)
+
           # Messages are already stored most-recent-first (prepended)
       end
 
@@ -311,6 +315,7 @@ defmodule Koalemos.Caches.ConsoleCache do
 
         # Clean up old duplicate tracking data
         duplicate_counts = Map.get(rate_data, :duplicate_counts, %{})
+
         fresh_duplicate_counts =
           duplicate_counts
           |> Enum.map(fn {hash, timestamps} ->
@@ -367,7 +372,9 @@ defmodule Koalemos.Caches.ConsoleCache do
         # Update rate tracking data
         new_timestamps = [now | recent_timestamps] |> Enum.take(20)
         new_duplicate_entry = [now | recent_duplicates] |> Enum.take(@max_duplicate_messages + 1)
-        new_duplicate_counts = Map.put(rate_data.duplicate_counts || %{}, message_hash, new_duplicate_entry)
+
+        new_duplicate_counts =
+          Map.put(rate_data.duplicate_counts || %{}, message_hash, new_duplicate_entry)
 
         updated_rate_data =
           rate_data

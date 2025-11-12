@@ -126,7 +126,10 @@ defmodule KoalemosWeb.LensCombinatorLive do
   @impl true
   def handle_event("update_wireframe_sample", %{"sample" => sample}, socket) do
     sample_atom = String.to_existing_atom(sample)
-    lens_configs = put_in(socket.assigns.lens_configs, [:wireframe, :wireframe_sample], sample_atom)
+
+    lens_configs =
+      put_in(socket.assigns.lens_configs, [:wireframe, :wireframe_sample], sample_atom)
+
     {:noreply, assign(socket, lens_configs: lens_configs)}
   end
 
@@ -208,34 +211,39 @@ defmodule KoalemosWeb.LensCombinatorLive do
 
     # Build lens list with configurations
     # Format: list of [module_string, config] or just module_string
-    lenses = Enum.map(selected_lenses, fn lens_id ->
-      case lens_id do
-        :persona ->
-          config = lens_configs.persona
-          ["Koalemos.Lenses.PersonaLens", config]
+    lenses =
+      Enum.map(selected_lenses, fn lens_id ->
+        case lens_id do
+          :persona ->
+            config = lens_configs.persona
+            ["Koalemos.Lenses.PersonaLens", config]
 
-        :thinking ->
-          "Koalemos.Lenses.SequentialThinking"
+          :thinking ->
+            "Koalemos.Lenses.SequentialThinking"
 
-        :wireframe ->
-          config = lens_configs.wireframe
-          ["Koalemos.Lenses.WireframeEditor", config]
-      end
-    end)
+          :wireframe ->
+            config = lens_configs.wireframe
+            ["Koalemos.Lenses.WireframeEditor", config]
+        end
+      end)
 
     # Create routine configuration
     routine_config = %{
       lenses: lenses,
       llm_provider: "anthropic",
       llm_model: "claude-sonnet-4-5",
-      max_tokens: 64000,  # Higher limit for tool execution and wireframe context
+      # Higher limit for tool execution and wireframe context
+      max_tokens: 64000,
       temperature: 0.7
     }
 
     # Generate unique routine ID
     routine_id = "lens-combo-#{:erlang.unique_integer([:positive])}"
 
-    Logger.info("[LensCombinator] Starting routine #{routine_id} with lenses: #{inspect(selected_lenses)}")
+    Logger.info(
+      "[LensCombinator] Starting routine #{routine_id} with lenses: #{inspect(selected_lenses)}"
+    )
+
     Logger.info("[LensCombinator] Lens configs: #{inspect(lens_configs)}")
 
     case EngineManager.start_routine(
@@ -256,10 +264,11 @@ defmodule KoalemosWeb.LensCombinatorLive do
         )
 
       {:error, reason} ->
-        error_text = case reason do
-          msg when is_binary(msg) -> msg
-          other -> inspect(other)
-        end
+        error_text =
+          case reason do
+            msg when is_binary(msg) -> msg
+            other -> inspect(other)
+          end
 
         Logger.error("[LensCombinator] Failed to start routine: #{inspect(reason)}")
         assign(socket, error_message: error_text)
@@ -315,7 +324,7 @@ defmodule KoalemosWeb.LensCombinatorLive do
                 class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
               />
               <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                <%= expertise |> Atom.to_string() |> String.capitalize() %>
+                {expertise |> Atom.to_string() |> String.capitalize()}
               </span>
             </label>
           <% end %>
@@ -428,7 +437,7 @@ defmodule KoalemosWeb.LensCombinatorLive do
                   Error Starting Routine
                 </h3>
                 <div class="text-sm text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/50 p-3 rounded font-mono text-xs overflow-x-auto">
-                  <%= @error_message %>
+                  {@error_message}
                 </div>
                 <p class="text-xs text-red-600 dark:text-red-400 mt-2">
                   Tip: You can select and copy the error text above
@@ -507,25 +516,25 @@ defmodule KoalemosWeb.LensCombinatorLive do
                             for={"lens-#{lens.id}"}
                             class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
                           >
-                            <%= lens.name %>
+                            {lens.name}
                           </label>
                           <p class="text-gray-500 dark:text-gray-400">
-                            <%= lens.description %>
+                            {lens.description}
                           </p>
                         </div>
                       </div>
                     <% end %>
                   </div>
-
-                  <!-- Selected Lenses Count -->
+                  
+    <!-- Selected Lenses Count -->
                   <div class="bg-indigo-50 dark:bg-indigo-900/30 px-4 py-3 rounded-md">
                     <p class="text-sm text-indigo-800 dark:text-indigo-300">
-                      <span class="font-medium"><%= length(@selected_lenses) %></span>
-                      lens<%= if length(@selected_lenses) != 1, do: "es" %> selected
+                      <span class="font-medium">{length(@selected_lenses)}</span>
+                      lens{if length(@selected_lenses) != 1, do: "es"} selected
                     </p>
                   </div>
-
-                  <!-- Lens Configurations -->
+                  
+    <!-- Lens Configurations -->
                   <%= if @selected_lenses != [] do %>
                     <div class="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                       <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -535,19 +544,19 @@ defmodule KoalemosWeb.LensCombinatorLive do
                       <%= for lens_id <- @selected_lenses do %>
                         <div>
                           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            <%= lens_info(lens_id).name %>
+                            {lens_info(lens_id).name}
                           </h4>
-                          <%= render_lens_config(
+                          {render_lens_config(
                             assigns,
                             lens_id,
                             Map.get(@lens_configs, lens_id)
-                          ) %>
+                          )}
                         </div>
                       <% end %>
                     </div>
                   <% end %>
-
-                  <!-- Start/Stop Button -->
+                  
+    <!-- Start/Stop Button -->
                   <div class="pt-4">
                     <%= if @routine_running do %>
                       <button
@@ -568,8 +577,8 @@ defmodule KoalemosWeb.LensCombinatorLive do
                 </div>
               <% end %>
             </div>
-
-            <!-- Info Box -->
+            
+    <!-- Info Box -->
             <div class="mt-6 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
               <h3 class="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
                 Testing Guide
@@ -583,8 +592,8 @@ defmodule KoalemosWeb.LensCombinatorLive do
               </ul>
             </div>
           </div>
-
-          <!-- Chat Panel -->
+          
+    <!-- Chat Panel -->
           <div class="lg:col-span-2">
             <%= if @routine_running do %>
               <.live_component

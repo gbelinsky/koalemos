@@ -67,18 +67,19 @@ defmodule Koalemos.Steps.Agent.ToolExecution do
         ]
 
         # Add lens updates if present
-        final_diff = if lens_updates != [] do
-          existing_lens_state = state.context[:lens_state] || %{}
+        final_diff =
+          if lens_updates != [] do
+            existing_lens_state = state.context[:lens_state] || %{}
 
-          updated_lens_state =
-            Enum.reduce(lens_updates, existing_lens_state, fn {key, value}, acc ->
-              Map.put(acc, key, value)
-            end)
+            updated_lens_state =
+              Enum.reduce(lens_updates, existing_lens_state, fn {key, value}, acc ->
+                Map.put(acc, key, value)
+              end)
 
-          diff ++ [add_or_update: %{lens_state: updated_lens_state}]
-        else
-          diff
-        end
+            diff ++ [add_or_update: %{lens_state: updated_lens_state}]
+          else
+            diff
+          end
 
         {:ok, final_diff}
 
@@ -125,7 +126,8 @@ defmodule Koalemos.Steps.Agent.ToolExecution do
     Koalemos.Utils.MessageBuilder.build_tool_result_message(
       tool_id,
       content,
-      [source: :tool_result, routine_id: routine_id]
+      source: :tool_result,
+      routine_id: routine_id
     )
   end
 end

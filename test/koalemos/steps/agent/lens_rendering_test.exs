@@ -28,10 +28,13 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
       }
 
       assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
-      assert diff == [add_or_update: %{
-        lens_text_contexts: ["Test lens context block 1", "Test lens context block 2"],
-        lens_image_contexts: []
-      }]
+
+      assert diff == [
+               add_or_update: %{
+                 lens_text_contexts: ["Test lens context block 1", "Test lens context block 2"],
+                 lens_image_contexts: []
+               }
+             ]
     end
 
     test "collects context from multiple lenses (string format)" do
@@ -81,7 +84,8 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
       # Should succeed but only get contexts from TestLens
       assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: images}] = diff
-      assert length(contexts) == 2  # Only from TestLens
+      # Only from TestLens
+      assert length(contexts) == 2
       assert images == []
     end
 
@@ -154,7 +158,8 @@ defmodule Koalemos.Steps.Agent.LensRenderingTest do
 
       assert {:ok, diff} = LensRendering.execute(%{static: %{}, runtime: %{}}, state)
       assert [add_or_update: %{lens_text_contexts: contexts, lens_image_contexts: _}] = diff
-      assert length(contexts) == 5  # 2 from TestLens + 3 from MultiBlockLens
+      # 2 from TestLens + 3 from MultiBlockLens
+      assert length(contexts) == 5
     end
   end
 end

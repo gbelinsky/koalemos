@@ -26,7 +26,11 @@ defmodule Koalemos.Steps.Agent.ResponseParsingTest do
       [assistant_message] = diff[:append_to][:messages]
 
       assert assistant_message.role == "assistant"
-      assert assistant_message.content == [%{"type" => "text", "text" => "Hello! How can I help you?"}]
+
+      assert assistant_message.content == [
+               %{"type" => "text", "text" => "Hello! How can I help you?"}
+             ]
+
       assert assistant_message.metadata.source == :agent
       assert assistant_message.metadata.routine_id == "routine-123"
       assert assistant_message.metadata.usage == %{"input_tokens" => 10, "output_tokens" => 8}

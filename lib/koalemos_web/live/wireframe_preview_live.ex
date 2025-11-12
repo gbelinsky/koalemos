@@ -49,29 +49,37 @@ defmodule KoalemosWeb.WireframePreviewLive do
     )
 
     # Load initial state from cache
-    {initial_tree, custom_css, custom_functions, custom_variables, init_scripts, handlers} = load_initial_state(routine_id)
+    {initial_tree, custom_css, custom_functions, custom_variables, init_scripts, handlers} =
+      load_initial_state(routine_id)
 
-    Logger.info("[WireframePreviewLive] Initial mount - dom_tree present: #{not is_nil(initial_tree)}, css entries: #{map_size(custom_css)}, functions: #{map_size(custom_functions)}, variables: #{map_size(custom_variables)}, init_scripts: #{map_size(init_scripts)}, handlers: #{map_size(handlers)}")
+    Logger.info(
+      "[WireframePreviewLive] Initial mount - dom_tree present: #{not is_nil(initial_tree)}, css entries: #{map_size(custom_css)}, functions: #{map_size(custom_functions)}, variables: #{map_size(custom_variables)}, init_scripts: #{map_size(init_scripts)}, handlers: #{map_size(handlers)}"
+    )
 
-    socket = socket
-     |> assign(
-       routine_id: routine_id,
-       dom_tree: initial_tree,
-       custom_css: custom_css,
-       custom_functions: custom_functions,
-       custom_variables: custom_variables,
-       init_scripts: init_scripts,
-       handlers: handlers,
-       page_title: "Wireframe Preview"
-     )
+    socket =
+      socket
+      |> assign(
+        routine_id: routine_id,
+        dom_tree: initial_tree,
+        custom_css: custom_css,
+        custom_functions: custom_functions,
+        custom_variables: custom_variables,
+        init_scripts: init_scripts,
+        handlers: handlers,
+        page_title: "Wireframe Preview"
+      )
 
     # Push initial handlers if present (Sprint 6)
-    socket = if map_size(handlers) > 0 do
-      Logger.debug("[WireframePreviewLive] Pushing initial handlers on mount: #{inspect(Map.keys(handlers))}")
-      push_event(socket, "update_handlers", %{handlers: handlers})
-    else
-      socket
-    end
+    socket =
+      if map_size(handlers) > 0 do
+        Logger.debug(
+          "[WireframePreviewLive] Pushing initial handlers on mount: #{inspect(Map.keys(handlers))}"
+        )
+
+        push_event(socket, "update_handlers", %{handlers: handlers})
+      else
+        socket
+      end
 
     {:ok, socket}
   end
@@ -82,32 +90,41 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
     # Also reload CSS and JavaScript from cache in case they changed
     routine_id = socket.assigns.routine_id
-    {_, custom_css, custom_functions, custom_variables, init_scripts, handlers} = load_initial_state(routine_id)
+
+    {_, custom_css, custom_functions, custom_variables, init_scripts, handlers} =
+      load_initial_state(routine_id)
 
     # Push JavaScript updates to client if they changed (Sprint 6 fix)
-    socket = push_javascript_updates(socket, custom_variables, custom_functions, handlers, init_scripts)
+    socket =
+      push_javascript_updates(socket, custom_variables, custom_functions, handlers, init_scripts)
 
-    {:noreply, assign(socket,
-      dom_tree: new_tree,
-      custom_css: custom_css,
-      custom_functions: custom_functions,
-      custom_variables: custom_variables,
-      init_scripts: init_scripts,
-      handlers: handlers
-    )}
+    {:noreply,
+     assign(socket,
+       dom_tree: new_tree,
+       custom_css: custom_css,
+       custom_functions: custom_functions,
+       custom_variables: custom_variables,
+       init_scripts: init_scripts,
+       handlers: handlers
+     )}
   end
 
   # Handle snapshot request from WireframeEditor lens (Sprint 7)
   @impl true
   def handle_info({:snapshot_request, requested_id, opts}, socket) do
-    Logger.info("[WireframePreviewLive] Received snapshot_request for #{requested_id}, my routine_id: #{socket.assigns.routine_id}")
+    Logger.info(
+      "[WireframePreviewLive] Received snapshot_request for #{requested_id}, my routine_id: #{socket.assigns.routine_id}"
+    )
 
     if socket.assigns.routine_id == requested_id do
       Logger.info("[WireframePreviewLive] Snapshot requested, triggering client capture")
       skip_screenshot = Keyword.get(opts || [], :skip_screenshot, false)
       {:noreply, push_event(socket, "capture_state", %{skip_screenshot: skip_screenshot})}
     else
-      Logger.warning("[WireframePreviewLive] Snapshot request for wrong routine_id: #{requested_id} != #{socket.assigns.routine_id}")
+      Logger.warning(
+        "[WireframePreviewLive] Snapshot request for wrong routine_id: #{requested_id} != #{socket.assigns.routine_id}"
+      )
+
       {:noreply, socket}
     end
   end
@@ -137,7 +154,10 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
     # Store console messages in ConsoleCache (if any new messages)
     if console_messages = snapshot_data["console_messages"] do
-      Logger.debug("[WireframePreviewLive] Storing #{length(console_messages)} console messages in ConsoleCache")
+      Logger.debug(
+        "[WireframePreviewLive] Storing #{length(console_messages)} console messages in ConsoleCache"
+      )
+
       Enum.each(console_messages, fn msg ->
         # Convert string keys to atom keys (JavaScript sends strings, ConsoleCache expects atoms)
         atomized_msg = %{
@@ -145,6 +165,7 @@ defmodule KoalemosWeb.WireframePreviewLive do
           message: msg["message"],
           timestamp: msg["timestamp"]
         }
+
         Koalemos.Caches.ConsoleCache.add_message(routine_id, atomized_msg)
       end)
     end
@@ -191,9 +212,10 @@ defmodule KoalemosWeb.WireframePreviewLive do
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Wireframe Preview</title>
-
-        <!-- Tailwind CSS CDN for class-based styling -->
-        <script src="https://cdn.tailwindcss.com"></script>
+        
+    <!-- Tailwind CSS CDN for class-based styling -->
+        <script src="https://cdn.tailwindcss.com">
+        </script>
 
         <style>
           /* Reset and base styles */
@@ -254,22 +276,23 @@ defmodule KoalemosWeb.WireframePreviewLive do
           // Log that interception is active (using original console so NOT captured)
           window.__originalConsole.log('[ConsoleInterception] Console buffering is now active');
         </script>
-
-        <!-- JavaScript Updater Hook (Sprint 6) - dynamically updates variables/functions -->
+        
+    <!-- JavaScript Updater Hook (Sprint 6) - dynamically updates variables/functions -->
         <div phx-hook="JavaScriptUpdater" id="js-updater" style="display: none;"></div>
-
-        <!-- ScreenshotCapture Hook (Sprint 7 Phase 5) - enables screenshot capture for state snapshots -->
-        <div phx-hook="ScreenshotCapture" id="wireframe-screenshot-target" style="display: none;"></div>
+        
+    <!-- ScreenshotCapture Hook (Sprint 7 Phase 5) - enables screenshot capture for state snapshots -->
+        <div phx-hook="ScreenshotCapture" id="wireframe-screenshot-target" style="display: none;">
+        </div>
 
         <%= if @dom_tree do %>
-          <%= render_dom_tree(@dom_tree) %>
+          {render_dom_tree(@dom_tree)}
         <% else %>
           <div style="padding: 2rem; text-align: center; color: #666;">
             <p>No wireframe loaded</p>
           </div>
         <% end %>
-
-        <!-- JavaScript Rendering (Sprint 6) -->
+        
+    <!-- JavaScript Rendering (Sprint 6) -->
         <%= if has_javascript_content?(@custom_variables, @custom_functions, @init_scripts, @handlers) do %>
           <script>
             // ===== Global Variables =====
@@ -294,7 +317,13 @@ defmodule KoalemosWeb.WireframePreviewLive do
   # Private Helpers
 
   # Push JavaScript updates to client if variables/functions/handlers changed (Sprint 6)
-  defp push_javascript_updates(socket, new_variables, new_functions, new_handlers, new_init_scripts) do
+  defp push_javascript_updates(
+         socket,
+         new_variables,
+         new_functions,
+         new_handlers,
+         new_init_scripts
+       ) do
     old_variables = socket.assigns[:custom_variables] || %{}
     old_functions = socket.assigns[:custom_functions] || %{}
     old_handlers = socket.assigns[:handlers] || %{}
@@ -312,40 +341,62 @@ defmodule KoalemosWeb.WireframePreviewLive do
     Logger.debug("  Init scripts equal? #{old_init_scripts == new_init_scripts}")
 
     # Check if variables changed
-    socket = if new_variables != old_variables && map_size(new_variables) > 0 do
-      Logger.debug("[WireframePreviewLive] ✅ Pushing variable updates: #{inspect(Map.keys(new_variables))}")
-      push_event(socket, "update_variables", %{variables: new_variables})
-    else
-      Logger.debug("[WireframePreviewLive] ❌ NOT pushing variables (equal: #{old_variables == new_variables}, size: #{map_size(new_variables)})")
-      socket
-    end
+    socket =
+      if new_variables != old_variables && map_size(new_variables) > 0 do
+        Logger.debug(
+          "[WireframePreviewLive] ✅ Pushing variable updates: #{inspect(Map.keys(new_variables))}"
+        )
+
+        push_event(socket, "update_variables", %{variables: new_variables})
+      else
+        Logger.debug(
+          "[WireframePreviewLive] ❌ NOT pushing variables (equal: #{old_variables == new_variables}, size: #{map_size(new_variables)})"
+        )
+
+        socket
+      end
 
     # Check if functions changed
-    socket = if new_functions != old_functions && map_size(new_functions) > 0 do
-      Logger.debug("[WireframePreviewLive] ✅ Pushing function updates: #{inspect(Map.keys(new_functions))}")
-      push_event(socket, "update_functions", %{functions: new_functions})
-    else
-      Logger.debug("[WireframePreviewLive] ❌ NOT pushing functions (equal: #{old_functions == new_functions}, size: #{map_size(new_functions)})")
-      socket
-    end
+    socket =
+      if new_functions != old_functions && map_size(new_functions) > 0 do
+        Logger.debug(
+          "[WireframePreviewLive] ✅ Pushing function updates: #{inspect(Map.keys(new_functions))}"
+        )
+
+        push_event(socket, "update_functions", %{functions: new_functions})
+      else
+        Logger.debug(
+          "[WireframePreviewLive] ❌ NOT pushing functions (equal: #{old_functions == new_functions}, size: #{map_size(new_functions)})"
+        )
+
+        socket
+      end
 
     # Check if handlers changed
-    socket = if new_handlers != old_handlers && map_size(new_handlers) > 0 do
-      Logger.debug("[WireframePreviewLive] ✅ Pushing handler updates: #{inspect(Map.keys(new_handlers))}")
-      push_event(socket, "update_handlers", %{handlers: new_handlers})
-    else
-      Logger.debug("[WireframePreviewLive] ❌ NOT pushing handlers (equal: #{old_handlers == new_handlers}, size: #{map_size(new_handlers)})")
-      socket
-    end
+    socket =
+      if new_handlers != old_handlers && map_size(new_handlers) > 0 do
+        Logger.debug(
+          "[WireframePreviewLive] ✅ Pushing handler updates: #{inspect(Map.keys(new_handlers))}"
+        )
+
+        push_event(socket, "update_handlers", %{handlers: new_handlers})
+      else
+        Logger.debug(
+          "[WireframePreviewLive] ❌ NOT pushing handlers (equal: #{old_handlers == new_handlers}, size: #{map_size(new_handlers)})"
+        )
+
+        socket
+      end
 
     # Check if init scripts changed - reload page for clean initialization
     # TODO BACKLOG: Implement "soft reload" (reset state without browser reload)
-    socket = if new_init_scripts != old_init_scripts do
-      Logger.debug("[WireframePreviewLive] ✅ Init scripts changed - triggering page reload")
-      push_event(socket, "reload_page", %{})
-    else
-      socket
-    end
+    socket =
+      if new_init_scripts != old_init_scripts do
+        Logger.debug("[WireframePreviewLive] ✅ Init scripts changed - triggering page reload")
+        push_event(socket, "reload_page", %{})
+      else
+        socket
+      end
 
     socket
   end
@@ -375,28 +426,30 @@ defmodule KoalemosWeb.WireframePreviewLive do
     custom_css
     |> Enum.map(fn {selector, rules} ->
       # Handle both string format and structured format
-      rules_str = case rules do
-        # String format: "property: value; property: value"
-        str when is_binary(str) ->
-          str
+      rules_str =
+        case rules do
+          # String format: "property: value; property: value"
+          str when is_binary(str) ->
+            str
 
-        # Map format: %{"property" => "value", ...}
-        map when is_map(map) ->
-          Enum.map_join(map, "; ", fn {property, value} ->
-            "#{property}: #{value}"
-          end)
+          # Map format: %{"property" => "value", ...}
+          map when is_map(map) ->
+            Enum.map_join(map, "; ", fn {property, value} ->
+              "#{property}: #{value}"
+            end)
 
-        # List format: [{"property", "value"}, ...]
-        list when is_list(list) ->
-          Enum.map_join(list, "; ", fn {property, value} ->
-            "#{property}: #{value}"
-          end)
-      end
+          # List format: [{"property", "value"}, ...]
+          list when is_list(list) ->
+            Enum.map_join(list, "; ", fn {property, value} ->
+              "#{property}: #{value}"
+            end)
+        end
 
       "#{selector} { #{rules_str}; }"
     end)
     |> Enum.join("\n")
   end
+
   defp render_custom_css(_), do: ""
 
   defp render_dom_tree(nil), do: ""
@@ -426,18 +479,19 @@ defmodule KoalemosWeb.WireframePreviewLive do
     else
       # Render with children or content
       # Note: Filter out "nil" string because Observer.make_serializable converts atom nil to string "nil"
-      inner_html = cond do
-        is_binary(content) && content != "" && content != "nil" ->
-          Plug.HTML.html_escape(content)
+      inner_html =
+        cond do
+          is_binary(content) && content != "" && content != "nil" ->
+            Plug.HTML.html_escape(content)
 
-        is_list(children) && length(children) > 0 ->
-          children
-          |> Enum.map(&render_element_as_string/1)
-          |> Enum.join("")
+          is_list(children) && length(children) > 0 ->
+            children
+            |> Enum.map(&render_element_as_string/1)
+            |> Enum.join("")
 
-        true ->
-          ""
-      end
+          true ->
+            ""
+        end
 
       "<#{tag}#{attrs}>#{inner_html}</#{tag}>"
     end
@@ -459,27 +513,29 @@ defmodule KoalemosWeb.WireframePreviewLive do
     attrs = if id, do: ["id=\"#{Plug.HTML.html_escape(id)}\"" | attrs], else: attrs
 
     # Add classes if present
-    attrs = if classes && length(classes) > 0 do
-      class_str = Enum.join(classes, " ")
-      ["class=\"#{Plug.HTML.html_escape(class_str)}\"" | attrs]
-    else
-      attrs
-    end
+    attrs =
+      if classes && length(classes) > 0 do
+        class_str = Enum.join(classes, " ")
+        ["class=\"#{Plug.HTML.html_escape(class_str)}\"" | attrs]
+      else
+        attrs
+      end
 
     # Add other attributes (with special handling for boolean-valued attributes)
-    attrs = Enum.reduce(attributes, attrs, fn {key, value}, acc ->
-      if is_boolean(value) do
-        # Boolean-valued attributes: render without value if true, omit if false
-        if value do
-          ["#{key}" | acc]
+    attrs =
+      Enum.reduce(attributes, attrs, fn {key, value}, acc ->
+        if is_boolean(value) do
+          # Boolean-valued attributes: render without value if true, omit if false
+          if value do
+            ["#{key}" | acc]
+          else
+            acc
+          end
         else
-          acc
+          # Regular attributes: always render with value
+          ["#{key}=\"#{Plug.HTML.html_escape(to_string(value))}\"" | acc]
         end
-      else
-        # Regular attributes: always render with value
-        ["#{key}=\"#{Plug.HTML.html_escape(to_string(value))}\"" | acc]
-      end
-    end)
+      end)
 
     if length(attrs) > 0 do
       " " <> Enum.join(Enum.reverse(attrs), " ")
@@ -496,9 +552,9 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
   defp has_javascript_content?(variables, functions, init_scripts, handlers) do
     (is_map(variables) && map_size(variables) > 0) ||
-    (is_map(functions) && map_size(functions) > 0) ||
-    (is_map(init_scripts) && map_size(init_scripts) > 0) ||
-    (is_map(handlers) && map_size(handlers) > 0)
+      (is_map(functions) && map_size(functions) > 0) ||
+      (is_map(init_scripts) && map_size(init_scripts) > 0) ||
+      (is_map(handlers) && map_size(handlers) > 0)
   end
 
   defp render_custom_variables(variables) when is_map(variables) and map_size(variables) > 0 do
@@ -510,6 +566,7 @@ defmodule KoalemosWeb.WireframePreviewLive do
     end)
     |> Enum.join("\n")
   end
+
   defp render_custom_variables(_), do: ""
 
   defp render_custom_functions(functions) when is_map(functions) and map_size(functions) > 0 do
@@ -521,13 +578,16 @@ defmodule KoalemosWeb.WireframePreviewLive do
     end)
     |> Enum.join("\n\n")
   end
+
   defp render_custom_functions(_), do: ""
 
-  defp render_init_scripts(init_scripts) when is_map(init_scripts) and map_size(init_scripts) > 0 do
+  defp render_init_scripts(init_scripts)
+       when is_map(init_scripts) and map_size(init_scripts) > 0 do
     # Execute init scripts, handling both initial load and reload cases
-    scripts_code = init_scripts
-    |> Enum.map(fn {_name, code} -> code end)
-    |> Enum.join("\n\n")
+    scripts_code =
+      init_scripts
+      |> Enum.map(fn {_name, code} -> code end)
+      |> Enum.join("\n\n")
 
     """
     // Execute immediately if DOM already loaded (e.g., after reload)
@@ -541,5 +601,6 @@ defmodule KoalemosWeb.WireframePreviewLive do
     }
     """
   end
+
   defp render_init_scripts(_), do: ""
 end

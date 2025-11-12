@@ -69,9 +69,10 @@ defmodule Koalemos.LLMProviders.Ollama do
     system_message = OpenAIFormatConverter.build_system_message(text_contexts)
 
     # Convert image contexts to user messages
-    image_messages = Enum.map(image_contexts, fn img ->
-      %{"role" => "user", "content" => [img]}
-    end)
+    image_messages =
+      Enum.map(image_contexts, fn img ->
+        %{"role" => "user", "content" => [img]}
+      end)
 
     # Combine: system, images, actual messages
     all_messages = [system_message] ++ image_messages ++ openai_messages

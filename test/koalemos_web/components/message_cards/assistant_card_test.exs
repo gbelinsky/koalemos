@@ -9,7 +9,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
       assigns = %{
         message: %{
           content: "I can help you with that.",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         }
       }
 
@@ -24,7 +24,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
       assigns = %{
         message: %{
           content: "Here's a **bold** statement and some _italic_ text.",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         }
       }
 
@@ -38,7 +38,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
       assigns = %{
         message: %{
           content: "Here are the steps:\n\n1. First step\n2. Second step\n3. Third step",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         }
       }
 
@@ -53,7 +53,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
       assigns = %{
         message: %{
           content: "Here's some code:\n\n```elixir\ndefmodule Test do\nend\n```",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         }
       }
 
@@ -67,7 +67,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
       assigns = %{
         message: %{
           content: "Test message",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         }
       }
 
@@ -80,7 +80,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
       assigns = %{
         message: %{
           content: "Test message",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         },
         card_id: "custom_assistant_id"
       }
@@ -97,7 +97,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
             %{type: "text", text: "First part"},
             %{type: "text", text: "Second part"}
           ],
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         }
       }
 
@@ -111,7 +111,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCardTest do
       assigns = %{
         message: %{
           content: "",
-          metadata: %{timestamp: 1234567890}
+          metadata: %{timestamp: 1_234_567_890}
         }
       }
 

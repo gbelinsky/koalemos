@@ -44,36 +44,43 @@ defmodule Koalemos.Lenses.WireframeEditor.TicTacToeTest do
 
       # Step 2: Agent triggers a click on cell 0 (top-left)
       # Spawn task to send completion response (simulating preview JavaScript)
-      task = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {result, updates} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "cell-0"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {result, updates} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "cell-0"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task)
 
       # Verify interaction succeeded
       assert result =~ "Successfully triggered"
-      assert updates == []  # trigger_interaction doesn't update designed state
+      # trigger_interaction doesn't update designed state
+      assert updates == []
 
       # Step 3 & 4: Capture state (simulate preview responding to request)
       # Spawn task to simulate preview sending data after a delay
       # Simulate that cell-0 was clicked and now has "X"
-      capture_task = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_state_capture(routine_id, lens_state, %{"cell-0" => "X"})
-      end)
+      capture_task =
+        Task.async(fn ->
+          :timer.sleep(100)
+          simulate_state_capture(routine_id, lens_state, %{"cell-0" => "X"})
+        end)
 
-      {:ok, captured_state} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+      {:ok, captured_state} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task)
 
       # Agent should see:
@@ -81,13 +88,16 @@ defmodule Koalemos.Lenses.WireframeEditor.TicTacToeTest do
       assert captured_state.dom_tree != nil
       cell_0 = find_element_by_id(captured_state.dom_tree, "cell-0")
       assert cell_0 != nil
-      assert cell_0.content == "X"  # Agent's move
+      # Agent's move
+      assert cell_0.content == "X"
 
       # - Console log about the move
       assert length(captured_state.console_output) > 0
+
       assert Enum.any?(captured_state.console_output, fn log ->
-        String.contains?(log.message, "Player X") or String.contains?(log.message, "clicked")
-      end)
+               String.contains?(log.message, "Player X") or
+                 String.contains?(log.message, "clicked")
+             end)
 
       # - Differs from designed state (since we triggered interaction)
       assert captured_state.differs_from_designed == true
@@ -107,21 +117,24 @@ defmodule Koalemos.Lenses.WireframeEditor.TicTacToeTest do
 
       Enum.each(moves, fn {cell_id, _player} ->
         # Spawn task to send completion response
-        task = Task.async(fn ->
-          :timer.sleep(100)
-          Phoenix.PubSub.broadcast(
-            Koalemos.PubSub,
-            "interaction:response:#{routine_id}",
-            {:interaction_complete, %{"success" => true}}
-          )
-        end)
+        task =
+          Task.async(fn ->
+            :timer.sleep(100)
+
+            Phoenix.PubSub.broadcast(
+              Koalemos.PubSub,
+              "interaction:response:#{routine_id}",
+              {:interaction_complete, %{"success" => true}}
+            )
+          end)
 
         # Trigger move
-        {result, _} = WireframeEditor.execute(
-          :trigger_interaction,
-          %{"action" => "click", "element_id" => cell_id},
-          %{lens_state: lens_state, routine_id: routine_id}
-        )
+        {result, _} =
+          WireframeEditor.execute(
+            :trigger_interaction,
+            %{"action" => "click", "element_id" => cell_id},
+            %{lens_state: lens_state, routine_id: routine_id}
+          )
 
         Task.await(task)
         assert result =~ "Successfully triggered"
@@ -129,16 +142,20 @@ defmodule Koalemos.Lenses.WireframeEditor.TicTacToeTest do
 
       # Capture final state (simulate preview responding)
       # Simulate the three moves: X on 0, O on 4, X on 1
-      capture_task = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_state_capture(routine_id, lens_state, %{
-          "cell-0" => "X",
-          "cell-4" => "O",
-          "cell-1" => "X"
-        })
-      end)
+      capture_task =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {:ok, captured_state} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+          simulate_state_capture(routine_id, lens_state, %{
+            "cell-0" => "X",
+            "cell-4" => "O",
+            "cell-1" => "X"
+          })
+        end)
+
+      {:ok, captured_state} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task)
 
       # Verify all moves visible in DOM
@@ -271,15 +288,21 @@ defmodule Koalemos.Lenses.WireframeEditor.TicTacToeTest do
 
   defp apply_clicks_to_tree(tree, clicked_cells) when is_map(tree) do
     # If this element was clicked, update its text/content
-    updated_tree = case Map.get(clicked_cells, tree[:id]) do
-      nil -> tree
-      player_mark -> Map.put(tree, :text, player_mark)
-    end
+    updated_tree =
+      case Map.get(clicked_cells, tree[:id]) do
+        nil -> tree
+        player_mark -> Map.put(tree, :text, player_mark)
+      end
 
     # Recursively update children
     case updated_tree[:children] do
       children when is_list(children) ->
-        Map.put(updated_tree, :children, Enum.map(children, &apply_clicks_to_tree(&1, clicked_cells)))
+        Map.put(
+          updated_tree,
+          :children,
+          Enum.map(children, &apply_clicks_to_tree(&1, clicked_cells))
+        )
+
       _ ->
         updated_tree
     end
@@ -304,8 +327,10 @@ defmodule Koalemos.Lenses.WireframeEditor.TicTacToeTest do
 
   # Helper to find element by ID in DOM tree
   defp find_element_by_id(%{id: id} = element, target_id) when id == target_id, do: element
+
   defp find_element_by_id(%{children: children}, target_id) when is_list(children) do
     Enum.find_value(children, fn child -> find_element_by_id(child, target_id) end)
   end
+
   defp find_element_by_id(_, _), do: nil
 end

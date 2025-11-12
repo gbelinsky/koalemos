@@ -79,6 +79,7 @@ defmodule Koalemos.Routines.PersonaTestRoutineTest do
 
       # Expertise is list
       assert is_list(persona_config.expertise)
+
       Enum.each(persona_config.expertise, fn expertise ->
         assert expertise in [:technical, :creative, :business, :analytical, :ux]
       end)
@@ -94,11 +95,14 @@ defmodule Koalemos.Routines.PersonaTestRoutineTest do
       # User provides different persona config
       user_context = %{
         lenses: [
-          ["Koalemos.Lenses.PersonaLens", %{
-            tone: :friendly,
-            expertise: [:creative, :ux],
-            style: :storytelling
-          }]
+          [
+            "Koalemos.Lenses.PersonaLens",
+            %{
+              tone: :friendly,
+              expertise: [:creative, :ux],
+              style: :storytelling
+            }
+          ]
         ]
       }
 

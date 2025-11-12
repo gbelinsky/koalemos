@@ -52,7 +52,14 @@ config :logger, :console,
 config :phoenix, :json_library, Jason
 
 # Filter sensitive parameters from logs in all environments
-config :phoenix, :filter_parameters, ["password", "api_key", "secret", "token", "refresh_token", "access_token"]
+config :phoenix, :filter_parameters, [
+  "password",
+  "api_key",
+  "secret",
+  "token",
+  "refresh_token",
+  "access_token"
+]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

@@ -42,12 +42,17 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
         usage = Map.get(llm_response, "usage", %{})
 
         # Build assistant message for conversation history with metadata
-        assistant_message = Koalemos.Utils.MessageBuilder.build_assistant_message(
-          content,
-          [source: :agent, routine_id: state.routine_id, usage: usage]
-        )
+        assistant_message =
+          Koalemos.Utils.MessageBuilder.build_assistant_message(
+            content,
+            source: :agent,
+            routine_id: state.routine_id,
+            usage: usage
+          )
 
-        Logger.debug("ResponseParsing: Assistant message built (id: #{get_in(assistant_message, [:metadata, :id])})")
+        Logger.debug(
+          "ResponseParsing: Assistant message built (id: #{get_in(assistant_message, [:metadata, :id])})"
+        )
 
         # Log detailed content breakdown
         content_summary = summarize_content(content)
@@ -55,7 +60,9 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
 
         # Log token usage for debugging
         if map_size(usage) > 0 do
-          Logger.info("Tokens - Input: #{Map.get(usage, "input_tokens", 0)}, Output: #{Map.get(usage, "output_tokens", 0)}")
+          Logger.info(
+            "Tokens - Input: #{Map.get(usage, "input_tokens", 0)}, Output: #{Map.get(usage, "output_tokens", 0)}"
+          )
         end
 
         # Extract tool calls if any
@@ -72,11 +79,12 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
         diff = [append_to: %{messages: [assistant_message]}]
 
         # Add tool_calls if present
-        diff = if length(tool_calls) > 0 do
-          diff ++ [add_or_update: %{tool_calls: tool_calls}]
-        else
-          diff
-        end
+        diff =
+          if length(tool_calls) > 0 do
+            diff ++ [add_or_update: %{tool_calls: tool_calls}]
+          else
+            diff
+          end
 
         {:ok, diff}
 
@@ -108,15 +116,18 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
     total = length(content)
 
     # Count by type
-    type_counts = Enum.reduce(content, %{}, fn block, acc ->
-      type = Map.get(block, "type", "unknown")
-      Map.update(acc, type, 1, &(&1 + 1))
-    end)
+    type_counts =
+      Enum.reduce(content, %{}, fn block, acc ->
+        type = Map.get(block, "type", "unknown")
+        Map.update(acc, type, 1, &(&1 + 1))
+      end)
 
     # Format: "5 blocks (3 text, 2 tool_use)"
-    type_parts = Enum.map(type_counts, fn {type, count} ->
-      "#{count} #{type}"
-    end) |> Enum.join(", ")
+    type_parts =
+      Enum.map(type_counts, fn {type, count} ->
+        "#{count} #{type}"
+      end)
+      |> Enum.join(", ")
 
     "#{total} blocks (#{type_parts})"
   end

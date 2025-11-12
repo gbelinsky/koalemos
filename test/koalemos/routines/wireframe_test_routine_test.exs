@@ -39,18 +39,18 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
 
       # parse_response -> tool_lookup (if tools) OR start (if no tools)
       assert definition.parse_response.transitions == [
-        {:tool_lookup, :when_has_tool_calls},
-        {:start, :when_no_tool_calls}
-      ]
+               {:tool_lookup, :when_has_tool_calls},
+               {:start, :when_no_tool_calls}
+             ]
 
       # tool_lookup -> tool_execution
       assert definition.tool_lookup.transitions == [{:tool_execution, :always}]
 
       # tool_execution -> tool_execution (more tools) OR build_tool_schema (complete)
       assert definition.tool_execution.transitions == [
-        {:tool_execution, :when_has_more_tools},
-        {:build_tool_schema, :when_tools_complete}
-      ]
+               {:tool_execution, :when_has_more_tools},
+               {:build_tool_schema, :when_tools_complete}
+             ]
     end
   end
 
@@ -70,7 +70,8 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
       assert context.lenses == ["Koalemos.Lenses.WireframeEditor"]
       assert context.llm_provider == "anthropic"
       assert context.llm_model == "claude-haiku-4-5"
-      assert context.max_tokens == 64000  # Higher token limit for wireframe context
+      # Higher token limit for wireframe context
+      assert context.max_tokens == 64000
       assert context.temperature == 0.7
       assert context.wireframe_html == nil
       assert context.wireframe_sample == nil
@@ -152,6 +153,7 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
 
     test "preserves existing wireframe_html when no sample specified" do
       custom_html = "<html><body>Custom wireframe</body></html>"
+
       state = %{
         context: %{
           wireframe_html: custom_html
@@ -196,8 +198,8 @@ defmodule Koalemos.Routines.WireframeTestRoutineTest do
       for sample <- ["simple", "medium", "complex"] do
         state = %{context: %{wireframe_sample: sample, wireframe_html: nil}}
         {:ok, diff} = WireframeTestRoutine.setup(%{}, state)
-      {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
-      updated_state = %{state | context: updated_context}
+        {:ok, updated_context} = Koalemos.Engine.ContextManager.apply_diff(state.context, diff)
+        updated_state = %{state | context: updated_context}
 
         assert updated_state.context.wireframe_html =~ "<!DOCTYPE html>"
         assert updated_state.context.wireframe_html =~ "<html"

@@ -212,6 +212,7 @@ defmodule Koalemos.Caches.VariableStateCacheTest do
   describe "integration" do
     test "full workflow: add, get, clear" do
       routine_id = "workflow-test-#{:erlang.unique_integer([:positive])}"
+
       variables = %{
         "counter" => 0,
         "userName" => "test_user",
@@ -250,13 +251,13 @@ defmodule Koalemos.Caches.VariableStateCacheTest do
       VariableStateCache.add_variable_state(routine_id, %{
         "count" => 5,
         "lastAction" => "increment",
-        "timestamp" => 123456
+        "timestamp" => 123_456
       })
 
       vars = VariableStateCache.get_variable_state(routine_id)
       assert vars["count"] == 5
       assert vars["lastAction"] == "increment"
-      assert vars["timestamp"] == 123456
+      assert vars["timestamp"] == 123_456
     end
   end
 end

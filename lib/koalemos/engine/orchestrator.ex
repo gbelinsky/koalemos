@@ -153,7 +153,8 @@ defmodule Koalemos.Engine.Orchestrator do
         # Re-collect config sources (setup may have modified runtime config)
         config_sources_for_execute = %{
           static: config_sources.static,
-          runtime: get_in(state_after_setup, [:context, :config, state_after_setup.current_step]) || %{}
+          runtime:
+            get_in(state_after_setup, [:context, :config, state_after_setup.current_step]) || %{}
         }
 
         Task.start(fn ->

@@ -36,11 +36,13 @@ defmodule Koalemos.Steps.System.ConfigTest do
       state = %{context: %{}}
 
       assert {:ok, diff} = Config.execute(config_sources, state)
+
       expected = %{
         provider: :anthropic,
         llm_model: "claude-opus-4-20250514",
         max_tokens: 8000
       }
+
       assert diff == [add_or_update: expected]
     end
 

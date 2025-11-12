@@ -1,5 +1,6 @@
 defmodule Koalemos.Steps.Agent.LLMRequestTest do
-  use ExUnit.Case, async: false  # Credential stores are not async-safe
+  # Credential stores are not async-safe
+  use ExUnit.Case, async: false
   alias Koalemos.Steps.Agent.LLMRequest
 
   @test_credentials_path "test/tmp/llm_request_credentials.json"
