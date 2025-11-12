@@ -54,7 +54,7 @@ defmodule KoalemosWeb.MessageCards.ImageGallery do
           <% end %>
         <% end %>
         <%= if length(@images) > 3 do %>
-          <span class="text-gray-400 text-xs">+<%= length(@images) - 3 %> more</span>
+          <span class="text-gray-400 text-xs">+{length(@images) - 3} more</span>
         <% end %>
       </div>
     <% end %>

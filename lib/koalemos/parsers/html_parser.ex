@@ -82,8 +82,10 @@ defmodule Koalemos.Parsers.HTMLParser do
   defp extract_body_content(floki_tree) do
     case Floki.find(floki_tree, "body") do
       [{"body", _attrs, children}] -> children
-      [] -> floki_tree  # No body tag, use entire tree
-      _ -> floki_tree  # Multiple bodies or unexpected structure, use entire tree
+      # No body tag, use entire tree
+      [] -> floki_tree
+      # Multiple bodies or unexpected structure, use entire tree
+      _ -> floki_tree
     end
   end
 
@@ -100,6 +102,7 @@ defmodule Koalemos.Parsers.HTMLParser do
   # Check if element should be kept (not script/style/link)
   defp keep_element?({"script", _attrs, _children}), do: false
   defp keep_element?({"style", _attrs, _children}), do: false
+
   defp keep_element?({"link", attrs, _children}) do
     # Remove link elements with rel="stylesheet"
     case Enum.find(attrs, fn {k, _v} -> k == "rel" end) do
@@ -107,6 +110,7 @@ defmodule Koalemos.Parsers.HTMLParser do
       _ -> true
     end
   end
+
   defp keep_element?(_), do: true
 
   # Recursively filter children of an element
@@ -114,6 +118,7 @@ defmodule Koalemos.Parsers.HTMLParser do
     filtered_children = filter_extracted_elements(children)
     {tag, attrs, filtered_children}
   end
+
   defp filter_children(node), do: node
 
   @doc """
@@ -221,6 +226,7 @@ defmodule Koalemos.Parsers.HTMLParser do
       case convert_node(child, cnt, ids) do
         {nil, new_cnt, new_ids} ->
           {acc, new_cnt, new_ids}
+
         {node, new_cnt, new_ids} ->
           {acc ++ [node], new_cnt, new_ids}
       end
@@ -258,6 +264,7 @@ defmodule Koalemos.Parsers.HTMLParser do
 
   defp find_unique_variant(base_id, used_ids, suffix) do
     candidate = "#{base_id}-#{suffix}"
+
     if MapSet.member?(used_ids, candidate) do
       find_unique_variant(base_id, used_ids, suffix + 1)
     else
@@ -274,6 +281,7 @@ defmodule Koalemos.Parsers.HTMLParser do
       {{"class", class_string}, remaining} ->
         classes = String.split(class_string, ~r/\s+/, trim: true)
         {classes, remaining}
+
       nil ->
         {[], attributes}
     end
@@ -284,6 +292,7 @@ defmodule Koalemos.Parsers.HTMLParser do
       {{"style", style_string}, remaining} ->
         styles = parse_style_string(style_string)
         {styles, remaining}
+
       nil ->
         {%{}, attributes}
     end
@@ -323,27 +332,29 @@ defmodule Koalemos.Parsers.HTMLParser do
     link_tags = Floki.find(floki_tree, "link[rel='stylesheet']")
 
     # Convert to our format
-    inline_styles = Enum.map(style_tags, fn {"style", attrs, children} ->
-      content = extract_text_content(children)
-      attributes = Enum.into(attrs, %{})
+    inline_styles =
+      Enum.map(style_tags, fn {"style", attrs, children} ->
+        content = extract_text_content(children)
+        attributes = Enum.into(attrs, %{})
 
-      %{
-        type: :inline,
-        content: content,
-        attributes: attributes
-      }
-    end)
+        %{
+          type: :inline,
+          content: content,
+          attributes: attributes
+        }
+      end)
 
-    external_styles = Enum.map(link_tags, fn {"link", attrs, _children} ->
-      attributes = Enum.into(attrs, %{})
-      href = Map.get(attributes, "href", "")
+    external_styles =
+      Enum.map(link_tags, fn {"link", attrs, _children} ->
+        attributes = Enum.into(attrs, %{})
+        href = Map.get(attributes, "href", "")
 
-      %{
-        type: :external,
-        src: href,
-        attributes: attributes
-      }
-    end)
+        %{
+          type: :external,
+          src: href,
+          attributes: attributes
+        }
+      end)
 
     inline_styles ++ external_styles
   end
@@ -362,6 +373,7 @@ defmodule Koalemos.Parsers.HTMLParser do
         nil ->
           # Inline script
           content = extract_text_content(children)
+
           %{
             type: :inline,
             content: content,
@@ -385,10 +397,11 @@ defmodule Koalemos.Parsers.HTMLParser do
 
   defp extract_metadata(floki_tree) do
     # Extract title
-    title = case Floki.find(floki_tree, "title") do
-      [{"title", _attrs, children}] -> extract_text_content(children)
-      _ -> nil
-    end
+    title =
+      case Floki.find(floki_tree, "title") do
+        [{"title", _attrs, children}] -> extract_text_content(children)
+        _ -> nil
+      end
 
     # Extract meta tags
     meta_tags =

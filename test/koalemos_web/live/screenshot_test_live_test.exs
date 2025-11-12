@@ -40,7 +40,8 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
       {:ok, view, _html} = live(conn, "/test/screenshot")
 
       assert render(view) =~ "Captures:"
-      assert render(view) =~ "0"  # Initial capture count
+      # Initial capture count
+      assert render(view) =~ "0"
     end
   end
 
@@ -56,7 +57,8 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
 
       # Simulate screenshot data from JavaScript hook
       fake_screenshot = %{
-        "data" => "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "data" =>
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
         "width" => 100,
         "height" => 50
       }
@@ -71,7 +73,8 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
       # Verify capture count incremented
       html = render(view)
       assert html =~ ~r/Captures:.*1/s
-      assert html =~ "100x50"  # Dimensions in last screenshot info
+      # Dimensions in last screenshot info
+      assert html =~ "100x50"
     end
 
     test "increments capture count", %{conn: conn} do
@@ -115,7 +118,8 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
       {:ok, view, _html} = live(conn, "/test/screenshot")
 
       fake_screenshot = %{
-        "data" => String.duplicate("A", 10_000),  # ~10KB of data
+        # ~10KB of data
+        "data" => String.duplicate("A", 10_000),
         "width" => 800,
         "height" => 600
       }
@@ -123,8 +127,10 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
       render_hook(view, "screenshot_captured", fake_screenshot)
 
       html = render(view)
-      assert html =~ "800x600"  # Dimensions
-      assert html =~ "10 KB"    # Size (rounded)
+      # Dimensions
+      assert html =~ "800x600"
+      # Size (rounded)
+      assert html =~ "10 KB"
     end
   end
 
@@ -144,7 +150,8 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
     test "handles unknown errors gracefully", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/test/screenshot")
 
-      error_data = %{}  # No "error" field
+      # No "error" field
+      error_data = %{}
 
       # Should not crash
       render_hook(view, "screenshot_failed", error_data)
@@ -165,7 +172,8 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
 
       # JavaScript captures and sends screenshot (simulated by render_hook)
       fake_screenshot = %{
-        "data" => "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "data" =>
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
         "width" => 1,
         "height" => 1
       }
@@ -174,8 +182,10 @@ defmodule KoalemosWeb.ScreenshotTestLiveTest do
 
       # Verify results
       html = render(view)
-      assert html =~ ~r/Captures:.*1/s  # Capture count incremented
-      assert html =~ "1x1"  # Dimensions displayed
+      # Capture count incremented
+      assert html =~ ~r/Captures:.*1/s
+      # Dimensions displayed
+      assert html =~ "1x1"
 
       # Verify in cache
       assert {:ok, _data} = ScreenshotCache.get(routine_id)

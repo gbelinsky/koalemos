@@ -66,15 +66,16 @@ defmodule Koalemos.LLMProviders.Anthropic do
     # Append image contexts as user messages at the END (not saved to history)
     # Include descriptive text to emphasize these are current/live views
     # Placed at end so agent sees them most recently and pays more attention
-    image_messages = Enum.map(image_contexts, fn img ->
-      %{
-        role: "user",
-        content: [
-          %{type: "text", text: "Live screen view - current visual state of the wireframe:"},
-          img
-        ]
-      }
-    end)
+    image_messages =
+      Enum.map(image_contexts, fn img ->
+        %{
+          role: "user",
+          content: [
+            %{type: "text", text: "Live screen view - current visual state of the wireframe:"},
+            img
+          ]
+        }
+      end)
 
     all_messages = filtered_messages ++ image_messages
 
@@ -107,7 +108,13 @@ defmodule Koalemos.LLMProviders.Anthropic do
   end
 
   # Make HTTP request with progressive retry and exponential backoff
-  defp make_request_with_retry(credentials, json_body, [timeout | remaining_timeouts], attempt, routine_id) do
+  defp make_request_with_retry(
+         credentials,
+         json_body,
+         [timeout | remaining_timeouts],
+         attempt,
+         routine_id
+       ) do
     # Build headers based on auth type
     headers = build_headers(credentials)
 
@@ -128,9 +135,20 @@ defmodule Koalemos.LLMProviders.Anthropic do
         when status in [429, 500, 502, 503, 504, 529] and remaining_timeouts != [] ->
           # Retryable server errors - exponential backoff
           backoff_ms = min(1000 * :math.pow(2, attempt - 1), 30_000) |> round()
-          Logger.warning("[Anthropic] Retryable error #{status} (attempt #{attempt}), retrying after #{backoff_ms}ms")
+
+          Logger.warning(
+            "[Anthropic] Retryable error #{status} (attempt #{attempt}), retrying after #{backoff_ms}ms"
+          )
+
           :timer.sleep(backoff_ms)
-          make_request_with_retry(credentials, json_body, remaining_timeouts, attempt + 1, routine_id)
+
+          make_request_with_retry(
+            credentials,
+            json_body,
+            remaining_timeouts,
+            attempt + 1,
+            routine_id
+          )
 
         {:ok, %{status: status} = response} ->
           # Non-retryable error
@@ -147,7 +165,14 @@ defmodule Koalemos.LLMProviders.Anthropic do
         {:error, %{reason: :timeout}} when remaining_timeouts != [] ->
           # Retry with longer timeout
           Logger.warning("[Anthropic] Timeout (attempt #{attempt}), retrying with longer timeout")
-          make_request_with_retry(credentials, json_body, remaining_timeouts, attempt + 1, routine_id)
+
+          make_request_with_retry(
+            credentials,
+            json_body,
+            remaining_timeouts,
+            attempt + 1,
+            routine_id
+          )
 
         {:error, %{reason: :timeout}} ->
           # Final timeout after all retries
@@ -212,21 +237,25 @@ defmodule Koalemos.LLMProviders.Anthropic do
     }
 
     # Convert lens contexts to proper format (handle both strings and already-formatted maps)
-    formatted_lens_contexts = Enum.map(lens_contexts, fn context ->
-      case context do
-        # Already formatted correctly
-        %{"type" => "text", "text" => text} when is_binary(text) ->
-          %{type: "text", text: text}
-        %{type: "text", text: text} when is_binary(text) ->
-          %{type: "text", text: text}
-        # Plain string
-        text when is_binary(text) ->
-          %{type: "text", text: text}
-        # Fallback for unexpected formats
-        _ ->
-          %{type: "text", text: inspect(context)}
-      end
-    end)
+    formatted_lens_contexts =
+      Enum.map(lens_contexts, fn context ->
+        case context do
+          # Already formatted correctly
+          %{"type" => "text", "text" => text} when is_binary(text) ->
+            %{type: "text", text: text}
+
+          %{type: "text", text: text} when is_binary(text) ->
+            %{type: "text", text: text}
+
+          # Plain string
+          text when is_binary(text) ->
+            %{type: "text", text: text}
+
+          # Fallback for unexpected formats
+          _ ->
+            %{type: "text", text: inspect(context)}
+        end
+      end)
 
     [base_content | formatted_lens_contexts]
   end

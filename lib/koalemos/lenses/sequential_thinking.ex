@@ -77,10 +77,11 @@ defmodule Koalemos.Lenses.SequentialThinking do
       # Show current chain only (filter by detecting chain reset)
       current_chain = get_current_chain(thought_history)
 
-      chain_text = Enum.map_join(current_chain, "\n", fn thought ->
-        prefix = if thought.is_revision, do: "🔄", else: ""
-        "#{prefix}#{thought.thought_number}. #{thought.thought}"
-      end)
+      chain_text =
+        Enum.map_join(current_chain, "\n", fn thought ->
+          prefix = if thought.is_revision, do: "🔄", else: ""
+          "#{prefix}#{thought.thought_number}. #{thought.thought}"
+        end)
 
       [
         %{
@@ -101,8 +102,11 @@ defmodule Koalemos.Lenses.SequentialThinking do
   Provide tool definitions for this lens.
 
   Returns list of {module, tool_atom} tuples for ToolSchema step.
+
+  Config parameter is accepted for consistency with other lenses but not used.
+  Sequential thinking is always available and non-destructive.
   """
-  def tools do
+  def tools(_config \\ %{}) do
     [{__MODULE__, :sequential_thinking}]
   end
 
@@ -228,11 +232,12 @@ defmodule Koalemos.Lenses.SequentialThinking do
         end
 
       # Result with explicit next action guidance
-      result_text = if validated_input.next_thought_needed do
-        "Thought #{validated_input.thought_number}/#{validated_input.total_thoughts} recorded. Continue with next thought."
-      else
-        "Thought #{validated_input.thought_number}/#{validated_input.total_thoughts} recorded. Thought process complete."
-      end
+      result_text =
+        if validated_input.next_thought_needed do
+          "Thought #{validated_input.thought_number}/#{validated_input.total_thoughts} recorded. Continue with next thought."
+        else
+          "Thought #{validated_input.thought_number}/#{validated_input.total_thoughts} recorded. Thought process complete."
+        end
 
       # Return with lens_state updates (no :ok atom - ToolExecution handles wrapping)
       {result_text,

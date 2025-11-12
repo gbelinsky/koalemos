@@ -29,7 +29,7 @@ defmodule Koalemos.SimpleCredentialManagerTest do
 
   defp create_test_credentials_file(opts \\ []) do
     # Default: token that doesn't need refresh (expires in 1 hour)
-    expires_at = opts[:expires_at] || (System.system_time(:millisecond) + 60 * 60 * 1000)
+    expires_at = opts[:expires_at] || System.system_time(:millisecond) + 60 * 60 * 1000
 
     credentials = %{
       "claudeAiOauth" => %{
@@ -160,9 +160,7 @@ defmodule Koalemos.SimpleCredentialManagerTest do
   describe "token_needs_refresh?/1" do
     test "detects expired tokens that need refresh" do
       # Token expires in 4 minutes (less than 5 minute buffer)
-      create_test_credentials_file(
-        expires_at: System.system_time(:millisecond) + (4 * 60 * 1000)
-      )
+      create_test_credentials_file(expires_at: System.system_time(:millisecond) + 4 * 60 * 1000)
 
       SimpleCredentialManager.load_credentials_from_file(@test_path)
 
@@ -180,7 +178,7 @@ defmodule Koalemos.SimpleCredentialManagerTest do
       # Token expires in 10 minutes (more than 5 minute buffer)
       create_test_credentials_file(
         access_token: "still-valid",
-        expires_at: System.system_time(:millisecond) + (10 * 60 * 1000)
+        expires_at: System.system_time(:millisecond) + 10 * 60 * 1000
       )
 
       SimpleCredentialManager.load_credentials_from_file(@test_path)
@@ -197,17 +195,19 @@ defmodule Koalemos.SimpleCredentialManagerTest do
       SimpleCredentialManager.load_credentials_from_file(@test_path)
 
       # Make multiple concurrent requests
-      tasks = for _i <- 1..5 do
-        Task.async(fn ->
-          SimpleCredentialManager.get_access_token()
-        end)
-      end
+      tasks =
+        for _i <- 1..5 do
+          Task.async(fn ->
+            SimpleCredentialManager.get_access_token()
+          end)
+        end
 
       # All should get the same token
       results = Task.await_many(tasks)
+
       assert Enum.all?(results, fn result ->
-        {:ok, "shared-token"} == result
-      end)
+               {:ok, "shared-token"} == result
+             end)
     end
   end
 
@@ -255,6 +255,7 @@ defmodule Koalemos.SimpleCredentialManagerTest do
 
       # Create credentials at custom path
       File.mkdir_p!(Path.dirname(custom_path))
+
       credentials = %{
         "claudeAiOauth" => %{
           "accessToken" => "custom-token",
@@ -264,6 +265,7 @@ defmodule Koalemos.SimpleCredentialManagerTest do
           "subscriptionType" => "pro"
         }
       }
+
       File.write!(custom_path, Jason.encode!(credentials))
 
       # Load from custom path

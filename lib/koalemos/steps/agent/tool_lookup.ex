@@ -58,16 +58,18 @@ defmodule Koalemos.Steps.Agent.ToolLookup do
         ]
 
         # Add error messages using append_to if there are any
-        final_diff = if error_results != [] do
-          Enum.each(error_results, fn msg ->
-            msg_id = get_in(msg, [:metadata, :id])
-            source = get_in(msg, [:metadata, :source])
-            Logger.info("[ToolLookup] Appending error message id=#{msg_id}, source=#{source}")
-          end)
-          base_diff ++ [append_to: %{messages: error_results}]
-        else
-          base_diff
-        end
+        final_diff =
+          if error_results != [] do
+            Enum.each(error_results, fn msg ->
+              msg_id = get_in(msg, [:metadata, :id])
+              source = get_in(msg, [:metadata, :source])
+              Logger.info("[ToolLookup] Appending error message id=#{msg_id}, source=#{source}")
+            end)
+
+            base_diff ++ [append_to: %{messages: error_results}]
+          else
+            base_diff
+          end
 
         {:ok, final_diff}
     end
@@ -80,12 +82,13 @@ defmodule Koalemos.Steps.Agent.ToolLookup do
     |> Enum.map(fn %{id: id, name: name, input: input} ->
       case Map.get(tool_map, name) do
         {module, function} ->
-          {:ok, %{
-            id: id,
-            module: module,
-            function: function,
-            input: input
-          }}
+          {:ok,
+           %{
+             id: id,
+             module: module,
+             function: function,
+             input: input
+           }}
 
         nil ->
           # Tool not found - create error message to send back to agent
@@ -103,9 +106,10 @@ defmodule Koalemos.Steps.Agent.ToolLookup do
       valid_tools = Enum.map(valid, fn {:ok, tool} -> tool end)
 
       # Convert errors to tool_result messages
-      error_messages = Enum.map(errors, fn {:error, id, message, routine_id} ->
-        build_error_tool_result(id, message, routine_id)
-      end)
+      error_messages =
+        Enum.map(errors, fn {:error, id, message, routine_id} ->
+          build_error_tool_result(id, message, routine_id)
+        end)
 
       {valid_tools, error_messages}
     end)
@@ -116,7 +120,9 @@ defmodule Koalemos.Steps.Agent.ToolLookup do
     MessageBuilder.build_tool_result_message(
       tool_id,
       error_message,
-      [source: :tool_result, routine_id: routine_id, is_error: true]
+      source: :tool_result,
+      routine_id: routine_id,
+      is_error: true
     )
   end
 end

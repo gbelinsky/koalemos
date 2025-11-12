@@ -84,19 +84,20 @@ defmodule Koalemos.Utils.MessageBuilder do
   """
   def build_tool_result_message(tool_id, result_content, opts \\ []) do
     # Format result_content based on type
-    formatted_content = case result_content do
-      # String result (backward compatible)
-      content when is_binary(content) ->
-        content
+    formatted_content =
+      case result_content do
+        # String result (backward compatible)
+        content when is_binary(content) ->
+          content
 
-      # Content blocks [{:text, "..."}, {:image, base64, type}]
-      content_parts when is_list(content_parts) ->
-        Enum.map(content_parts, &format_content_part/1)
+        # Content blocks [{:text, "..."}, {:image, base64, type}]
+        content_parts when is_list(content_parts) ->
+          Enum.map(content_parts, &format_content_part/1)
 
-      # Unexpected format - convert to string
-      content ->
-        inspect(content)
-    end
+        # Unexpected format - convert to string
+        content ->
+          inspect(content)
+      end
 
     content_block = %{
       type: "tool_result",
@@ -104,11 +105,12 @@ defmodule Koalemos.Utils.MessageBuilder do
       content: formatted_content
     }
 
-    content_block = if Keyword.get(opts, :is_error, false) do
-      Map.put(content_block, :is_error, true)
-    else
-      content_block
-    end
+    content_block =
+      if Keyword.get(opts, :is_error, false) do
+        Map.put(content_block, :is_error, true)
+      else
+        content_block
+      end
 
     %{
       role: "user",
@@ -139,7 +141,7 @@ defmodule Koalemos.Utils.MessageBuilder do
   end
 
   defp format_content_part({:image, base64_data, media_type})
-      when is_binary(base64_data) and is_binary(media_type) do
+       when is_binary(base64_data) and is_binary(media_type) do
     %{
       type: "image",
       source: %{
@@ -173,18 +175,24 @@ defmodule Koalemos.Utils.MessageBuilder do
 
   defp valid_content_block?(%{type: "text", text: text}) when is_binary(text), do: true
 
-  defp valid_content_block?(%{type: "image", source: %{type: "base64", media_type: media_type, data: data}})
-      when is_binary(media_type) and is_binary(data) do
+  defp valid_content_block?(%{
+         type: "image",
+         source: %{type: "base64", media_type: media_type, data: data}
+       })
+       when is_binary(media_type) and is_binary(data) do
     media_type in ["image/jpeg", "image/png", "image/gif", "image/webp"]
   end
 
   defp valid_content_block?(%{type: "image", source: %{type: "url", url: url}})
-      when is_binary(url), do: true
+       when is_binary(url),
+       do: true
 
   defp valid_content_block?(%{type: "tool_result", tool_use_id: id, content: content})
-      when is_binary(id) and is_binary(content), do: true
+       when is_binary(id) and is_binary(content),
+       do: true
 
-  defp valid_content_block?(%{type: "tool_use"}), do: true  # Tool use blocks have complex structure
+  # Tool use blocks have complex structure
+  defp valid_content_block?(%{type: "tool_use"}), do: true
 
   defp valid_content_block?(_), do: false
 
@@ -201,9 +209,10 @@ defmodule Koalemos.Utils.MessageBuilder do
 
       # Merge in any additional metadata keys (like :usage)
       # Base metadata takes precedence over additional keys
-      additional_metadata = opts
-      |> Keyword.drop([:id, :timestamp, :source, :routine_id])
-      |> Enum.into(%{})
+      additional_metadata =
+        opts
+        |> Keyword.drop([:id, :timestamp, :source, :routine_id])
+        |> Enum.into(%{})
 
       Map.merge(additional_metadata, base_metadata)
     rescue

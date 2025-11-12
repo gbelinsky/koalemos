@@ -74,7 +74,8 @@ defmodule Koalemos.Caches.DOMStateCacheTest do
     end
 
     test "stores timestamp and change_type", %{routine_id: routine_id} do
-      timestamp = 1730400000000
+      timestamp = 1_730_400_000_000
+
       dom_update = %{
         "liveDOMTree" => %{"tag" => "div"},
         "timestamp" => timestamp,
@@ -332,10 +333,13 @@ defmodule Koalemos.Caches.DOMStateCacheTest do
               "id" => "header",
               "children" => [
                 %{"tag" => "h1", "content" => "Title"},
-                %{"tag" => "nav", "children" => [
-                  %{"tag" => "a", "content" => "Home"},
-                  %{"tag" => "a", "content" => "About"}
-                ]}
+                %{
+                  "tag" => "nav",
+                  "children" => [
+                    %{"tag" => "a", "content" => "Home"},
+                    %{"tag" => "a", "content" => "About"}
+                  ]
+                }
               ]
             },
             %{

@@ -99,11 +99,20 @@ defmodule Koalemos.Engine.Observer do
     end
 
     # Broadcast to PubSub
-    Phoenix.PubSub.broadcast(Koalemos.PubSub, "routine_events", {:routine_event, serializable_event})
+    Phoenix.PubSub.broadcast(
+      Koalemos.PubSub,
+      "routine_events",
+      {:routine_event, serializable_event}
+    )
 
     # Also broadcast to routine-specific topic
-    if routine_id = Map.get(serializable_event, :routine_id) || Map.get(serializable_event, :workflow_id) do
-      Phoenix.PubSub.broadcast(Koalemos.PubSub, "routine:#{routine_id}", {:routine_event, serializable_event})
+    if routine_id =
+         Map.get(serializable_event, :routine_id) || Map.get(serializable_event, :workflow_id) do
+      Phoenix.PubSub.broadcast(
+        Koalemos.PubSub,
+        "routine:#{routine_id}",
+        {:routine_event, serializable_event}
+      )
     end
 
     # Check for message changes and broadcast to message-specific topic
@@ -247,7 +256,10 @@ defmodule Koalemos.Engine.Observer do
 
     # Look for context_changed events with messages
     if event_type == "context_changed" or event_type == :context_changed do
-      routine_id = Map.get(event, :routine_id) || Map.get(event, :workflow_id) || Map.get(event, "routine_id") || Map.get(event, "workflow_id")
+      routine_id =
+        Map.get(event, :routine_id) || Map.get(event, :workflow_id) ||
+          Map.get(event, "routine_id") || Map.get(event, "workflow_id")
+
       context_diff = Map.get(event, :context_diff) || Map.get(event, "context_diff")
 
       if routine_id && context_diff do

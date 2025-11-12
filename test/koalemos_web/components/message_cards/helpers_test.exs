@@ -11,7 +11,7 @@ defmodule KoalemosWeb.MessageCards.HelpersTest do
     end
 
     test "generates ID from integer timestamp" do
-      message = %{metadata: %{timestamp: 1234567890}}
+      message = %{metadata: %{timestamp: 1_234_567_890}}
       id = generate_card_id(message)
       assert id == "card_1234567890"
     end

@@ -51,7 +51,7 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
               </div>
               <%= if @complete do %>
                 <span class="text-xs text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">
-                  <%= @total %> Thoughts
+                  {@total} Thoughts
                 </span>
               <% else %>
                 <span class="text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full animate-pulse">
@@ -59,11 +59,11 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
                 </span>
               <% end %>
               <span class="text-xs text-teal-600/70">
-                <%= @current %> / <%= @total %>
+                {@current} / {@total}
               </span>
             </div>
             <div class="text-teal-400/60 hover:text-teal-600 transition-all text-sm px-2">
-              <%= if @expanded, do: "▲", else: "▼" %>
+              {if @expanded, do: "▲", else: "▼"}
             </div>
           </div>
           <!-- Progress bar (only when not complete) -->
@@ -85,15 +85,15 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
               <div class="bg-white/60 border border-teal-200 rounded-lg p-3">
                 <div class="flex items-start gap-2">
                   <div class="flex-shrink-0 w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
-                    <span class="text-xs font-bold text-teal-700"><%= thought.number %></span>
+                    <span class="text-xs font-bold text-teal-700">{thought.number}</span>
                   </div>
                   <div class="flex-1">
                     <p class="text-sm text-slate-700 leading-relaxed">
-                      <%= thought.text %>
+                      {thought.text}
                     </p>
                     <%= if thought.revision do %>
                       <span class="text-xs text-amber-600 mt-1 inline-block">
-                        🔄 Revision of thought <%= thought.revises_thought %>
+                        🔄 Revision of thought {thought.revises_thought}
                       </span>
                     <% end %>
                   </div>
@@ -123,12 +123,13 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
             input = Map.get(tool_call, :input) || Map.get(tool_call, "input") || %{}
 
             # Extract and normalize next_thought_needed to boolean
-            next_needed = case Map.get(input, "next_thought_needed") || Map.get(input, :next_thought_needed) do
-              false -> false
-              "false" -> false
-              nil -> false
-              _ -> true
-            end
+            next_needed =
+              case Map.get(input, "next_thought_needed") || Map.get(input, :next_thought_needed) do
+                false -> false
+                "false" -> false
+                nil -> false
+                _ -> true
+              end
 
             %{
               text: Map.get(input, "thought") || Map.get(input, :thought),
@@ -136,7 +137,8 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
               total: Map.get(input, "total_thoughts") || Map.get(input, :total_thoughts),
               next_needed: next_needed,
               revision: Map.get(input, "is_revision") || Map.get(input, :is_revision) || false,
-              revises_thought: Map.get(input, "revises_thought") || Map.get(input, :revises_thought)
+              revises_thought:
+                Map.get(input, "revises_thought") || Map.get(input, :revises_thought)
             }
           end)
 

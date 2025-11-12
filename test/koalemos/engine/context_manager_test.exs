@@ -53,7 +53,9 @@ defmodule Koalemos.Engine.ContextManagerTest do
     test "preserves non-updated keys" do
       context = %{user: "alice", role: "user", id: 123}
       diff = [{:update, %{user: "bob"}}]
-      assert {:ok, %{user: "bob", role: "user", id: 123}} = ContextManager.apply_diff(context, diff)
+
+      assert {:ok, %{user: "bob", role: "user", id: 123}} =
+               ContextManager.apply_diff(context, diff)
     end
 
     test "returns conflict error when key doesn't exist" do
@@ -76,7 +78,7 @@ defmodule Koalemos.Engine.ContextManagerTest do
   describe "apply_diff/2 - add_or_update operation" do
     test "adds keys that don't exist" do
       assert {:ok, %{user: "alice"}} =
-        ContextManager.apply_diff(%{}, [{:add_or_update, %{user: "alice"}}])
+               ContextManager.apply_diff(%{}, [{:add_or_update, %{user: "alice"}}])
     end
 
     test "updates keys that exist" do
@@ -94,8 +96,9 @@ defmodule Koalemos.Engine.ContextManagerTest do
     test "never produces conflicts" do
       context = %{user: "bob", role: "user"}
       diff = [{:add_or_update, %{user: "alice", role: "admin", new: "value"}}]
+
       assert {:ok, %{user: "alice", role: "admin", new: "value"}} =
-        ContextManager.apply_diff(context, diff)
+               ContextManager.apply_diff(context, diff)
     end
   end
 
@@ -125,22 +128,25 @@ defmodule Koalemos.Engine.ContextManagerTest do
     test "appends to multiple lists" do
       context = %{tags: ["a"], categories: ["x"]}
       diff = [{:append_to, %{tags: "b", categories: "y"}}]
+
       assert {:ok, %{tags: ["a", "b"], categories: ["x", "y"]}} =
-        ContextManager.apply_diff(context, diff)
+               ContextManager.apply_diff(context, diff)
     end
 
     test "returns error when trying to append to non-list value" do
       context = %{count: 5}
       diff = [{:append_to, %{count: 1}}]
+
       assert {:error, {:invalid_append, :count, "Cannot append to non-list value"}} =
-        ContextManager.apply_diff(context, diff)
+               ContextManager.apply_diff(context, diff)
     end
 
     test "preserves other keys when appending" do
       context = %{tags: ["a"], user: "alice"}
       diff = [{:append_to, %{tags: "b"}}]
+
       assert {:ok, %{tags: ["a", "b"], user: "alice"}} =
-        ContextManager.apply_diff(context, diff)
+               ContextManager.apply_diff(context, diff)
     end
   end
 
@@ -187,6 +193,7 @@ defmodule Koalemos.Engine.ContextManagerTest do
         {:add, %{role: "user"}},
         {:update, %{role: "admin"}}
       ]
+
       assert {:ok, %{user: "alice", role: "admin"}} = ContextManager.apply_diff(%{}, diff)
     end
 
@@ -197,22 +204,27 @@ defmodule Koalemos.Engine.ContextManagerTest do
         {:append_to, %{messages: "world"}},
         {:add, %{count: 2}}
       ]
+
       assert {:ok, %{messages: ["hello", "world"], count: 2}} =
-        ContextManager.apply_diff(%{}, diff)
+               ContextManager.apply_diff(%{}, diff)
     end
 
     test "stops on first error" do
       context = %{user: "alice"}
+
       diff = [
         {:add, %{role: "admin"}},
-        {:add, %{user: "bob"}},  # This should fail
-        {:add, %{id: 123}}       # This shouldn't be reached
+        # This should fail
+        {:add, %{user: "bob"}},
+        # This shouldn't be reached
+        {:add, %{id: 123}}
       ]
 
       assert {:error, {:conflict, :add, [:user]}} = ContextManager.apply_diff(context, diff)
       # Context should be unchanged after error
       assert {:ok, context_after_error_attempt} =
-        ContextManager.apply_diff(context, [])
+               ContextManager.apply_diff(context, [])
+
       assert context_after_error_attempt == context
     end
 
@@ -247,7 +259,8 @@ defmodule Koalemos.Engine.ContextManagerTest do
     end
 
     test "returns error for invalid diff format (not a list)" do
-      assert {:error, {:invalid_diff_format, _}} = ContextManager.apply_diff(%{}, %{invalid: "diff"})
+      assert {:error, {:invalid_diff_format, _}} =
+               ContextManager.apply_diff(%{}, %{invalid: "diff"})
     end
 
     test "returns error for invalid operation tuple" do

@@ -42,31 +42,40 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
       WireframeStateCache.put_state(routine_id, lens_state)
 
       # Step 2: Add first todo item
-      task1 = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task1 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {result1, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "add-btn"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {result1, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "add-btn"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task1)
       assert result1 =~ "Successfully triggered"
 
       # Capture state after adding first item
-      capture_task1 = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_todo_added(routine_id, lens_state, [%{id: "todo-1", text: "Buy milk", completed: false}])
-      end)
+      capture_task1 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {:ok, state1} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+          simulate_todo_added(routine_id, lens_state, [
+            %{id: "todo-1", text: "Buy milk", completed: false}
+          ])
+        end)
+
+      {:ok, state1} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task1)
 
       # Agent should see first todo in list
@@ -79,38 +88,45 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
 
       # Console log about adding
       assert Enum.any?(state1.console_output, fn log ->
-        String.contains?(log.message, "Todo") and String.contains?(log.message, "added")
-      end)
+               String.contains?(log.message, "Todo") and String.contains?(log.message, "added")
+             end)
 
       # Step 3: Add second todo item
-      task2 = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task2 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {result2, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "add-btn"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {result2, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "add-btn"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task2)
       assert result2 =~ "Successfully triggered"
 
       # Capture state after adding second item
-      capture_task2 = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_todo_added(routine_id, lens_state, [
-          %{id: "todo-1", text: "Buy milk", completed: false},
-          %{id: "todo-2", text: "Walk dog", completed: false}
-        ])
-      end)
+      capture_task2 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {:ok, state2} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+          simulate_todo_added(routine_id, lens_state, [
+            %{id: "todo-1", text: "Buy milk", completed: false},
+            %{id: "todo-2", text: "Walk dog", completed: false}
+          ])
+        end)
+
+      {:ok, state2} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task2)
 
       # Agent should see two todos
@@ -118,34 +134,41 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
       assert length(todo_list2.children) == 2
 
       # Step 4: Complete first todo
-      task3 = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task3 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {result3, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "todo-1-checkbox"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {result3, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "todo-1-checkbox"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task3)
       assert result3 =~ "Successfully triggered"
 
       # Capture state showing completed todo
-      capture_task3 = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_todo_added(routine_id, lens_state, [
-          %{id: "todo-1", text: "Buy milk", completed: true},
-          %{id: "todo-2", text: "Walk dog", completed: false}
-        ])
-      end)
+      capture_task3 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {:ok, state3} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+          simulate_todo_added(routine_id, lens_state, [
+            %{id: "todo-1", text: "Buy milk", completed: true},
+            %{id: "todo-2", text: "Walk dog", completed: false}
+          ])
+        end)
+
+      {:ok, state3} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task3)
 
       # Agent should see first todo marked as completed
@@ -155,8 +178,9 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
 
       # Console shows completion
       assert Enum.any?(state3.console_output, fn log ->
-        String.contains?(log.message, "completed") or String.contains?(log.message, "checked")
-      end)
+               String.contains?(log.message, "completed") or
+                 String.contains?(log.message, "checked")
+             end)
 
       # Verify captured state has all the context agent needs
       assert state3.dom_tree != nil
@@ -179,31 +203,43 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
 
       Enum.reduce(interactions, 0, fn {interaction_args, expected_value}, _acc ->
         # Trigger interaction
-        task = Task.async(fn ->
-          :timer.sleep(100)
-          Phoenix.PubSub.broadcast(
-            Koalemos.PubSub,
-            "interaction:response:#{routine_id}",
-            {:interaction_complete, %{"success" => true}}
-          )
-        end)
+        task =
+          Task.async(fn ->
+            :timer.sleep(100)
 
-        {result, _} = WireframeEditor.execute(
-          :trigger_interaction,
-          interaction_args,
-          %{lens_state: lens_state, routine_id: routine_id}
-        )
+            Phoenix.PubSub.broadcast(
+              Koalemos.PubSub,
+              "interaction:response:#{routine_id}",
+              {:interaction_complete, %{"success" => true}}
+            )
+          end)
+
+        {result, _} =
+          WireframeEditor.execute(
+            :trigger_interaction,
+            interaction_args,
+            %{lens_state: lens_state, routine_id: routine_id}
+          )
 
         Task.await(task)
         assert result =~ "Successfully triggered"
 
         # Capture and verify
-        capture_task = Task.async(fn ->
-          :timer.sleep(100)
-          simulate_counter_value(routine_id, lens_state, expected_value, interaction_args["element_id"])
-        end)
+        capture_task =
+          Task.async(fn ->
+            :timer.sleep(100)
 
-        {:ok, state} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+            simulate_counter_value(
+              routine_id,
+              lens_state,
+              expected_value,
+              interaction_args["element_id"]
+            )
+          end)
+
+        {:ok, state} =
+          WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
         Task.await(capture_task)
 
         # Verify counter value matches expected
@@ -243,7 +279,8 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
               attributes: %{},
               handlers: %{},
               content: nil,
-              children: []  # Start empty
+              # Start empty
+              children: []
             }
           ]
         },
@@ -320,38 +357,39 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
   # Simulate todo items being added/updated
   defp simulate_todo_added(routine_id, lens_state, todos) do
     # Build todo list with current todos
-    todo_elements = Enum.map(todos, fn todo ->
-      classes = if todo.completed, do: ["todo-item", "completed"], else: ["todo-item"]
+    todo_elements =
+      Enum.map(todos, fn todo ->
+        classes = if todo.completed, do: ["todo-item", "completed"], else: ["todo-item"]
 
-      %{
-        tag: "li",
-        id: todo.id,
-        classes: classes,
-        attributes: %{},
-        handlers: %{},
-        content: nil,
-        children: [
-          %{
-            tag: "input",
-            id: "#{todo.id}-checkbox",
-            classes: ["checkbox"],
-            attributes: %{"type" => "checkbox", "checked" => to_string(todo.completed)},
-            handlers: %{},
-            content: nil,
-            children: []
-          },
-          %{
-            tag: "span",
-            id: "#{todo.id}-text",
-            classes: ["text"],
-            attributes: %{},
-            handlers: %{},
-            text: todo.text,
-            children: []
-          }
-        ]
-      }
-    end)
+        %{
+          tag: "li",
+          id: todo.id,
+          classes: classes,
+          attributes: %{},
+          handlers: %{},
+          content: nil,
+          children: [
+            %{
+              tag: "input",
+              id: "#{todo.id}-checkbox",
+              classes: ["checkbox"],
+              attributes: %{"type" => "checkbox", "checked" => to_string(todo.completed)},
+              handlers: %{},
+              content: nil,
+              children: []
+            },
+            %{
+              tag: "span",
+              id: "#{todo.id}-text",
+              classes: ["text"],
+              attributes: %{},
+              handlers: %{},
+              text: todo.text,
+              children: []
+            }
+          ]
+        }
+      end)
 
     # Update todo list in tree
     modified_tree = update_todo_list(lens_state.designed.dom_tree, todo_elements)
@@ -366,6 +404,7 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
     # Add console messages
     Enum.each(todos, fn todo ->
       status = if todo.completed, do: "completed", else: "added"
+
       ConsoleCache.add_message(routine_id, %{
         level: "log",
         message: "Todo #{status}: #{todo.text}",
@@ -382,7 +421,13 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
 
   # Simulate counter value change
   defp simulate_counter_value(routine_id, lens_state, new_value, button_id) do
-    modified_tree = update_element_content(lens_state.designed.dom_tree, "counter-display", to_string(new_value))
+    modified_tree =
+      update_element_content(
+        lens_state.designed.dom_tree,
+        "counter-display",
+        to_string(new_value)
+      )
+
     dom_tree_js = convert_to_js_format(modified_tree)
 
     DOMStateCache.add_dom_state(routine_id, %{
@@ -391,12 +436,13 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
       "timestamp" => System.system_time(:millisecond)
     })
 
-    action = case button_id do
-      "increment-btn" -> "incremented"
-      "double-btn" -> "doubled"
-      "reset-btn" -> "reset"
-      _ -> "changed"
-    end
+    action =
+      case button_id do
+        "increment-btn" -> "incremented"
+        "double-btn" -> "doubled"
+        "reset-btn" -> "reset"
+        _ -> "changed"
+      end
 
     ConsoleCache.add_message(routine_id, %{
       level: "log",
@@ -419,6 +465,7 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
       case tree[:children] do
         children when is_list(children) ->
           Map.put(tree, :children, Enum.map(children, &update_todo_list(&1, todo_elements)))
+
         _ ->
           tree
       end
@@ -432,7 +479,12 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
     else
       case tree[:children] do
         children when is_list(children) ->
-          Map.put(tree, :children, Enum.map(children, &update_element_content(&1, target_id, new_content)))
+          Map.put(
+            tree,
+            :children,
+            Enum.map(children, &update_element_content(&1, target_id, new_content))
+          )
+
         _ ->
           tree
       end
@@ -457,8 +509,10 @@ defmodule Koalemos.Lenses.WireframeEditor.ComplexChainTest do
 
   # Helper to find element by ID in DOM tree
   defp find_element_by_id(%{id: id} = element, target_id) when id == target_id, do: element
+
   defp find_element_by_id(%{children: children}, target_id) when is_list(children) do
     Enum.find_value(children, fn child -> find_element_by_id(child, target_id) end)
   end
+
   defp find_element_by_id(_, _), do: nil
 end

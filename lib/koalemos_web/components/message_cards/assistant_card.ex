@@ -41,7 +41,12 @@ defmodule KoalemosWeb.MessageCards.AssistantCard do
           <%= for tool_call <- @tool_calls do %>
             <div class="bg-indigo-50/50 border border-indigo-200 rounded-lg p-3">
               <div class="flex items-center gap-2 mb-1">
-                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  class="w-4 h-4 text-indigo-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -56,11 +61,11 @@ defmodule KoalemosWeb.MessageCards.AssistantCard do
                   />
                 </svg>
                 <span class="text-sm font-medium text-indigo-900">
-                  <%= Map.get(tool_call, :name) || Map.get(tool_call, "name") %>
+                  {Map.get(tool_call, :name) || Map.get(tool_call, "name")}
                 </span>
               </div>
               <div class="text-xs text-indigo-700 font-mono bg-white/60 p-2 rounded border border-indigo-100">
-                <%= format_tool_input(Map.get(tool_call, :input) || Map.get(tool_call, "input")) %>
+                {format_tool_input(Map.get(tool_call, :input) || Map.get(tool_call, "input"))}
               </div>
             </div>
           <% end %>
@@ -83,7 +88,7 @@ defmodule KoalemosWeb.MessageCards.AssistantCard do
                     prose-h2:text-lg prose-h2:font-bold prose-h2:mt-3 prose-h2:mb-2
                     prose-h3:text-base prose-h3:font-semibold prose-h3:mt-2 prose-h3:mb-1
                     prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-600">
-          <%= safe_markdown_to_html(@text_content) %>
+          {safe_markdown_to_html(@text_content)}
         </div>
       <% end %>
     </div>
@@ -124,7 +129,12 @@ defmodule KoalemosWeb.MessageCards.AssistantCard do
     input
     |> Enum.map(fn {k, v} ->
       key = if is_atom(k), do: Atom.to_string(k), else: k
-      value = if is_binary(v) and String.length(v) > 50, do: String.slice(v, 0, 50) <> "...", else: inspect(v)
+
+      value =
+        if is_binary(v) and String.length(v) > 50,
+          do: String.slice(v, 0, 50) <> "...",
+          else: inspect(v)
+
       "#{key}: #{value}"
     end)
     |> Enum.join(", ")

@@ -65,10 +65,14 @@ defmodule KoalemosWeb.MessageFeed do
                 <% message = data %>
                 <% card_id = Helpers.generate_card_id(message) %>
                 <% role = Map.get(message, :role) || Map.get(message, "role") %>
-                <% source = get_in(message, [:metadata, :source]) || get_in(message, ["metadata", "source"]) %>
+                <% source =
+                  get_in(message, [:metadata, :source]) || get_in(message, ["metadata", "source"]) %>
                 <%= cond do %>
                   <% source == :error || source == "error" -> %>
-                    <ErrorCard.render error_message={extract_error_message(message)} card_id={card_id} />
+                    <ErrorCard.render
+                      error_message={extract_error_message(message)}
+                      card_id={card_id}
+                    />
                   <% role == "user" || role == :user || source == :user || source == "user" -> %>
                     <UserCard.render
                       message={message}
@@ -97,9 +101,21 @@ defmodule KoalemosWeb.MessageFeed do
           <%= if @current_step == :llm_request or @current_step == "llm_request" do %>
             <div class="flex items-center gap-3 px-4 py-3 bg-gradient-to-br from-indigo-50/50 to-blue-50/30 rounded-2xl border-l-[3px] border-indigo-300/40 shadow-sm">
               <div class="flex gap-1.5">
-                <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0ms;"></div>
-                <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 150ms;"></div>
-                <div class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 300ms;"></div>
+                <div
+                  class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
+                  style="animation-delay: 0ms;"
+                >
+                </div>
+                <div
+                  class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
+                  style="animation-delay: 150ms;"
+                >
+                </div>
+                <div
+                  class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
+                  style="animation-delay: 300ms;"
+                >
+                </div>
               </div>
               <span class="text-sm text-indigo-600/80 font-medium">thinking...</span>
             </div>
@@ -113,7 +129,12 @@ defmodule KoalemosWeb.MessageFeed do
             <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 shadow-sm">
               <div class="flex items-start gap-3">
                 <div class="flex-shrink-0">
-                  <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    class="w-6 h-6 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -214,7 +235,8 @@ defmodule KoalemosWeb.MessageFeed do
 
     # Second pass: group messages
     {items, current_thinking, _last_thought_num} =
-      Enum.reduce(messages, {[], [], nil}, fn message, {items, current_thinking, last_thought_num} ->
+      Enum.reduce(messages, {[], [], nil}, fn message,
+                                              {items, current_thinking, last_thought_num} ->
         if is_thinking_message?(message, thinking_tool_ids) do
           thought_num = extract_thought_number(message)
 
@@ -303,12 +325,14 @@ defmodule KoalemosWeb.MessageFeed do
           tool_use_id = Map.get(item, :tool_use_id) || Map.get(item, "tool_use_id")
 
           # Check if it's a tool_use for sequential_thinking
-          is_thinking_tool_use = (type == "tool_use" || type == :tool_use) &&
-            (name == "sequential_thinking" || name == :sequential_thinking)
+          is_thinking_tool_use =
+            (type == "tool_use" || type == :tool_use) &&
+              (name == "sequential_thinking" || name == :sequential_thinking)
 
           # Check if it's a tool_result that references a thinking tool
-          is_thinking_tool_result = (type == "tool_result" || type == :tool_result) &&
-            MapSet.member?(thinking_tool_ids, tool_use_id)
+          is_thinking_tool_result =
+            (type == "tool_result" || type == :tool_result) &&
+              MapSet.member?(thinking_tool_ids, tool_use_id)
 
           is_thinking_tool_use || is_thinking_tool_result
         end)

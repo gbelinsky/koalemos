@@ -146,7 +146,9 @@ defmodule Koalemos.Steps.Agent.ToolExecutionTest do
 
       # Should have lens_state updates
       lens_updates = Keyword.get_values(diff, :add_or_update)
-      lens_state_update = Enum.find(lens_updates, fn update -> Map.has_key?(update, :lens_state) end)
+
+      lens_state_update =
+        Enum.find(lens_updates, fn update -> Map.has_key?(update, :lens_state) end)
 
       assert lens_state_update.lens_state.key1 == "value1"
       assert lens_state_update.lens_state.key2 == "value2"
@@ -166,7 +168,10 @@ defmodule Koalemos.Steps.Agent.ToolExecutionTest do
 
       # Should have lens_state update
       lens_updates = Keyword.get_values(diff, :add_or_update)
-      lens_state_update = Enum.find(lens_updates, fn update -> Map.has_key?(update, :lens_state) end)
+
+      lens_state_update =
+        Enum.find(lens_updates, fn update -> Map.has_key?(update, :lens_state) end)
+
       assert lens_state_update.lens_state.lens_key == "lens_value"
 
       # Metadata is used internally but not exposed in diff
@@ -191,7 +196,9 @@ defmodule Koalemos.Steps.Agent.ToolExecutionTest do
       assert {:ok, diff} = ToolExecution.execute(%{}, state)
 
       lens_updates = Keyword.get_values(diff, :add_or_update)
-      lens_state_update = Enum.find(lens_updates, fn update -> Map.has_key?(update, :lens_state) end)
+
+      lens_state_update =
+        Enum.find(lens_updates, fn update -> Map.has_key?(update, :lens_state) end)
 
       # Should preserve existing and add new
       assert lens_state_update.lens_state.existing_key == "existing_value"
@@ -212,7 +219,9 @@ defmodule Koalemos.Steps.Agent.ToolExecutionTest do
       assert {:ok, diff} = ToolExecution.execute(%{}, state)
 
       lens_updates = Keyword.get_values(diff, :add_or_update)
-      lens_state_update = Enum.find(lens_updates, fn update -> Map.has_key?(update, :lens_state) end)
+
+      lens_state_update =
+        Enum.find(lens_updates, fn update -> Map.has_key?(update, :lens_state) end)
 
       assert lens_state_update.lens_state.key1 == "value1"
       assert lens_state_update.lens_state.key2 == "value2"
@@ -273,7 +282,12 @@ defmodule Koalemos.Steps.Agent.ToolExecutionTest do
         routine_id: "routine-123",
         context: %{
           to_execute: [
-            %{id: "call_1", module: ContentBlockTool, function: :return_content_blocks, input: %{}}
+            %{
+              id: "call_1",
+              module: ContentBlockTool,
+              function: :return_content_blocks,
+              input: %{}
+            }
           ]
         }
       }
@@ -305,7 +319,12 @@ defmodule Koalemos.Steps.Agent.ToolExecutionTest do
         routine_id: "routine-123",
         context: %{
           to_execute: [
-            %{id: "call_1", module: TextOnlyContentBlockTool, function: :return_text_block, input: %{}}
+            %{
+              id: "call_1",
+              module: TextOnlyContentBlockTool,
+              function: :return_text_block,
+              input: %{}
+            }
           ]
         }
       }

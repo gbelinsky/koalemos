@@ -41,32 +41,38 @@ defmodule Koalemos.Lenses.WireframeEditor.FormInteractionTest do
       WireframeStateCache.put_state(routine_id, lens_state)
 
       # Step 2: Agent triggers form submission with invalid email
-      task = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {result, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "submit-btn"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {result, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "submit-btn"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task)
       assert result =~ "Successfully triggered"
 
       # Step 3: Capture state showing validation errors
-      capture_task = Task.async(fn ->
-        :timer.sleep(100)
-        # Simulate validation adding error message to DOM
-        simulate_form_validation_error(routine_id, lens_state, "Invalid email format")
-      end)
+      capture_task =
+        Task.async(fn ->
+          :timer.sleep(100)
+          # Simulate validation adding error message to DOM
+          simulate_form_validation_error(routine_id, lens_state, "Invalid email format")
+        end)
 
-      {:ok, captured_state} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+      {:ok, captured_state} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task)
 
       # Agent should see:
@@ -77,45 +83,55 @@ defmodule Koalemos.Lenses.WireframeEditor.FormInteractionTest do
 
       # - Console log about validation
       assert length(captured_state.console_output) > 0
+
       assert Enum.any?(captured_state.console_output, fn log ->
-        String.contains?(log.message, "validation") or String.contains?(log.message, "error")
-      end)
+               String.contains?(log.message, "validation") or
+                 String.contains?(log.message, "error")
+             end)
 
       # - Differs from designed state
       assert captured_state.differs_from_designed == true
     end
 
-    test "agent successfully submits form after fixing validation errors", %{routine_id: routine_id} do
+    test "agent successfully submits form after fixing validation errors", %{
+      routine_id: routine_id
+    } do
       # Build form
       lens_state = build_login_form()
       WireframeStateCache.put_state(routine_id, lens_state)
 
       # First attempt: invalid email triggers error
-      task1 = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task1 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {result1, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "submit-btn"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {result1, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "submit-btn"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task1)
       assert result1 =~ "Successfully triggered"
 
       # Capture state showing error
-      capture_task1 = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_form_validation_error(routine_id, lens_state, "Invalid email format")
-      end)
+      capture_task1 =
+        Task.async(fn ->
+          :timer.sleep(100)
+          simulate_form_validation_error(routine_id, lens_state, "Invalid email format")
+        end)
 
-      {:ok, state1} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+      {:ok, state1} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task1)
 
       error_msg = find_element_by_id(state1.dom_tree, "error-message")
@@ -123,31 +139,37 @@ defmodule Koalemos.Lenses.WireframeEditor.FormInteractionTest do
       assert error_msg.content =~ "Invalid email"
 
       # Second attempt: valid submission succeeds
-      task2 = Task.async(fn ->
-        :timer.sleep(100)
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "interaction:response:#{routine_id}",
-          {:interaction_complete, %{"success" => true}}
-        )
-      end)
+      task2 =
+        Task.async(fn ->
+          :timer.sleep(100)
 
-      {result2, _} = WireframeEditor.execute(
-        :trigger_interaction,
-        %{"action" => "click", "element_id" => "submit-btn"},
-        %{lens_state: lens_state, routine_id: routine_id}
-      )
+          Phoenix.PubSub.broadcast(
+            Koalemos.PubSub,
+            "interaction:response:#{routine_id}",
+            {:interaction_complete, %{"success" => true}}
+          )
+        end)
+
+      {result2, _} =
+        WireframeEditor.execute(
+          :trigger_interaction,
+          %{"action" => "click", "element_id" => "submit-btn"},
+          %{lens_state: lens_state, routine_id: routine_id}
+        )
 
       Task.await(task2)
       assert result2 =~ "Successfully triggered"
 
       # Capture state showing success
-      capture_task2 = Task.async(fn ->
-        :timer.sleep(100)
-        simulate_form_success(routine_id, lens_state)
-      end)
+      capture_task2 =
+        Task.async(fn ->
+          :timer.sleep(100)
+          simulate_form_success(routine_id, lens_state)
+        end)
 
-      {:ok, state2} = WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+      {:ok, state2} =
+        WireframeEditor.capture_current_state(routine_id, skip_screenshot: true, timeout: 1000)
+
       Task.await(capture_task2)
 
       success_msg = find_element_by_id(state2.dom_tree, "success-message")
@@ -156,8 +178,8 @@ defmodule Koalemos.Lenses.WireframeEditor.FormInteractionTest do
 
       # Console should show success log
       assert Enum.any?(state2.console_output, fn log ->
-        String.contains?(log.message, "success")
-      end)
+               String.contains?(log.message, "success")
+             end)
     end
   end
 
@@ -264,7 +286,9 @@ defmodule Koalemos.Lenses.WireframeEditor.FormInteractionTest do
   # Simulate form validation showing error
   defp simulate_form_validation_error(routine_id, lens_state, error_message) do
     # Modify tree to show error message
-    modified_tree = update_element_content(lens_state.designed.dom_tree, "error-message", error_message)
+    modified_tree =
+      update_element_content(lens_state.designed.dom_tree, "error-message", error_message)
+
     dom_tree_js = convert_to_js_format(modified_tree)
 
     DOMStateCache.add_dom_state(routine_id, %{
@@ -289,7 +313,8 @@ defmodule Koalemos.Lenses.WireframeEditor.FormInteractionTest do
   # Simulate successful form submission
   defp simulate_form_success(routine_id, lens_state) do
     # Modify tree to clear error and show success
-    modified_tree = lens_state.designed.dom_tree
+    modified_tree =
+      lens_state.designed.dom_tree
       |> update_element_content("error-message", "")
       |> update_element_content("success-message", "Login successful")
 
@@ -321,7 +346,12 @@ defmodule Koalemos.Lenses.WireframeEditor.FormInteractionTest do
     else
       case tree[:children] do
         children when is_list(children) ->
-          Map.put(tree, :children, Enum.map(children, &update_element_content(&1, target_id, new_content)))
+          Map.put(
+            tree,
+            :children,
+            Enum.map(children, &update_element_content(&1, target_id, new_content))
+          )
+
         _ ->
           tree
       end
@@ -346,8 +376,10 @@ defmodule Koalemos.Lenses.WireframeEditor.FormInteractionTest do
 
   # Helper to find element by ID in DOM tree
   defp find_element_by_id(%{id: id} = element, target_id) when id == target_id, do: element
+
   defp find_element_by_id(%{children: children}, target_id) when is_list(children) do
     Enum.find_value(children, fn child -> find_element_by_id(child, target_id) end)
   end
+
   defp find_element_by_id(_, _), do: nil
 end

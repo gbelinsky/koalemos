@@ -165,7 +165,9 @@ defmodule Koalemos.Lenses.WireframeEditor.PositionTest do
       assert Enum.at(container.children, 3).id == "third-child"
     end
 
-    test "returns error when reference_id not found for 'before' position", %{lens_state: lens_state} do
+    test "returns error when reference_id not found for 'before' position", %{
+      lens_state: lens_state
+    } do
       tool_args = %{
         "add_elements" => [
           %{
@@ -182,11 +184,13 @@ defmodule Koalemos.Lenses.WireframeEditor.PositionTest do
       {result, _updates} = DOMHandler.modify_elements(lens_state, tool_args)
 
       # Check that operation failed with proper error
-      assert result =~ "Errors modifying elements"
+      assert result =~ "All operations failed"
       assert result =~ "Reference element 'nonexistent' not found"
     end
 
-    test "returns error when reference_id not found for 'after' position", %{lens_state: lens_state} do
+    test "returns error when reference_id not found for 'after' position", %{
+      lens_state: lens_state
+    } do
       tool_args = %{
         "add_elements" => [
           %{
@@ -203,7 +207,7 @@ defmodule Koalemos.Lenses.WireframeEditor.PositionTest do
       {result, _updates} = DOMHandler.modify_elements(lens_state, tool_args)
 
       # Check that operation failed with proper error
-      assert result =~ "Errors modifying elements"
+      assert result =~ "All operations failed"
       assert result =~ "Reference element 'nonexistent' not found"
     end
 
@@ -259,8 +263,10 @@ defmodule Koalemos.Lenses.WireframeEditor.PositionTest do
 
   # Helper to find element by ID in tree
   defp find_element_by_id(%{id: id} = element, target_id) when id == target_id, do: element
+
   defp find_element_by_id(%{children: children}, target_id) do
     Enum.find_value(children, fn child -> find_element_by_id(child, target_id) end)
   end
+
   defp find_element_by_id(_, _), do: nil
 end

@@ -67,6 +67,7 @@ defmodule KoalemosWeb.RoutineChatLiveTest do
     case Registry.lookup(Koalemos.RoutineRegistry, routine_id) do
       [{pid, _}] ->
         assert Process.alive?(pid)
+
       [] ->
         flunk("Routine was not started")
     end

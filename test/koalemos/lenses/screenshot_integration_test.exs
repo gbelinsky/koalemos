@@ -24,7 +24,9 @@ defmodule Koalemos.Lenses.ScreenshotIntegrationTest do
       routine_id = "test-routine-#{:erlang.unique_integer([:positive])}"
 
       # Pre-populate screenshot in cache (simulating successful capture)
-      fake_screenshot = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+      fake_screenshot =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
       :ok = ScreenshotCache.put(routine_id, fake_screenshot)
 
       # Subscribe to response topic (needed for screenshot capture helper)
@@ -34,6 +36,7 @@ defmodule Koalemos.Lenses.ScreenshotIntegrationTest do
       # We'll spawn a process to broadcast it after a short delay
       spawn(fn ->
         Process.sleep(10)
+
         Phoenix.PubSub.broadcast(
           Koalemos.PubSub,
           "screenshot:response:#{routine_id}",
@@ -139,7 +142,8 @@ defmodule Koalemos.Lenses.ScreenshotIntegrationTest do
     test "sets :request_screenshot flag when message contains 'screenshot'" do
       state = %{context: %{}, lens_state: %{}}
 
-      result = TestLensScreenshot.execute_tool("echo", %{"message" => "please take a screenshot"}, state)
+      result =
+        TestLensScreenshot.execute_tool("echo", %{"message" => "please take a screenshot"}, state)
 
       # Should return message with lens_updates
       assert {:ok, "please take a screenshot", lens_updates} = result
@@ -149,7 +153,8 @@ defmodule Koalemos.Lenses.ScreenshotIntegrationTest do
     test "sets :request_screenshot flag when message contains 'Screenshot' (case insensitive)" do
       state = %{context: %{}, lens_state: %{}}
 
-      result = TestLensScreenshot.execute_tool("echo", %{"message" => "Take a Screenshot please"}, state)
+      result =
+        TestLensScreenshot.execute_tool("echo", %{"message" => "Take a Screenshot please"}, state)
 
       assert {:ok, "Take a Screenshot please", lens_updates} = result
       assert lens_updates == [request_screenshot: true]

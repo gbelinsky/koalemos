@@ -535,52 +535,77 @@ Combining WireframeStateCache (for initial load) with PubSub (for updates) elega
 
 ---
 
-## Milestone 5: WireframeDesign Routine (MVP Complete!)
+## Milestone 5: Semantic Routing & Intelligent Workflows (In Progress)
 
-**Goal:** End-to-end wireframe design with phases
+**Goal:** Build semantic routing infrastructure for intelligent agent workflows
 
-**Why This Scope:**
-- All dependencies satisfied (M2-M4)
-- Final integration piece
-- Completes MVP functionality
+**Status:** Sprint 1 of 2 In Progress
+**Started:** November 12, 2025
 
-**Components:**
-- [ ] **WireframeDesign Routine** (~600 lines)
-  - [ ] Port from Flo (10KB original)
-  - [ ] Phase definitions:
-    - [ ] Discovery (requirements gathering)
-    - [ ] Structure (HTML/CSS layout)
-    - [ ] Behavior (JavaScript/interactivity)
-    - [ ] Polish (visual design)
-  - [ ] Phase transitions
-  - [ ] Uses WireframeEditor lens
-  - [ ] Uses all supporting lenses
+**Architecture Change:**
+- **Original Plan:** Phase-based workflow (Discovery → Structure → Behavior → Polish)
+- **Actual Implementation:** Semantic routing with intelligent branching
+- **Rationale:** More flexible, conversational, and generalizable than fixed phases
 
-- [ ] **HTML Upload** (~200 lines)
-  - [ ] File upload component
-  - [ ] Parse uploaded HTML
-  - [ ] Initialize routine with HTML
+**Sprint 1: Core Infrastructure** (In Progress)
+- [x] **TemplatedSemanticAgent Step** (264 lines)
+  - [x] Reusable agent loop with EEx templating
+  - [x] Full context access via `@context`
+  - [x] Configurable lenses per step
+  - [x] Acts as complete sub-routine
 
-- [ ] **Full Integration** (~200 lines)
-  - [ ] Wire everything together
-  - [ ] Complete workflow test
-  - [ ] Error handling
+- [x] **SemanticTransition Lens** (140 lines)
+  - [x] Natural language transition choices
+  - [x] Dynamic tool schema from parent routine
+  - [x] Returns workflow_transition in lens_state
+  - [x] Engine integration (stack pop and transition)
+
+- [x] **Lens Scoping System** (~100 lines)
+  - [x] Merge-with-override semantics
+  - [x] Base lens tracking (_routine_base_lenses)
+  - [x] Scope isolation per branch
+  - [x] Config lenses enhance base (not replace)
+
+- [x] **WireframeDesign Demo** (~200 lines)
+  - [x] Semantic routing (answer_directly, targeted_change, build_from_scratch)
+  - [x] Proper lens configuration per branch
+  - [x] Manual testing and validation
+
+- [x] **Tool Improvements**
+  - [x] Handler extraction from DOM tree (194 lines tests)
+  - [x] Empty screenshot handling (100x100 placeholder)
+  - [x] Partial success in modify_elements
+  - [x] Updated tests (49 passing)
+
+- [ ] **Documentation** (Partial)
+  - [x] M5 milestone doc (docs/milestones/M5.md)
+  - [x] Sprint 1 plan (docs/sprints/m5-sprint-1-plan.md)
+  - [x] BACKLOG update (this)
+  - [ ] Semantic routing guide (docs/guides/SEMANTIC_ROUTING.md)
+  - [ ] Code cleanup and polish
+
+**Sprint 2: Advanced Workflows** (Planned)
+- [ ] Additional workflow examples (semantic search, file editing)
+- [ ] Nested semantic routing
+- [ ] Conditional lens activation
+- [ ] Workflow composition patterns
+- [ ] Performance optimization
 
 **Dependencies:** M2-M4 (everything)
 
 **Test Criteria:**
-- ✅ Can start session with blank wireframe
-- ✅ Can upload HTML wireframe
-- ✅ AI guides through all phases
-- ✅ Can make changes to wireframe
-- ✅ Preview updates in real-time
-- ✅ Screenshots work throughout
-- ✅ Complete session works end-to-end
+- ✅ Agent analyzes requests and routes intelligently
+- ✅ Lenses merge with proper scoping
+- ✅ Scope isolation prevents leakage
+- ✅ Handlers work in preview
+- ✅ Empty wireframes show correct state
+- ✅ Partial batch operations succeed
+- [ ] Multiple workflow types implemented
+- [ ] Nested routing works
+- [ ] Performance acceptable
 
-**MVP COMPLETE** ✅
-
-**Lines:** ~1,000
-**Status:** Todo
+**Lines:** ~800 (Sprint 1)
+**Status:** Sprint 1 In Progress
 
 ---
 

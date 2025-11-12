@@ -144,10 +144,11 @@ defmodule Koalemos.DemoCredentialStore do
     providers = Map.get(data, "providers", %{})
 
     # Ensure each provider has a config
-    providers = providers
-    |> Map.put_new("anthropic", default_provider_config("anthropic"))
-    |> Map.put_new("openai", default_provider_config("openai"))
-    |> Map.put_new("ollama", default_provider_config("ollama"))
+    providers =
+      providers
+      |> Map.put_new("anthropic", default_provider_config("anthropic"))
+      |> Map.put_new("openai", default_provider_config("openai"))
+      |> Map.put_new("ollama", default_provider_config("ollama"))
 
     data
     |> Map.put("providers", providers)

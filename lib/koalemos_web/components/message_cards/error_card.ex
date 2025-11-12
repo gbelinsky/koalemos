@@ -33,7 +33,7 @@ defmodule KoalemosWeb.MessageCards.ErrorCard do
       </div>
       <!-- Error message -->
       <div class="text-red-900/80 text-[0.9rem] leading-relaxed">
-        <%= @error_message %>
+        {@error_message}
       </div>
     </div>
     """

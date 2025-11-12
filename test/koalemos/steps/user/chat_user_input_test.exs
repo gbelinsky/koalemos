@@ -39,7 +39,9 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
     test "formats %{user_input: text} as user message" do
       state = %{routine_id: "routine-456", context: %{}}
 
-      assert {:ok, diff} = ChatUserInput.handle_event(:user_input, %{user_input: "Structured input"}, state)
+      assert {:ok, diff} =
+               ChatUserInput.handle_event(:user_input, %{user_input: "Structured input"}, state)
+
       assert [append_to: %{messages: [message]}] = diff
 
       assert message.role == "user"
@@ -57,6 +59,7 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
           %{base64: "base64data2", media_type: "image/png"}
         ]
       }
+
       state = %{routine_id: "routine-789", context: %{}}
 
       assert {:ok, diff} = ChatUserInput.handle_event(:user_input, input, state)
@@ -83,6 +86,7 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
           %{base64: "imagedata", media_type: "image/webp"}
         ]
       }
+
       state = %{routine_id: "routine-999", context: %{}}
 
       assert {:ok, diff} = ChatUserInput.handle_event(:user_input, input, state)
@@ -115,6 +119,7 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
           }
         ]
       }
+
       state = %{routine_id: "routine-abc", context: %{}}
 
       assert {:ok, diff} = ChatUserInput.handle_event(:user_input, input, state)
@@ -134,6 +139,7 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
           }
         ]
       }
+
       state = %{routine_id: "routine-def", context: %{}}
 
       assert {:ok, diff} = ChatUserInput.handle_event(:user_input, input, state)
@@ -152,6 +158,7 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
           %{role: "user", content: [%{type: "text", text: "Another user message"}]}
         ]
       }
+
       state = %{routine_id: "routine-123", context: %{}}
 
       assert {:ok, diff} = ChatUserInput.handle_event(:user_input, input, state)
@@ -167,6 +174,7 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
           %{role: "assistant", content: [%{type: "text", text: "Only assistant"}]}
         ]
       }
+
       state = %{routine_id: "routine-123", context: %{}}
 
       assert {:ok, diff} = ChatUserInput.handle_event(:user_input, input, state)
@@ -189,6 +197,7 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
           %{role: "user", content: "not a list"}
         ]
       }
+
       state = %{routine_id: "routine-123", context: %{}}
 
       assert {:ok, diff} = ChatUserInput.handle_event(:user_input, input, state)
@@ -216,6 +225,7 @@ defmodule Koalemos.Steps.User.ChatUserInputTest do
           }
         ]
       }
+
       state = %{routine_id: "routine-123", context: %{}}
 
       assert {:ok, diff} = ChatUserInput.handle_event(:user_input, input, state)

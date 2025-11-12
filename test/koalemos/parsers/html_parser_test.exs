@@ -451,9 +451,10 @@ defmodule Koalemos.Parsers.HTMLParserTest do
 
       assert result.metadata.title == "Test File"
       # Body content is extracted as dom_tree, so main div should be in there
-      main_div = Enum.find(result.dom_tree.children, fn node ->
-        Map.get(node, :id) == "main"
-      end) || result.dom_tree
+      main_div =
+        Enum.find(result.dom_tree.children, fn node ->
+          Map.get(node, :id) == "main"
+        end) || result.dom_tree
 
       # Check if main_div is the root (single child case) or in children
       if result.dom_tree.id == "main" do
@@ -535,11 +536,12 @@ defmodule Koalemos.Parsers.HTMLParserTest do
 
       # Check DOM structure - body content is extracted as dom_tree
       # Find the app div (might be root or in children)
-      app_div = if result.dom_tree.id == "app" do
-        result.dom_tree
-      else
-        Enum.find(result.dom_tree.children, fn node -> node.id == "app" end)
-      end
+      app_div =
+        if result.dom_tree.id == "app" do
+          result.dom_tree
+        else
+          Enum.find(result.dom_tree.children, fn node -> node.id == "app" end)
+        end
 
       assert app_div != nil
       assert app_div.id == "app"

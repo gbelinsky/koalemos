@@ -89,7 +89,8 @@ defmodule Koalemos.Integration.BasicEngineTest do
     end
 
     test "accepts and uses initial context", %{routine_id: routine_id} do
-      {:ok, pid} = EngineManager.start_routine(routine_id, SingleStepRoutine, %{initial_key: "value"})
+      {:ok, pid} =
+        EngineManager.start_routine(routine_id, SingleStepRoutine, %{initial_key: "value"})
 
       assert_receive {:routine_event, %{event_type: "routine_completed"}}, 1000
 
@@ -108,9 +109,12 @@ defmodule Koalemos.Integration.BasicEngineTest do
 
       # Check that all steps ran in order
       state = :sys.get_state(pid)
-      assert state.context.config_ran == true     # First step
-      assert state.context.result == 10          # Second step (5 * 2)
-      assert state.context.count == 1            # Third step
+      # First step
+      assert state.context.config_ran == true
+      # Second step (5 * 2)
+      assert state.context.result == 10
+      # Third step
+      assert state.context.count == 1
       assert state.current_step == :end
       assert state.routine_status == :completed
     end

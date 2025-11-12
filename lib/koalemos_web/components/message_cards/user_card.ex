@@ -75,15 +75,25 @@ defmodule KoalemosWeb.MessageCards.UserCard do
           <%= for tool_result <- @tool_results do %>
             <div class="bg-green-50/50 border border-green-200 rounded-lg p-3">
               <div class="flex items-center gap-2 mb-1">
-                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  class="w-4 h-4 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 <span class="text-xs font-medium text-green-900">
                   Tool Result
                 </span>
               </div>
               <div class="text-xs text-green-800 bg-white/60 p-2 rounded border border-green-100">
-                <%= format_tool_result_content(tool_result) %>
+                {format_tool_result_content(tool_result)}
               </div>
             </div>
           <% end %>
@@ -92,7 +102,7 @@ defmodule KoalemosWeb.MessageCards.UserCard do
       <!-- Text content -->
       <%= if @text_content != "" do %>
         <div class="text-slate-700 text-[0.9rem] leading-relaxed mb-2.5">
-          <%= safe_markdown_to_html(@text_content) %>
+          {safe_markdown_to_html(@text_content)}
         </div>
       <% end %>
       <!-- Expanded images -->
@@ -112,17 +122,20 @@ defmodule KoalemosWeb.MessageCards.UserCard do
   # Private helpers
 
   defp extract_content_parts(content) when is_list(content) do
-    text_items = Enum.filter(content, fn item ->
-      Map.get(item, :type) == "text" || Map.get(item, "type") == "text"
-    end)
+    text_items =
+      Enum.filter(content, fn item ->
+        Map.get(item, :type) == "text" || Map.get(item, "type") == "text"
+      end)
 
-    image_items = Enum.filter(content, fn item ->
-      Map.get(item, :type) == "image" || Map.get(item, "type") == "image"
-    end)
+    image_items =
+      Enum.filter(content, fn item ->
+        Map.get(item, :type) == "image" || Map.get(item, "type") == "image"
+      end)
 
-    tool_results = Enum.filter(content, fn item ->
-      Map.get(item, :type) == "tool_result" || Map.get(item, "type") == "tool_result"
-    end)
+    tool_results =
+      Enum.filter(content, fn item ->
+        Map.get(item, :type) == "tool_result" || Map.get(item, "type") == "tool_result"
+      end)
 
     text_content =
       text_items

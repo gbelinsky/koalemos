@@ -6,18 +6,13 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
   - tool_descriptions: Array of tool schemas for LLM API
   - tool_map: Map of tool_name → {module, tool_atom} for execution lookup
 
-  ## Hybrid Lens Configuration
+  ## Lens Configuration
 
-  This step implements the hybrid config pattern:
-  - Base lenses from `context[:lenses]` (set at routine initialization)
-  - Config lenses from `config_sources` (per-step overrides/additions)
-  - Merged locally for this step only (doesn't modify context)
+  This step reads lenses from context - it does NOT merge or override them.
+  Lens configuration is the responsibility of the routine/sub-routine that manages scope.
 
   ## Context Input
-  - lenses: List of lens configurations
-
-  ## Input Config
-  - lenses: Optional list of lenses to add or override for this step
+  - lenses: List of lens configurations (set by routine or sub-routine setup)
 
   ## Context Output
   - tool_descriptions: List of tool schemas for LLM
@@ -34,18 +29,13 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
   """
 
   require Logger
-  alias Koalemos.ConfigMerge
 
   @doc """
   Collects tools from lenses and builds tool schemas.
   """
-  def execute(config_sources, state) do
-    # Hybrid pattern: base lenses from context + config lenses
-    base_lenses = state.context[:lenses] || []
-    config_lenses = ConfigMerge.get_key(config_sources, :lenses, [])
-
-    # Merge lenses (config overrides base for same module)
-    active_lenses = ConfigMerge.merge_lenses(base_lenses, config_lenses)
+  def execute(_config_sources, state) do
+    # Use lenses from context - lens config is managed by routine/sub-routine
+    active_lenses = state.context[:lenses] || []
 
     try do
       # Collect all tools from all lens modules
@@ -57,12 +47,13 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
       # Build tool name → {module, tool_atom} mapping
       tool_map = build_tool_map(all_tools)
 
-      {:ok, [
-        add_or_update: %{
-          tool_descriptions: tool_descriptions,
-          tool_map: tool_map
-        }
-      ]}
+      {:ok,
+       [
+         add_or_update: %{
+           tool_descriptions: tool_descriptions,
+           tool_map: tool_map
+         }
+       ]}
     rescue
       error ->
         {:error, "Tool schema extraction failed: #{Exception.message(error)}"}
@@ -83,20 +74,26 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
   end
 
   # Get tools from a module name with proper error checking
-  # Config parameter is extracted but not used yet - reserved for future
-  # where lenses might conditionally expose tools based on config
-  defp get_tools_from_module_name(module_name, _config) do
+  # Passes config to tools/1 if available (for conditional tool exposure like readonly mode)
+  defp get_tools_from_module_name(module_name, config) do
     try do
       module = Module.safe_concat([module_name])
 
       # Check if module exists and is loaded
       case Code.ensure_loaded(module) do
         {:module, ^module} ->
-          if function_exported?(module, :tools, 0) do
-            module.tools()
-          else
-            # Module exists but doesn't implement lens interface
-            []
+          cond do
+            # Prefer tools/1 for config-aware lenses (e.g., readonly mode)
+            function_exported?(module, :tools, 1) ->
+              module.tools(config)
+
+            # Fall back to tools/0 for backward compatibility
+            function_exported?(module, :tools, 0) ->
+              module.tools()
+
+            true ->
+              # Module exists but doesn't implement lens interface
+              []
           end
 
         {:error, _reason} ->
@@ -124,11 +121,12 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
   defp build_tool_map(all_tools) do
     Enum.reduce(all_tools, %{}, fn {module, tool_atom}, acc ->
       # Use info/2 with empty context if available, otherwise info/1
-      tool_info = if function_exported?(module, :info, 2) do
-        module.info(tool_atom, %{})
-      else
-        module.info(tool_atom)
-      end
+      tool_info =
+        if function_exported?(module, :info, 2) do
+          module.info(tool_atom, %{})
+        else
+          module.info(tool_atom)
+        end
 
       tool_name = tool_info.name
       Map.put(acc, tool_name, {module, tool_atom})

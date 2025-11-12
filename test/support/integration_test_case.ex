@@ -48,7 +48,9 @@ defmodule Koalemos.IntegrationTestCase do
       case Registry.lookup(Koalemos.RoutineRegistry, routine_id) do
         [{pid, _}] when is_pid(pid) ->
           if Process.alive?(pid), do: GenServer.stop(pid, :normal, 100)
-        [] -> :ok
+
+        [] ->
+          :ok
       end
     end)
 
@@ -94,11 +96,15 @@ defmodule Koalemos.IntegrationTestCase do
       case GenServer.whereis(Koalemos.SimpleCredentialManager) do
         nil ->
           # Start the manager
-          case GenServer.start_link(Koalemos.SimpleCredentialManager, [], name: Koalemos.SimpleCredentialManager) do
+          case GenServer.start_link(Koalemos.SimpleCredentialManager, [],
+                 name: Koalemos.SimpleCredentialManager
+               ) do
             {:ok, _pid} -> :ok
             {:error, {:already_started, _pid}} -> :ok
           end
-        _pid -> :ok
+
+        _pid ->
+          :ok
       end
 
       :ok

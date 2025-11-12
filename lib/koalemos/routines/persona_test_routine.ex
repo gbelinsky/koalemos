@@ -112,11 +112,14 @@ defmodule Koalemos.Routines.PersonaTestRoutine do
     %{
       messages: [],
       lenses: [
-        ["Koalemos.Lenses.PersonaLens", %{
-          tone: :professional,
-          expertise: [:technical],
-          style: :balanced
-        }]
+        [
+          "Koalemos.Lenses.PersonaLens",
+          %{
+            tone: :professional,
+            expertise: [:technical],
+            style: :balanced
+          }
+        ]
       ],
       llm_provider: "anthropic",
       llm_model: "claude-haiku-4-5",

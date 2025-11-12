@@ -162,7 +162,13 @@ defmodule Koalemos.Engine.EventHandler do
         EventHandler.handle_get_event(types, timeout, diff, from, state)
       end
   """
-  @spec handle_get_event(event_types(), timeout_ms(), ContextManager.diff(), GenServer.from(), state()) ::
+  @spec handle_get_event(
+          event_types(),
+          timeout_ms(),
+          ContextManager.diff(),
+          GenServer.from(),
+          state()
+        ) ::
           genserver_result()
   def handle_get_event(event_types, timeout, diff, from, state) do
     # Apply the context diff first

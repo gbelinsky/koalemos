@@ -51,10 +51,13 @@ defmodule Koalemos.Steps.Agent.LensRendering do
       # Separate text and image blocks
       {text_blocks, image_blocks} = separate_context_blocks(all_context_blocks)
 
-      {:ok, [add_or_update: %{
-        lens_text_contexts: text_blocks,
-        lens_image_contexts: image_blocks
-      }]}
+      {:ok,
+       [
+         add_or_update: %{
+           lens_text_contexts: text_blocks,
+           lens_image_contexts: image_blocks
+         }
+       ]}
     rescue
       error ->
         {:error, "Lens context rendering failed: #{Exception.message(error)}"}

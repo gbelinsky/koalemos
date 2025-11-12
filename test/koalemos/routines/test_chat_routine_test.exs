@@ -59,6 +59,7 @@ defmodule Koalemos.Routines.TestChatRoutineTest do
     test "Engine merges user context with defaults" do
       # Engine calls initial_context/0 and merges with user-provided context
       defaults = TestChatRoutine.initial_context()
+
       user_context = %{
         messages: [%{role: "user", content: "test"}],
         temperature: 0.9,

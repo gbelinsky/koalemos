@@ -157,9 +157,14 @@ defmodule Koalemos.Lenses.WireframeEditorTest do
         }
       }
 
-      result = WireframeEditor.execute(:manage_functions, %{
-        "add_functions" => %{"test" => "() => {}"}
-      }, %{lens_state: lens_state})
+      result =
+        WireframeEditor.execute(
+          :manage_functions,
+          %{
+            "add_functions" => %{"test" => "() => {}"}
+          },
+          %{lens_state: lens_state}
+        )
 
       assert {message, updates} = result
       assert message =~ "Successfully managed"
@@ -187,24 +192,42 @@ defmodule Koalemos.Lenses.WireframeEditorTest do
       assert message =~ "Invalid arguments - expected a map"
 
       # Test 2: remove_elements as string instead of list
-      result = WireframeEditor.execute(:modify_elements, %{
-        "remove_elements" => "should-be-list"
-      }, %{lens_state: lens_state})
+      result =
+        WireframeEditor.execute(
+          :modify_elements,
+          %{
+            "remove_elements" => "should-be-list"
+          },
+          %{lens_state: lens_state}
+        )
+
       assert {message, []} = result
       assert message =~ "Invalid 'remove_elements'"
       assert message =~ "expected array"
 
       # Test 3: replace_elements as string instead of list
-      result = WireframeEditor.execute(:modify_elements, %{
-        "replace_elements" => "should-be-list"
-      }, %{lens_state: lens_state})
+      result =
+        WireframeEditor.execute(
+          :modify_elements,
+          %{
+            "replace_elements" => "should-be-list"
+          },
+          %{lens_state: lens_state}
+        )
+
       assert {message, []} = result
       assert message =~ "Invalid 'replace_elements'"
 
       # Test 4: add_elements as string instead of list
-      result = WireframeEditor.execute(:modify_elements, %{
-        "add_elements" => "should-be-list"
-      }, %{lens_state: lens_state})
+      result =
+        WireframeEditor.execute(
+          :modify_elements,
+          %{
+            "add_elements" => "should-be-list"
+          },
+          %{lens_state: lens_state}
+        )
+
       assert {message, []} = result
       assert message =~ "Invalid 'add_elements'"
 

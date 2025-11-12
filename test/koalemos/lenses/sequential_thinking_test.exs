@@ -34,7 +34,8 @@ defmodule Koalemos.Lenses.SequentialThinkingTest do
         "next_thought_needed" => true
       }
 
-      assert {result, lens_updates} = SequentialThinking.execute(:sequential_thinking, args, state)
+      assert {result, lens_updates} =
+               SequentialThinking.execute(:sequential_thinking, args, state)
 
       # Brief text result
       assert is_binary(result)
@@ -75,7 +76,8 @@ defmodule Koalemos.Lenses.SequentialThinkingTest do
         "next_thought_needed" => true
       }
 
-      assert {_result, lens_updates} = SequentialThinking.execute(:sequential_thinking, args, state)
+      assert {_result, lens_updates} =
+               SequentialThinking.execute(:sequential_thinking, args, state)
 
       history = Keyword.get(lens_updates, :thought_history)
       assert length(history) == 2
@@ -92,7 +94,8 @@ defmodule Koalemos.Lenses.SequentialThinkingTest do
         "next_thought_needed" => false
       }
 
-      assert {result, _lens_updates} = SequentialThinking.execute(:sequential_thinking, args, state)
+      assert {result, _lens_updates} =
+               SequentialThinking.execute(:sequential_thinking, args, state)
 
       # Check result is a string indicating completion
       assert is_binary(result)
@@ -112,7 +115,8 @@ defmodule Koalemos.Lenses.SequentialThinkingTest do
         "next_thought_needed" => true
       }
 
-      assert {result, lens_updates} = SequentialThinking.execute(:sequential_thinking, args, state)
+      assert {result, lens_updates} =
+               SequentialThinking.execute(:sequential_thinking, args, state)
 
       # Check result shows adjusted total
       assert is_binary(result)
@@ -137,7 +141,8 @@ defmodule Koalemos.Lenses.SequentialThinkingTest do
         "revises_thought" => 2
       }
 
-      assert {_result, lens_updates} = SequentialThinking.execute(:sequential_thinking, args, state)
+      assert {_result, lens_updates} =
+               SequentialThinking.execute(:sequential_thinking, args, state)
 
       history = Keyword.get(lens_updates, :thought_history)
       thought = hd(history)
@@ -160,7 +165,8 @@ defmodule Koalemos.Lenses.SequentialThinkingTest do
         "branch_id" => "alt_approach"
       }
 
-      assert {_result, lens_updates} = SequentialThinking.execute(:sequential_thinking, args, state)
+      assert {_result, lens_updates} =
+               SequentialThinking.execute(:sequential_thinking, args, state)
 
       branches = Keyword.get(lens_updates, :branches)
       assert Map.has_key?(branches, "alt_approach")
@@ -195,7 +201,8 @@ defmodule Koalemos.Lenses.SequentialThinkingTest do
         "branch_id" => "alt_approach"
       }
 
-      assert {_result, lens_updates} = SequentialThinking.execute(:sequential_thinking, args, state)
+      assert {_result, lens_updates} =
+               SequentialThinking.execute(:sequential_thinking, args, state)
 
       branches = Keyword.get(lens_updates, :branches)
       assert length(branches["alt_approach"]) == 2

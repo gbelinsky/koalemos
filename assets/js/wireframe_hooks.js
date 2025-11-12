@@ -204,8 +204,28 @@ WireframeHooks.ScreenshotCapture = {
 
     // Check dimensions
     const rect = element.getBoundingClientRect()
-    if (rect.height === 0 || rect.width === 0) {
-      throw new Error("Element has no dimensions")
+    const isEmpty = rect.height === 0 || rect.width === 0
+
+    // Handle empty wireframes with a blank placeholder canvas
+    if (isEmpty) {
+      INFRASTRUCTURE_CONSOLE.log('[ScreenshotCapture] Element has no dimensions, creating blank placeholder')
+
+      // Create a small blank canvas to represent empty state
+      const canvas = document.createElement('canvas')
+      canvas.width = 100
+      canvas.height = 100
+
+      // Fill with white background
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, 100, 100)
+
+      // Convert canvas to base64 PNG
+      const dataUrl = canvas.toDataURL('image/png')
+      const base64Data = dataUrl.split(',')[1]
+
+      INFRASTRUCTURE_CONSOLE.log('[ScreenshotCapture] Blank placeholder created: 100x100')
+      return { canvas, base64: base64Data }
     }
 
     // Capture element to canvas

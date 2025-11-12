@@ -39,12 +39,13 @@ defmodule Koalemos.Utils.MessageBuilderTest do
     end
 
     test "combines multiple options" do
-      message = MessageBuilder.build_user_message("Test",
-        id: "msg-1",
-        timestamp: "2024-10-27T12:00:00Z",
-        source: :system,
-        routine_id: "routine-456"
-      )
+      message =
+        MessageBuilder.build_user_message("Test",
+          id: "msg-1",
+          timestamp: "2024-10-27T12:00:00Z",
+          source: :system,
+          routine_id: "routine-456"
+        )
 
       assert message.metadata.id == "msg-1"
       assert message.metadata.timestamp == "2024-10-27T12:00:00Z"
@@ -69,7 +70,9 @@ defmodule Koalemos.Utils.MessageBuilderTest do
 
     test "creates message with image content part" do
       base64_data = "iVBORw0KGgoAAAANSUhEUg"
-      message = MessageBuilder.build_user_message_with_content([{:image, base64_data, "image/jpeg"}])
+
+      message =
+        MessageBuilder.build_user_message_with_content([{:image, base64_data, "image/jpeg"}])
 
       assert message.role == "user"
       assert [image_content] = message.content
@@ -91,11 +94,12 @@ defmodule Koalemos.Utils.MessageBuilderTest do
     end
 
     test "creates message with mixed content parts" do
-      message = MessageBuilder.build_user_message_with_content([
-        {:text, "Look at this:"},
-        {:image, "base64data", "image/png"},
-        {:text, "What do you see?"}
-      ])
+      message =
+        MessageBuilder.build_user_message_with_content([
+          {:text, "Look at this:"},
+          {:image, "base64data", "image/png"},
+          {:text, "What do you see?"}
+        ])
 
       assert message.role == "user"
       assert length(message.content) == 3
@@ -111,11 +115,12 @@ defmodule Koalemos.Utils.MessageBuilderTest do
     end
 
     test "accepts options like build_user_message" do
-      message = MessageBuilder.build_user_message_with_content(
-        [{:text, "Test"}],
-        id: "msg-1",
-        routine_id: "routine-123"
-      )
+      message =
+        MessageBuilder.build_user_message_with_content(
+          [{:text, "Test"}],
+          id: "msg-1",
+          routine_id: "routine-123"
+        )
 
       assert message.metadata.id == "msg-1"
       assert message.metadata.routine_id == "routine-123"
@@ -134,10 +139,12 @@ defmodule Koalemos.Utils.MessageBuilderTest do
 
     test "accepts options" do
       content = [%{type: "text", text: "Response"}]
-      message = MessageBuilder.build_assistant_message(content,
-        id: "msg-1",
-        routine_id: "routine-123"
-      )
+
+      message =
+        MessageBuilder.build_assistant_message(content,
+          id: "msg-1",
+          routine_id: "routine-123"
+        )
 
       assert message.metadata.id == "msg-1"
       assert message.metadata.routine_id == "routine-123"
@@ -164,9 +171,8 @@ defmodule Koalemos.Utils.MessageBuilderTest do
     end
 
     test "accepts options" do
-      message = MessageBuilder.build_tool_result_message("tool-789", "Done",
-        routine_id: "routine-123"
-      )
+      message =
+        MessageBuilder.build_tool_result_message("tool-789", "Done", routine_id: "routine-123")
 
       assert message.metadata.routine_id == "routine-123"
     end
@@ -353,6 +359,7 @@ defmodule Koalemos.Utils.MessageBuilderTest do
         {:image, "data1", "image/png"},
         {:image, "data2", "image/jpeg"}
       ]
+
       message = MessageBuilder.build_tool_result_message("tool_abc", content_blocks)
 
       [tool_result_block] = message.content
@@ -364,7 +371,8 @@ defmodule Koalemos.Utils.MessageBuilderTest do
     end
 
     test "includes is_error flag when specified" do
-      message = MessageBuilder.build_tool_result_message("tool_error", "Error result", is_error: true)
+      message =
+        MessageBuilder.build_tool_result_message("tool_error", "Error result", is_error: true)
 
       [content_block] = message.content
       assert content_block.is_error == true
@@ -395,10 +403,11 @@ defmodule Koalemos.Utils.MessageBuilderTest do
     end
 
     test "base metadata takes precedence over additional keys" do
-      message = MessageBuilder.build_user_message("Test",
-        id: "custom-id",
-        custom_field: "value"
-      )
+      message =
+        MessageBuilder.build_user_message("Test",
+          id: "custom-id",
+          custom_field: "value"
+        )
 
       assert message.metadata.id == "custom-id"
       assert message.metadata.custom_field == "value"

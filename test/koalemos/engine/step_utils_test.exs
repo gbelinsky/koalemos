@@ -38,12 +38,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "calls function and applies diff when function exists" do
       state = %{context: %{}, other_field: :preserved}
 
-      result = StepUtils.call_step_function_if_exists(
-        TestStep,
-        :function_that_returns_diff,
-        ["arg"],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          TestStep,
+          :function_that_returns_diff,
+          ["arg"],
+          state
+        )
 
       assert result.context.added_by_test == true
       assert result.other_field == :preserved
@@ -52,12 +53,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "passes arguments correctly" do
       state = %{context: %{}}
 
-      result = StepUtils.call_step_function_if_exists(
-        TestStep,
-        :function_with_multiple_args,
-        ["first", "second"],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          TestStep,
+          :function_with_multiple_args,
+          ["first", "second"],
+          state
+        )
 
       assert result.context.arg1 == "first"
       assert result.context.arg2 == "second"
@@ -66,12 +68,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "returns state unchanged when function doesn't exist" do
       state = %{context: %{existing: "data"}, other: :field}
 
-      result = StepUtils.call_step_function_if_exists(
-        TestStep,
-        :nonexistent_function,
-        [],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          TestStep,
+          :nonexistent_function,
+          [],
+          state
+        )
 
       assert result == state
     end
@@ -79,12 +82,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "adds error to context when function returns error" do
       state = %{context: %{}}
 
-      result = StepUtils.call_step_function_if_exists(
-        TestStep,
-        :function_that_returns_error,
-        [],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          TestStep,
+          :function_that_returns_error,
+          [],
+          state
+        )
 
       assert result.context.error == "something went wrong"
     end
@@ -92,12 +96,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "applies update diff correctly" do
       state = %{context: %{existing_key: "original"}}
 
-      result = StepUtils.call_step_function_if_exists(
-        TestStep,
-        :function_that_updates_existing,
-        [],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          TestStep,
+          :function_that_updates_existing,
+          [],
+          state
+        )
 
       assert result.context.existing_key == "updated"
     end
@@ -105,12 +110,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "applies append_to diff correctly" do
       state = %{context: %{messages: ["old message"]}}
 
-      result = StepUtils.call_step_function_if_exists(
-        TestStep,
-        :function_that_appends,
-        [],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          TestStep,
+          :function_that_appends,
+          [],
+          state
+        )
 
       assert result.context.messages == ["old message", "new message"]
     end
@@ -118,12 +124,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "works with empty args list" do
       state = %{context: %{}}
 
-      result = StepUtils.call_step_function_if_exists(
-        TestStep,
-        :function_that_returns_error,
-        [],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          TestStep,
+          :function_that_returns_error,
+          [],
+          state
+        )
 
       assert result.context.error == "something went wrong"
     end
@@ -136,12 +143,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
         nested: %{data: :here}
       }
 
-      result = StepUtils.call_step_function_if_exists(
-        TestStep,
-        :function_that_returns_diff,
-        ["arg"],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          TestStep,
+          :function_that_returns_diff,
+          ["arg"],
+          state
+        )
 
       assert result.workflow_id == "test-123"
       assert result.current_step == :some_step
@@ -152,12 +160,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "handles module that doesn't exist" do
       state = %{context: %{original: "data"}}
 
-      result = StepUtils.call_step_function_if_exists(
-        NonExistentModule,
-        :some_function,
-        [],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          NonExistentModule,
+          :some_function,
+          [],
+          state
+        )
 
       assert result == state
     end
@@ -167,12 +176,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "returns both state and diff when function exists" do
       state = %{context: %{}}
 
-      {new_state, diff} = StepUtils.call_step_function_with_diff(
-        TestStep,
-        :function_that_returns_diff,
-        ["arg"],
-        state
-      )
+      {new_state, diff} =
+        StepUtils.call_step_function_with_diff(
+          TestStep,
+          :function_that_returns_diff,
+          ["arg"],
+          state
+        )
 
       assert new_state.context.added_by_test == true
       assert diff == [{:add, %{added_by_test: true}}]
@@ -181,12 +191,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "returns empty diff when function doesn't exist" do
       state = %{context: %{original: "data"}}
 
-      {new_state, diff} = StepUtils.call_step_function_with_diff(
-        TestStep,
-        :nonexistent_function,
-        [],
-        state
-      )
+      {new_state, diff} =
+        StepUtils.call_step_function_with_diff(
+          TestStep,
+          :nonexistent_function,
+          [],
+          state
+        )
 
       assert new_state == state
       assert diff == []
@@ -195,12 +206,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "returns empty diff when function returns error" do
       state = %{context: %{}}
 
-      {new_state, diff} = StepUtils.call_step_function_with_diff(
-        TestStep,
-        :function_that_returns_error,
-        [],
-        state
-      )
+      {new_state, diff} =
+        StepUtils.call_step_function_with_diff(
+          TestStep,
+          :function_that_returns_error,
+          [],
+          state
+        )
 
       assert new_state.context.error == "something went wrong"
       assert diff == []
@@ -209,12 +221,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "returns correct diff for update operation" do
       state = %{context: %{existing_key: "original"}}
 
-      {new_state, diff} = StepUtils.call_step_function_with_diff(
-        TestStep,
-        :function_that_updates_existing,
-        [],
-        state
-      )
+      {new_state, diff} =
+        StepUtils.call_step_function_with_diff(
+          TestStep,
+          :function_that_updates_existing,
+          [],
+          state
+        )
 
       assert new_state.context.existing_key == "updated"
       assert diff == [{:update, %{existing_key: "updated"}}]
@@ -223,12 +236,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "returns correct diff for append_to operation" do
       state = %{context: %{messages: []}}
 
-      {new_state, diff} = StepUtils.call_step_function_with_diff(
-        TestStep,
-        :function_that_appends,
-        [],
-        state
-      )
+      {new_state, diff} =
+        StepUtils.call_step_function_with_diff(
+          TestStep,
+          :function_that_appends,
+          [],
+          state
+        )
 
       assert new_state.context.messages == ["new message"]
       assert diff == [{:append_to, %{messages: "new message"}}]
@@ -237,12 +251,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "passes multiple arguments correctly" do
       state = %{context: %{}}
 
-      {new_state, diff} = StepUtils.call_step_function_with_diff(
-        TestStep,
-        :function_with_multiple_args,
-        ["first", "second"],
-        state
-      )
+      {new_state, diff} =
+        StepUtils.call_step_function_with_diff(
+          TestStep,
+          :function_with_multiple_args,
+          ["first", "second"],
+          state
+        )
 
       assert new_state.context.arg1 == "first"
       assert new_state.context.arg2 == "second"
@@ -255,12 +270,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
         other_fields: :preserved
       }
 
-      {new_state, diff} = StepUtils.call_step_function_with_diff(
-        TestStep,
-        :missing,
-        [],
-        state
-      )
+      {new_state, diff} =
+        StepUtils.call_step_function_with_diff(
+          TestStep,
+          :missing,
+          [],
+          state
+        )
 
       assert new_state == state
       assert diff == []
@@ -269,12 +285,13 @@ defmodule Koalemos.Engine.StepUtilsTest do
     test "handles module that doesn't exist" do
       state = %{context: %{}}
 
-      {new_state, diff} = StepUtils.call_step_function_with_diff(
-        NonExistentModule,
-        :function,
-        [],
-        state
-      )
+      {new_state, diff} =
+        StepUtils.call_step_function_with_diff(
+          NonExistentModule,
+          :function,
+          [],
+          state
+        )
 
       assert new_state == state
       assert diff == []
@@ -288,7 +305,9 @@ defmodule Koalemos.Engine.StepUtilsTest do
     end
 
     test "calls function that exists with args" do
-      result = StepUtils.safe_call(TestStep, :function_with_multiple_args, ["a", "b", %{context: %{}}])
+      result =
+        StepUtils.safe_call(TestStep, :function_with_multiple_args, ["a", "b", %{context: %{}}])
+
       assert {:ok, _diff} = result
     end
 
@@ -352,40 +371,45 @@ defmodule Koalemos.Engine.StepUtilsTest do
       initial_state = %{context: %{}, step: :init}
 
       # Call setup
-      state_after_setup = StepUtils.call_step_function_if_exists(
-        ComplexStep,
-        :setup,
-        [%{key: "value"}],
-        initial_state
-      )
+      state_after_setup =
+        StepUtils.call_step_function_if_exists(
+          ComplexStep,
+          :setup,
+          [%{key: "value"}],
+          initial_state
+        )
 
       assert state_after_setup.context.setup_called == true
       assert state_after_setup.context.setup_config == %{key: "value"}
-      assert state_after_setup.step == :init # Other fields preserved
+      # Other fields preserved
+      assert state_after_setup.step == :init
 
       # Call execute
-      state_after_execute = StepUtils.call_step_function_if_exists(
-        ComplexStep,
-        :execute,
-        [%{execution_config: true}],
-        state_after_setup
-      )
+      state_after_execute =
+        StepUtils.call_step_function_if_exists(
+          ComplexStep,
+          :execute,
+          [%{execution_config: true}],
+          state_after_setup
+        )
 
       assert state_after_execute.context.result == "success"
       assert state_after_execute.context.config == %{execution_config: true}
-      assert state_after_execute.context.setup_called == true # Preserved
+      # Preserved
+      assert state_after_execute.context.setup_called == true
     end
 
     test "error handling in execution flow" do
       # Skip setup and go straight to execute
       state = %{context: %{}}
 
-      result = StepUtils.call_step_function_if_exists(
-        ComplexStep,
-        :execute,
-        [%{}],
-        state
-      )
+      result =
+        StepUtils.call_step_function_if_exists(
+          ComplexStep,
+          :execute,
+          [%{}],
+          state
+        )
 
       assert result.context.error == "setup not called"
     end

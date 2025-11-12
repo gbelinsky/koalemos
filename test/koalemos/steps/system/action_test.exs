@@ -44,6 +44,7 @@ defmodule Koalemos.Steps.System.ActionTest do
   describe "execute/2" do
     test "calls routine handle_action and returns result" do
       config_sources = %{static: %{action: :initialize}, runtime: %{}}
+
       state = %{
         current_routine_module: TestRoutine,
         context: %{}
@@ -55,6 +56,7 @@ defmodule Koalemos.Steps.System.ActionTest do
 
     test "passes state to handle_action" do
       config_sources = %{static: %{action: :set_value}, runtime: %{}}
+
       state = %{
         current_routine_module: TestRoutine,
         context: %{value: 10}
@@ -69,6 +71,7 @@ defmodule Koalemos.Steps.System.ActionTest do
         static: %{action: :initialize},
         runtime: %{action: :set_value}
       }
+
       state = %{
         current_routine_module: TestRoutine,
         context: %{value: 10}
@@ -81,6 +84,7 @@ defmodule Koalemos.Steps.System.ActionTest do
 
     test "returns error when action not defined" do
       config_sources = %{static: %{action: :nonexistent_action}, runtime: %{}}
+
       state = %{
         current_routine_module: RoutineWithoutActions,
         context: %{}
@@ -93,6 +97,7 @@ defmodule Koalemos.Steps.System.ActionTest do
 
     test "returns error when action has invalid arguments" do
       config_sources = %{static: %{action: :wrong_action}, runtime: %{}}
+
       state = %{
         current_routine_module: RoutineWithInvalidClause,
         context: %{}
@@ -105,6 +110,7 @@ defmodule Koalemos.Steps.System.ActionTest do
 
     test "returns error when action raises exception" do
       config_sources = %{static: %{action: :fail_with_error}, runtime: %{}}
+
       state = %{
         current_routine_module: TestRoutine,
         context: %{}
@@ -117,6 +123,7 @@ defmodule Koalemos.Steps.System.ActionTest do
 
     test "includes routine module in error messages" do
       config_sources = %{static: %{action: :missing}, runtime: %{}}
+
       state = %{
         current_routine_module: TestRoutine,
         context: %{}

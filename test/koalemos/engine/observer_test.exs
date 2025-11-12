@@ -1,5 +1,6 @@
 defmodule Koalemos.Engine.ObserverTest do
-  use ExUnit.Case, async: false  # Not async because we're using a named GenServer
+  # Not async because we're using a named GenServer
+  use ExUnit.Case, async: false
   alias Koalemos.Engine.Observer
 
   @test_log_file "tmp/test_events.log"

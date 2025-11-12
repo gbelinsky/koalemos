@@ -49,11 +49,11 @@ defmodule KoalemosWeb.SamplesLive do
     [
       %{
         content: "Hello! This is a simple user message.",
-        metadata: %{timestamp: 1730000001}
+        metadata: %{timestamp: 1_730_000_001}
       },
       %{
         content: "I can use **bold** and _italic_ text, plus [links](https://example.com)!",
-        metadata: %{timestamp: 1730000002}
+        metadata: %{timestamp: 1_730_000_002}
       },
       %{
         content: [
@@ -67,7 +67,7 @@ defmodule KoalemosWeb.SamplesLive do
             }
           }
         ],
-        metadata: %{timestamp: 1730000003}
+        metadata: %{timestamp: 1_730_000_003}
       },
       %{
         content: [
@@ -89,7 +89,7 @@ defmodule KoalemosWeb.SamplesLive do
             }
           }
         ],
-        metadata: %{timestamp: 1730000007}
+        metadata: %{timestamp: 1_730_000_007}
       }
     ]
   end
@@ -98,17 +98,17 @@ defmodule KoalemosWeb.SamplesLive do
     [
       %{
         content: "I'm here to help! Let me know what you need.",
-        metadata: %{timestamp: 1730000004}
+        metadata: %{timestamp: 1_730_000_004}
       },
       %{
         content:
           "I can format responses with **numbered lists**, _emphasis_, and `code snippets`. Here's code: ```elixir\ndefmodule Example do\n  def hello, do: :world\nend\n```",
-        metadata: %{timestamp: 1730000005}
+        metadata: %{timestamp: 1_730_000_005}
       },
       %{
         content:
           "This is a longer response to show how text wraps and flows naturally. The card expands to fit content while maintaining readability.",
-        metadata: %{timestamp: 1730000006}
+        metadata: %{timestamp: 1_730_000_006}
       }
     ]
   end
@@ -126,13 +126,12 @@ defmodule KoalemosWeb.SamplesLive do
       %{
         role: "user",
         content: "Hello! Can you help me with something?",
-        metadata: %{id: "conv-1", timestamp: 1730000001, source: :user}
+        metadata: %{id: "conv-1", timestamp: 1_730_000_001, source: :user}
       },
       %{
         role: "assistant",
-        content:
-          "Of course! I'd be happy to help. What would you like assistance with?",
-        metadata: %{id: "conv-2", timestamp: 1730000002, source: :agent}
+        content: "Of course! I'd be happy to help. What would you like assistance with?",
+        metadata: %{id: "conv-2", timestamp: 1_730_000_002, source: :agent}
       },
       %{
         role: "user",
@@ -147,18 +146,18 @@ defmodule KoalemosWeb.SamplesLive do
             }
           }
         ],
-        metadata: %{id: "conv-3", timestamp: 1730000003, source: :user}
+        metadata: %{id: "conv-3", timestamp: 1_730_000_003, source: :user}
       },
       %{
         role: "assistant",
         content:
           "I can see the image you've shared. It appears to be a small placeholder. Let me analyze it more carefully...",
-        metadata: %{id: "conv-4", timestamp: 1730000004, source: :agent}
+        metadata: %{id: "conv-4", timestamp: 1_730_000_004, source: :agent}
       },
       %{
         role: "user",
         content: "Thanks! That's exactly what I needed.",
-        metadata: %{id: "conv-5", timestamp: 1730000005, source: :user}
+        metadata: %{id: "conv-5", timestamp: 1_730_000_005, source: :user}
       }
     ]
   end
@@ -234,10 +233,10 @@ defmodule KoalemosWeb.SamplesLive do
           <h2 class="text-xl font-semibold text-gray-800 mb-4">User Cards</h2>
           <div class="space-y-4">
             <%= for message <- @user_messages do %>
-              <%= UserCard.render(
+              {UserCard.render(
                 assigns
                 |> Map.put(:message, message)
-              ) %>
+              )}
             <% end %>
           </div>
         </section>
@@ -246,10 +245,10 @@ defmodule KoalemosWeb.SamplesLive do
           <h2 class="text-xl font-semibold text-gray-800 mb-4">Assistant Cards</h2>
           <div class="space-y-4">
             <%= for message <- @assistant_messages do %>
-              <%= AssistantCard.render(
+              {AssistantCard.render(
                 assigns
                 |> Map.put(:message, message)
-              ) %>
+              )}
             <% end %>
           </div>
         </section>
@@ -258,7 +257,7 @@ defmodule KoalemosWeb.SamplesLive do
           <h2 class="text-xl font-semibold text-gray-800 mb-4">Error Cards</h2>
           <div class="space-y-4">
             <%= for error_msg <- @error_messages do %>
-              <%= ErrorCard.render(assigns |> Map.put(:error_message, error_msg)) %>
+              {ErrorCard.render(assigns |> Map.put(:error_message, error_msg))}
             <% end %>
           </div>
         </section>
@@ -274,7 +273,8 @@ defmodule KoalemosWeb.SamplesLive do
         <!-- Footer -->
         <footer class="text-center text-gray-500 text-sm mt-12">
           <p>
-            Sprint 2, 3 & 4 Component Samples • <a href="/" class="text-indigo-600 hover:underline">
+            Sprint 2, 3 & 4 Component Samples •
+            <a href="/" class="text-indigo-600 hover:underline">
               Back to Home
             </a>
           </p>
