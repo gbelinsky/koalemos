@@ -109,6 +109,62 @@ Hooks.AutoFocus = {
   }
 }
 
+// Panel resizer hook for adjustable dividers
+Hooks.PanelResizer = {
+  mounted() {
+    let isDragging = false
+    let container = null
+    let overlay = null
+
+    this.el.addEventListener('mousedown', (e) => {
+      isDragging = true
+      container = document.getElementById('resizable-container')
+
+      // Create overlay to prevent iframe from capturing events
+      overlay = document.createElement('div')
+      overlay.style.position = 'fixed'
+      overlay.style.top = '0'
+      overlay.style.left = '0'
+      overlay.style.width = '100%'
+      overlay.style.height = '100%'
+      overlay.style.zIndex = '9999'
+      overlay.style.cursor = 'col-resize'
+      document.body.appendChild(overlay)
+
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      e.preventDefault()
+    })
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging || !container) return
+
+      const containerRect = container.getBoundingClientRect()
+      const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100
+
+      // Clamp between 20% and 60%
+      const clampedWidth = Math.max(20, Math.min(60, Math.round(newWidth)))
+
+      // Send to server
+      this.pushEvent("resize_panel", { width: clampedWidth.toString() })
+    })
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+
+        // Remove overlay
+        if (overlay && overlay.parentNode) {
+          overlay.parentNode.removeChild(overlay)
+          overlay = null
+        }
+      }
+    })
+  }
+}
+
 // Import wireframe-specific hooks (M3 Sprint 2)
 import WireframeHooks from "./wireframe_hooks.js"
 

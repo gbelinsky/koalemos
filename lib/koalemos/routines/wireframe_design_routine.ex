@@ -13,9 +13,10 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
 
   ## Available Sub-Routines
 
-  - **answer_directly** - Answer questions or provide information without making changes
+  - **answer_directly** - Answer questions or provide information without making changes (readonly)
+  - **interact_wireframe** - Interact with, inspect, or test the wireframe using tools
   - **targeted_change** - Make a specific, focused modification to the wireframe
-  - **build_from_scratch** - Create a new wireframe structure from description
+  - **build_from_scratch** - Create a new wireframe structure from description (calls BuildWireframeRoutine)
   - **modify_existing** - Make broader changes to existing wireframe
   - **ask_clarification** - Request more information from the user
   - **show_current_state** - Show screenshot and explain current wireframe state
@@ -89,6 +90,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
         },
         transitions: [
           {:answer_directly, "Answer questions or provide information without making changes"},
+          {:interact_wireframe, "Interact with, inspect, or test the wireframe using tools"},
           {:targeted_change, "Make a specific, focused modification to the wireframe"},
           {:build_from_scratch, "Create a new wireframe structure from description"},
           {:modify_existing, "Make broader changes to existing wireframe structure"},
@@ -116,6 +118,26 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
         transitions: [{:start, :always}]
       },
 
+      # Interact with wireframe - full tool access for inspection and testing
+      interact_wireframe: %{
+        type: TemplatedSemanticAgent,
+        config: %{
+          template: """
+          Interact with and explore the wireframe using tools.
+
+          You have full access to wireframe tools for:
+          - Testing interactions with trigger_interaction
+          - Inspecting the current state
+          - Making small exploratory changes if helpful
+          - Answering questions that require tool use
+
+          Use tools as needed to respond to the user's request.
+          Focus on interaction and exploration rather than major modifications.
+          """
+        },
+        transitions: [{:start, :always}]
+      },
+
       # Targeted change - inherits default lenses (WireframeEditor + SequentialThinking)
       targeted_change: %{
         type: TemplatedSemanticAgent,
@@ -130,17 +152,10 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
         transitions: [{:show_result, :always}]
       },
 
-      # Build from scratch - inherits default lenses
+      # Build from scratch - calls BuildWireframeRoutine sub-routine
       build_from_scratch: %{
-        type: TemplatedSemanticAgent,
-        config: %{
-          template: """
-          Build a new wireframe from scratch based on the user's description.
-
-          Plan your approach first, then build up the HTML structure incrementally
-          using modify_elements to create the full page structure.
-          """
-        },
+        type: Koalemos.Routines.BuildWireframeRoutine,
+        config: %{},
         transitions: [{:show_result, :always}]
       },
 

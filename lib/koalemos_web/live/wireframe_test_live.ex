@@ -72,7 +72,9 @@ defmodule KoalemosWeb.WireframeTestLive do
        last_error: nil,
        agent_running: false,
        # Tab selection
-       active_tab: "preview"
+       active_tab: "preview",
+       # Panel sizing
+       left_panel_width: 33
      )
      |> allow_upload(:html_file,
        accept: ~w(.html .htm),
@@ -182,6 +184,14 @@ defmodule KoalemosWeb.WireframeTestLive do
   @impl true
   def handle_event("switch_tab", %{"tab" => tab}, socket) do
     {:noreply, assign(socket, active_tab: tab)}
+  end
+
+  @impl true
+  def handle_event("resize_panel", %{"width" => width_str}, socket) do
+    width = String.to_integer(width_str)
+    # Clamp between 20% and 60%
+    clamped_width = max(20, min(60, width))
+    {:noreply, assign(socket, left_panel_width: clamped_width)}
   end
 
   @impl true
@@ -493,11 +503,11 @@ defmodule KoalemosWeb.WireframeTestLive do
         </div>
       </div>
       <!-- Main Content: Control Panel/Chat + Preview -->
-      <div class="flex-1 overflow-hidden flex">
+      <div class="flex-1 overflow-hidden flex" id="resizable-container">
         <!-- Left Panel: Control Panel OR Chat Panel -->
         <%= if @agent_running do %>
           <!-- Chat Panel (when agent running) -->
-          <div class="w-1/3 border-r border-slate-300 bg-white flex flex-col">
+          <div class="border-r border-slate-300 bg-white flex flex-col" style={"width: #{@left_panel_width}%"}>
             <.live_component
               module={ChatPanel}
               id="wireframe-chat-panel"
@@ -512,7 +522,7 @@ defmodule KoalemosWeb.WireframeTestLive do
           </div>
         <% else %>
           <!-- Control Panel (when agent not running) -->
-          <div class="w-1/3 border-r border-slate-300 bg-white flex flex-col p-4 overflow-auto">
+          <div class="border-r border-slate-300 bg-white flex flex-col p-4 overflow-auto" style={"width: #{@left_panel_width}%"}>
             <div class="space-y-6">
               <!-- File Upload -->
               <div>
@@ -527,7 +537,7 @@ defmodule KoalemosWeb.WireframeTestLive do
                   </div>
                 </form>
               </div>
-              
+
     <!-- Sample Selection -->
               <div>
                 <h2 class="text-lg font-semibold text-slate-800 mb-3">Or Choose Sample</h2>
@@ -585,7 +595,7 @@ defmodule KoalemosWeb.WireframeTestLive do
                   <% end %>
                 </div>
               </div>
-              
+
     <!-- Actions -->
               <div>
                 <h2 class="text-lg font-semibold text-slate-800 mb-3">Actions</h2>
@@ -703,9 +713,18 @@ defmodule KoalemosWeb.WireframeTestLive do
             </div>
           </div>
         <% end %>
-        
-    <!-- Preview Panel (right side) - always full height -->
-        <div class="w-2/3 bg-slate-50 flex flex-col relative">
+
+        <!-- Resize Handle -->
+        <div
+          id="resize-handle"
+          phx-hook="PanelResizer"
+          class="w-1 bg-slate-300 hover:bg-blue-500 cursor-col-resize transition-colors flex-shrink-0"
+          style="cursor: col-resize;"
+        >
+        </div>
+
+        <!-- Preview Panel (right side) - always full height -->
+        <div class="bg-slate-50 flex flex-col relative" style={"width: #{100 - @left_panel_width}%"}>
           <!-- Preview Section -->
           <div class="flex-1 flex flex-col border-b border-slate-300">
             <div class="bg-slate-700 px-4 py-2 border-b border-slate-600 flex items-center justify-between">
@@ -736,7 +755,7 @@ defmodule KoalemosWeb.WireframeTestLive do
                 <span class="font-medium">Agent Context</span>
                 <span class="text-xs">▲</span>
               </button>
-              
+
     <!-- Iframe - stable because parent has no structural changes -->
               <%= if @routine_id do %>
                 <iframe
@@ -750,7 +769,7 @@ defmodule KoalemosWeb.WireframeTestLive do
               <% else %>
                 <div class="w-full h-full"></div>
               <% end %>
-              
+
     <!-- Empty State (shown when no routine_id) -->
               <div class={"h-full flex items-center justify-center #{if @routine_id, do: "hidden", else: ""}"}>
                 <div class="text-center text-slate-400">
@@ -763,7 +782,7 @@ defmodule KoalemosWeb.WireframeTestLive do
               </div>
             </div>
           </div>
-          
+
     <!-- Agent Context Drawer (slides up from bottom with bounce) -->
           <div
             class={"absolute bottom-0 left-0 right-0 #{if @show_context, do: "translate-y-0", else: "translate-y-full"}"}
@@ -795,7 +814,7 @@ defmodule KoalemosWeb.WireframeTestLive do
               </div>
             </div>
           </div>
-          
+
     <!-- Toggle Button (when drawer is closed and agent not running) -->
           <%= if @agent_context && !@show_context && !@agent_running do %>
             <button

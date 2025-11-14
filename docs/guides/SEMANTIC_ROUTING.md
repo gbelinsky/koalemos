@@ -454,7 +454,7 @@ assert context[:lenses] does NOT include "SemanticTransition"
 4. **Performance Critical:** Extra LLM call is too expensive
 5. **Simple Branching:** Regular conditions (`:always`, `:when_error`) suffice
 
-### Alternative: Regular Transitions
+### Alternative 1: Regular Transitions
 
 ```elixir
 # Use regular transitions for deterministic branching
@@ -467,6 +467,68 @@ step_a: %{
   ]
 }
 ```
+
+### Alternative 2: Linear Playbooks
+
+**When You Know The Steps:** Use a linear sequential flow instead of asking the agent to decide.
+
+Think of routines as "early binding" vs tool calls as "late binding." If you know the sequence of steps needed to accomplish a task, script them as a linear playbook rather than making the agent choose.
+
+**Example: BuildWireframeRoutine** (`lib/koalemos/routines/build_wireframe_routine.ex`)
+
+Building a wireframe has known stages: plan → build structure → add behavior → test → polish
+
+```elixir
+defmodule BuildWireframeRoutine do
+  def start, do: :planning
+
+  def routine_definition do
+    %{
+      planning: %{
+        type: TemplatedSemanticAgent,
+        config: %{template: "Plan the wireframe approach..."},
+        transitions: [{:layout_and_structure, :always}]
+      },
+
+      layout_and_structure: %{
+        type: TemplatedSemanticAgent,
+        config: %{template: "Build HTML structure and layout CSS..."},
+        transitions: [{:behavior, :always}]
+      },
+
+      behavior: %{
+        type: TemplatedSemanticAgent,
+        config: %{template: "Add event handlers and JavaScript..."},
+        transitions: [{:testing, :always}]
+      },
+
+      testing: %{
+        type: TemplatedSemanticAgent,
+        config: %{template: "Test interactions..."},
+        transitions: [{:polish, :always}]
+      },
+
+      polish: %{
+        type: TemplatedSemanticAgent,
+        config: %{template: "Apply visual styling..."},
+        transitions: [{:complete, :always}]
+      },
+
+      complete: %{
+        type: TemplatedSemanticAgent,
+        config: %{template: "Summarize what was built..."},
+        transitions: []
+      }
+    }
+  end
+end
+```
+
+**Key Insight:** Don't ask the agent what to do next when you already know the steps. Use semantic routing for real decision points, not for known sequences.
+
+**Comparison:**
+- **Semantic Routing:** "Should I create, modify, or analyze?" (decision point)
+- **Linear Playbook:** "Build wireframe: plan → structure → behavior → test → polish" (known sequence)
 
 ---
 
@@ -592,15 +654,27 @@ end
 
 See these files for working examples:
 
-- **WireframeDesignRoutine:** `lib/koalemos/workflows/demo/wireframe_editor_workflow.ex`
-  - Semantic routing with 3 paths
+- **WireframeDesignRoutine:** `lib/koalemos/routines/wireframe_design_routine.ex`
+  - Semantic routing with 7 sub-routines
   - Readonly lens during routing
   - Full lens configuration per branch
+  - Demonstrates when to use semantic routing (routing between user intents)
+
+- **BuildWireframeRoutine:** `lib/koalemos/routines/build_wireframe_routine.ex`
+  - Linear playbook with sequential flow
+  - Known sequence: planning → layout → behavior → testing → polish
+  - Demonstrates when NOT to use semantic routing (known steps)
+  - Called as sub-routine from WireframeDesignRoutine
 
 - **Semantic Routing Tests:** `test/koalemos/semantic_routing_test.exs`
   - TemplatedSemanticAgent tests
   - SemanticTransition lens tests
   - Lens scoping tests
+
+- **Routine Tests:** `test/koalemos/routines/`
+  - WireframeDesignRoutine tests
+  - BuildWireframeRoutine tests
+  - Structure and transition verification
 
 ---
 

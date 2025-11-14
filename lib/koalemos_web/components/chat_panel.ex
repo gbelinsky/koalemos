@@ -57,7 +57,8 @@ defmodule KoalemosWeb.ChatPanel do
      socket
      |> assign(:messages, [])
      |> assign(:mock_responses, false)
-     |> assign(:show_screenshot_checkbox, false)}
+     |> assign(:show_screenshot_checkbox, false)
+     |> assign(:active_tab, "conversation")}
   end
 
   @impl true
@@ -82,17 +83,58 @@ defmodule KoalemosWeb.ChatPanel do
   def render(assigns) do
     ~H"""
     <div class="chat-panel h-full flex flex-col">
-      <!-- Message Feed (takes up remaining space after input) -->
-      <div class="flex-1 overflow-hidden min-h-0">
-        <.live_component
-          module={MessageFeed}
-          id={"#{@id}-feed"}
-          messages={@messages}
-          current_step={@current_step}
-          status={@status}
-          last_error={@last_error}
-        />
+      <!-- Tab Header -->
+      <div class="border-b border-slate-200 bg-white">
+        <div class="flex">
+          <button
+            phx-click="switch_tab"
+            phx-value-tab="conversation"
+            phx-target={@myself}
+            class={[
+              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+              if(@active_tab == "conversation",
+                do: "border-blue-500 text-blue-600",
+                else: "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+              )
+            ]}
+          >
+            Conversation
+          </button>
+          <button
+            phx-click="switch_tab"
+            phx-value-tab="raw"
+            phx-target={@myself}
+            class={[
+              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+              if(@active_tab == "raw",
+                do: "border-blue-500 text-blue-600",
+                else: "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+              )
+            ]}
+          >
+            Raw Messages
+          </button>
+        </div>
       </div>
+
+      <!-- Content Area -->
+      <div class="flex-1 overflow-hidden min-h-0">
+        <%= if @active_tab == "conversation" do %>
+          <.live_component
+            module={MessageFeed}
+            id={"#{@id}-feed"}
+            messages={@messages}
+            current_step={@current_step}
+            status={@status}
+            last_error={@last_error}
+          />
+        <% else %>
+          <div class="h-full overflow-auto p-4 bg-slate-50 font-mono text-xs">
+            <pre class="text-slate-800"><%= Jason.encode!(@messages, pretty: true) %></pre>
+          </div>
+        <% end %>
+      </div>
+
       <!-- User Input (flexible height at bottom, max 50% of container) -->
       <div class="border-t-2 border-slate-300/60 bg-white p-4 max-h-[50%] overflow-y-auto flex-shrink-0">
         <.live_component
@@ -105,6 +147,11 @@ defmodule KoalemosWeb.ChatPanel do
       </div>
     </div>
     """
+  end
+
+  @impl true
+  def handle_event("switch_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, :active_tab, tab)}
   end
 
   def handle_info(:check_uploads, socket) do
