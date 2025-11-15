@@ -110,7 +110,11 @@ defmodule Koalemos.Engine.Orchestrator do
       }
 
       EventRecorder.record_event(state, "step_started", %{
-        metadata: %{step_module: step_module, config_sources: config_sources}
+        metadata: %{
+          step_module: step_module,
+          config_sources: config_sources
+        },
+        execution_stack: state.execution_stack
       })
 
       # Ensure module is loaded before checking if it's a sub-routine

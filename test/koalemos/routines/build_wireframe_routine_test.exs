@@ -13,7 +13,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutineTest do
       definition = BuildWireframeRoutine.routine_definition()
 
       assert is_map(definition)
-      assert map_size(definition) == 6
+      assert map_size(definition) == 5
     end
 
     test "has all expected stages in sequential order" do
@@ -25,7 +25,6 @@ defmodule Koalemos.Routines.BuildWireframeRoutineTest do
       assert Map.has_key?(definition, :behavior)
       assert Map.has_key?(definition, :testing)
       assert Map.has_key?(definition, :polish)
-      assert Map.has_key?(definition, :complete)
     end
 
     test "follows linear sequential flow" do
@@ -36,8 +35,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutineTest do
       assert definition.layout_and_structure.transitions == [{:behavior, :always}]
       assert definition.behavior.transitions == [{:testing, :always}]
       assert definition.testing.transitions == [{:polish, :always}]
-      assert definition.polish.transitions == [{:complete, :always}]
-      assert definition.complete.transitions == []
+      assert definition.polish.transitions == []
     end
 
     test "all stages use TemplatedSemanticAgent" do
@@ -48,22 +46,14 @@ defmodule Koalemos.Routines.BuildWireframeRoutineTest do
       assert definition.behavior.type == Koalemos.Steps.Agent.TemplatedSemanticAgent
       assert definition.testing.type == Koalemos.Steps.Agent.TemplatedSemanticAgent
       assert definition.polish.type == Koalemos.Steps.Agent.TemplatedSemanticAgent
-      assert definition.complete.type == Koalemos.Steps.Agent.TemplatedSemanticAgent
     end
 
-    test "planning and complete stages are readonly" do
+    test "planning stage is readonly" do
       definition = BuildWireframeRoutine.routine_definition()
 
       # Planning should have readonly WireframeEditor lens
       planning_lenses = definition.planning.config.lenses
       assert Enum.any?(planning_lenses, fn
-               ["Koalemos.Lenses.WireframeEditor", %{readonly: true}] -> true
-               _ -> false
-             end)
-
-      # Complete should have readonly WireframeEditor lens
-      complete_lenses = definition.complete.config.lenses
-      assert Enum.any?(complete_lenses, fn
                ["Koalemos.Lenses.WireframeEditor", %{readonly: true}] -> true
                _ -> false
              end)

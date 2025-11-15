@@ -306,8 +306,7 @@ defmodule KoalemosWeb.UserInputComponent do
                 placeholder={@placeholder || "type your message..."}
                 rows="3"
                 class={"w-full p-3 border-2 border-slate-300/60 rounded-2xl resize-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/70 transition-all duration-200 shadow-[1px_2px_6px_-2px_rgba(148,163,184,0.2)] #{if @disabled, do: "bg-slate-100 text-slate-500 cursor-not-allowed", else: ""}"}
-                phx-keydown="handle_keydown"
-                phx-key="Enter"
+                phx-change="update_input"
                 phx-target={@myself}
                 phx-hook="AutoFocus"
                 disabled={@disabled}
@@ -347,6 +346,7 @@ defmodule KoalemosWeb.UserInputComponent do
               <div class="flex items-center relative">
                 <button
                   type="button"
+                  id={"#{@id}-send-button"}
                   phx-click="send_input"
                   phx-target={@myself}
                   class="px-4 py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-[2px_2px_8px_-2px_rgba(59,130,246,0.3)] hover:shadow-[3px_3px_12px_-2px_rgba(59,130,246,0.4)] border-r-[3px] border-b-[2px] border-t border-blue-400/30 text-sm tracking-wide"
@@ -509,14 +509,6 @@ defmodule KoalemosWeb.UserInputComponent do
     {:noreply, socket}
   end
 
-  def handle_event("handle_keydown", %{"key" => "Enter", "shiftKey" => false}, socket) do
-    send_input_event(socket)
-  end
-
-  def handle_event("handle_keydown", _params, socket) do
-    {:noreply, socket}
-  end
-
   def handle_event("send_input", _params, socket) do
     send_input_event(socket)
   end
@@ -549,6 +541,7 @@ defmodule KoalemosWeb.UserInputComponent do
         |> assign(:uploaded_images, [])
         |> assign(:include_screenshot, false)
         |> assign(:just_sent, true)
+        |> push_event("clear-input", %{id: "#{socket.assigns.id}-textarea"})
 
       {:noreply, socket}
     else

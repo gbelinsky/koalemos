@@ -452,7 +452,7 @@ WireframeHooks.JavaScriptUpdater = {
   },
 
   /**
-   * Capture complete state (DOM + console + screenshot)
+   * Capture complete state (DOM + console + screenshot + variables)
    * Sprint 7 Phase 2
    */
   async captureCompleteState(opts = {}) {
@@ -482,11 +482,28 @@ WireframeHooks.JavaScriptUpdater = {
         INFRASTRUCTURE_CONSOLE.warn("[StateCapture] Screenshot hook not available")
       }
 
+      // Capture current variable values (M6 Quick Win)
+      let variables = {}
+      if (opts.variable_names && Array.isArray(opts.variable_names)) {
+        opts.variable_names.forEach(varName => {
+          // Capture the current value from window (even if undefined)
+          // Note: We check if it exists to distinguish undefined from not-set
+          if (varName in window) {
+            variables[varName] = window[varName]
+            INFRASTRUCTURE_CONSOLE.log(`[StateCapture] Captured ${varName} = ${JSON.stringify(window[varName])}`)
+          } else {
+            INFRASTRUCTURE_CONSOLE.warn(`[StateCapture] Variable ${varName} not found on window`)
+          }
+        })
+        INFRASTRUCTURE_CONSOLE.log(`[StateCapture] Captured ${Object.keys(variables).length} variable values`)
+      }
+
       // Send snapshot back to LiveView
       this.pushEvent("state_snapshot", {
         dom_tree: dom_tree,
         console_messages: console_messages,
         screenshot: screenshot,
+        variables: variables,
         timestamp: Date.now()
       })
 

@@ -204,11 +204,12 @@ defmodule Koalemos.Caches.DOMStateCache do
       live_dom_tree: converted_tree,
       timestamp: dom_update["timestamp"],
       change_type: dom_update["changeType"] || "unknown",
-      cached_at: DateTime.utc_now()
+      cached_at: DateTime.utc_now(),
+      variables: dom_update["variables"] || %{}
     }
 
     new_state = Map.put(state, routine_id, dom_state)
-    Logger.debug("[DOMStateCache] Stored DOM state for routine #{routine_id}")
+    Logger.debug("[DOMStateCache] Stored DOM state for routine #{routine_id} (variables: #{map_size(dom_state.variables)})")
 
     {:noreply, new_state}
   end

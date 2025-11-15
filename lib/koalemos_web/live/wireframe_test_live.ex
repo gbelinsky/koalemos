@@ -69,6 +69,9 @@ defmodule KoalemosWeb.WireframeTestLive do
        messages: [],
        status: :idle,
        current_step: nil,
+       routine_module: nil,
+       execution_stack: [],
+       step_module: nil,
        last_error: nil,
        agent_running: false,
        # Tab selection
@@ -81,7 +84,7 @@ defmodule KoalemosWeb.WireframeTestLive do
        max_entries: 1,
        max_file_size: 1_000_000,
        auto_upload: true
-     )}
+     ), layout: false}
   end
 
   @impl true
@@ -290,6 +293,44 @@ defmodule KoalemosWeb.WireframeTestLive do
      )}
   end
 
+  def handle_event("download_wireframe", _params, socket) do
+    Logger.info("[WireframeTestLive] Generating wireframe download")
+
+    case socket.assigns[:routine_id] do
+      nil ->
+        {:noreply, socket}
+
+      routine_id ->
+        # Get the designed state from cache
+        wireframe_state = Koalemos.Caches.WireframeStateCache.get_state(routine_id)
+
+        if wireframe_state do
+          # Generate complete HTML from designed state
+          try do
+            html = generate_wireframe_html(wireframe_state)
+            Logger.info("[WireframeTestLive] Generated HTML, length: #{String.length(html)} chars")
+            filename = "wireframe_#{routine_id}_#{DateTime.utc_now() |> DateTime.to_unix()}.html"
+
+            # Use blob download (works via localhost or HTTPS)
+            {:noreply,
+             push_event(socket, "download", %{
+               filename: filename,
+               content: html,
+               mime_type: "text/html"
+             })}
+          rescue
+            e ->
+              Logger.error("[WireframeTestLive] Failed to generate HTML: #{Exception.message(e)}")
+              Logger.error(Exception.format(:error, e, __STACKTRACE__))
+              {:noreply, socket}
+          end
+        else
+          Logger.warning("[WireframeTestLive] Could not load wireframe state for download")
+          {:noreply, socket}
+        end
+    end
+  end
+
   @impl true
   def handle_info(:check_uploads, socket) do
     socket = process_completed_uploads(socket)
@@ -387,8 +428,17 @@ defmodule KoalemosWeb.WireframeTestLive do
   @impl true
   def handle_info({:routine_event, %{event_type: "step_started"} = event}, socket) do
     step = event.step_id
+    routine_module = Map.get(event, :routine_module)
+    execution_stack = Map.get(event, :execution_stack, [])
+    step_module = get_in(event, [:metadata, :step_module])
 
-    {:noreply, assign(socket, current_step: step)}
+    {:noreply,
+     assign(socket,
+       current_step: step,
+       routine_module: routine_module,
+       execution_stack: execution_stack,
+       step_module: step_module
+     )}
   end
 
   @impl true
@@ -515,6 +565,9 @@ defmodule KoalemosWeb.WireframeTestLive do
               messages={@messages}
               mock_responses={false}
               current_step={@current_step}
+              routine_module={@routine_module}
+              execution_stack={@execution_stack}
+              step_module={@step_module}
               disabled={@status in [:completed, :error] || @last_error != nil}
               status={@status}
               last_error={@last_error}
@@ -730,6 +783,15 @@ defmodule KoalemosWeb.WireframeTestLive do
             <div class="bg-slate-700 px-4 py-2 border-b border-slate-600 flex items-center justify-between">
               <h2 class="text-sm font-medium text-white">HTML Preview (Iframe)</h2>
               <div class="flex items-center gap-4">
+                <%= if @loaded_html do %>
+                  <button
+                    phx-click="download_wireframe"
+                    class="px-3 py-1 rounded-lg font-medium text-sm transition-colors bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+                  >
+                    <span>💾</span>
+                    <span>Save Page</span>
+                  </button>
+                <% end %>
                 <%= if @agent_running do %>
                   <button
                     phx-click="stop_agent"
@@ -1136,4 +1198,108 @@ defmodule KoalemosWeb.WireframeTestLive do
   defp format_bytes(bytes) when bytes < 1024, do: "#{bytes} B"
   defp format_bytes(bytes) when bytes < 1024 * 1024, do: "#{Float.round(bytes / 1024, 1)} KB"
   defp format_bytes(bytes), do: "#{Float.round(bytes / (1024 * 1024), 1)} MB"
+
+  # Generate complete HTML file from designed wireframe state
+  defp generate_wireframe_html(wireframe_state) when is_map(wireframe_state) do
+    designed = Map.get(wireframe_state, :designed, %{})
+    dom_tree = Map.get(designed, :dom_tree)
+    custom_css = Map.get(designed, :custom_css, %{})
+    custom_variables = Map.get(designed, :custom_variables, %{})
+    custom_functions = Map.get(designed, :custom_functions, %{})
+    init_scripts = Map.get(designed, :init_scripts, %{})
+    handlers = Map.get(designed, :handlers, %{})
+
+    # Use the same rendering helpers as WireframePreviewLive
+    alias KoalemosWeb.WireframePreviewLive, as: Preview
+
+    """
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wireframe Export</title>
+
+        <style>
+          /* Reset and base styles */
+          * { box-sizing: border-box; }
+          body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+        </style>
+        #{if map_size(custom_css) > 0 do
+      """
+        <style>
+          /* Custom CSS */
+          #{Preview.render_custom_css(custom_css)}
+        </style>
+      """
+    else
+      ""
+    end}
+      </head>
+      <body>
+        #{Phoenix.HTML.safe_to_string(Preview.render_dom_tree(dom_tree))}
+
+        #{if has_javascript?(custom_variables, custom_functions, init_scripts, handlers) do
+      """
+        <script>
+          // Global Variables
+          #{Preview.render_custom_variables(custom_variables)}
+
+          // Function Definitions
+          #{Preview.render_custom_functions(custom_functions)}
+
+          // Event Handlers (attached on load)
+          window.addEventListener('DOMContentLoaded', function() {
+            #{render_handlers(handlers)}
+          });
+
+          // Initialization Scripts
+          #{Preview.render_init_scripts(init_scripts)}
+        </script>
+      """
+    else
+      ""
+    end}
+      </body>
+    </html>
+    """
+  end
+
+  defp generate_wireframe_html(_invalid_state), do: "<html><body>Invalid wireframe state</body></html>"
+
+  defp has_javascript?(variables, functions, init_scripts, handlers) do
+    map_size(variables) > 0 or map_size(functions) > 0 or
+      map_size(init_scripts) > 0 or map_size(handlers) > 0
+  end
+
+  defp render_handlers(handlers) when is_map(handlers) and map_size(handlers) > 0 do
+    handlers
+    |> Enum.flat_map(fn {element_id, event_handlers} ->
+      # event_handlers can have atom or string keys - normalize to strings
+      Enum.map(event_handlers, fn {event_type, handler_config} ->
+        # Convert event_type to string (handles both atom and string keys)
+        event_name = to_string(event_type)
+
+        handler_body =
+          case handler_config do
+            %{body: body} -> body
+            %{"body" => body} -> body
+            code when is_binary(code) -> code
+            _ -> ""
+          end
+
+        """
+        var el = document.getElementById('#{element_id}');
+        if (el) {
+          el.addEventListener('#{event_name}', function(e) {
+            #{handler_body}
+          });
+        }
+        """
+      end)
+    end)
+    |> Enum.join("\n")
+  end
+
+  defp render_handlers(_), do: ""
 end
