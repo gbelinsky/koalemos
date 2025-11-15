@@ -13,13 +13,16 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
 
   ## Available Sub-Routines
 
-  - **answer_directly** - Answer questions or provide information without making changes (readonly)
   - **interact_wireframe** - Interact with, inspect, or test the wireframe using tools
+  - **play** - Enter tight interaction loop for games or conversational testing (calls PlayRoutine)
+  - **debug** - Systematically debug and fix wireframe issues
   - **targeted_change** - Make a specific, focused modification to the wireframe
   - **build_from_scratch** - Create a new wireframe structure from description (calls BuildWireframeRoutine)
   - **modify_existing** - Make broader changes to existing wireframe
   - **ask_clarification** - Request more information from the user
   - **show_current_state** - Show screenshot and explain current wireframe state
+
+  Note: Simple questions can be answered directly in the routing phase without needing a separate step.
 
   ## Semantic Transitions
 
@@ -82,6 +85,10 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           Analyze the user's request and choose the most appropriate sub-routine.
 
           Consider what the user wants to accomplish and route accordingly.
+
+          NOTE: If the user just wants an answer or information without any tool use,
+          you can answer directly here instead of routing to another step. Just provide
+          the answer and transition to start for the next user input.
           """,
           lenses: [
             ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
@@ -89,33 +96,17 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           ]
         },
         transitions: [
-          {:answer_directly, "Answer questions or provide information without making changes"},
           {:interact_wireframe, "Interact with, inspect, or test the wireframe using tools"},
+          {:play, "Enter interactive play mode for games or conversational testing"},
+          {:debug, "Debug and troubleshoot wireframe issues"},
           {:targeted_change, "Make a specific, focused modification to the wireframe"},
           {:build_from_scratch, "Create a new wireframe structure from description"},
           {:modify_existing, "Make broader changes to existing wireframe structure"},
           {:ask_clarification, "Ask user for more information or clarification"},
           {:show_current_state, "Show screenshot and explain current wireframe state"},
-          # Fallback to start if no other matches
+          # Fallback to start if no other matches (also used when answering directly)
           {:start, :always}
         ]
-      },
-
-      # Answer directly - readonly wireframe context, no modification tools
-      answer_directly: %{
-        type: TemplatedSemanticAgent,
-        config: %{
-          template: """
-          Answer the user's question directly. No wireframe modifications needed.
-
-          Provide a helpful, informative response based on the wireframe state.
-          """,
-          lenses: [
-            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
-            "Koalemos.Lenses.SequentialThinking"
-          ]
-        },
-        transitions: [{:start, :always}]
       },
 
       # Interact with wireframe - full tool access for inspection and testing
@@ -138,6 +129,40 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
         transitions: [{:start, :always}]
       },
 
+      # Play mode - tight interaction loop via PlayRoutine sub-routine
+      play: %{
+        type: Koalemos.Routines.PlayRoutine,
+        config: %{},
+        transitions: [{:show_result, :always}]
+      },
+
+      # Debug - investigate and fix wireframe issues
+      debug: %{
+        type: TemplatedSemanticAgent,
+        config: %{
+          template: """
+          Help debug the wireframe issue the user is experiencing.
+
+          You have full access to all wireframe tools to:
+          - Inspect the current state (read_dom, capture_screenshot)
+          - Test interactions to reproduce issues (trigger_interaction)
+          - Make fixes to resolve problems (modify_elements, manage_css, manage_handlers, etc.)
+          - Explain what was wrong and how you fixed it
+
+          Use a systematic debugging approach:
+          1. Understand the problem
+          2. Inspect relevant code/state
+          3. Test to reproduce the issue
+          4. Identify the root cause
+          5. Apply fixes
+          6. Verify the fix works
+
+          Use sequential_thinking to explain your debugging process and findings.
+          """
+        },
+        transitions: [{:show_result, :always}]
+      },
+
       # Targeted change - inherits default lenses (WireframeEditor + SequentialThinking)
       targeted_change: %{
         type: TemplatedSemanticAgent,
@@ -146,7 +171,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           Make the specific change requested by the user.
 
           Use the wireframe editing tools to make focused, precise changes.
-          When done, use think_step to explain what you changed and why.
+          When done, use sequential_thinking to explain what you changed and why.
           """
         },
         transitions: [{:show_result, :always}]
@@ -166,7 +191,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           template: """
           Make broader modifications to the existing wireframe.
 
-          You may need to make multiple related changes. Use think_step to plan
+          You may need to make multiple related changes. Use sequential_thinking to plan
           your approach and explain your changes as you go.
           """
         },

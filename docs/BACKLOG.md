@@ -1,6 +1,6 @@
 # Koalemos - Development Backlog
 
-**Last Updated:** November 2, 2025
+**Last Updated:** November 14, 2025
 
 ---
 
@@ -535,19 +535,21 @@ Combining WireframeStateCache (for initial load) with PubSub (for updates) elega
 
 ---
 
-## Milestone 5: Semantic Routing & Intelligent Workflows (In Progress)
+## Milestone 5: Semantic Routing & Intelligent Workflows ✅ COMPLETE
 
 **Goal:** Build semantic routing infrastructure for intelligent agent workflows
 
-**Status:** Sprint 1 of 2 In Progress
+**Status:** Complete
 **Started:** November 12, 2025
+**Completed:** November 14, 2025
 
-**Architecture Change:**
+**Architecture Evolution:**
 - **Original Plan:** Phase-based workflow (Discovery → Structure → Behavior → Polish)
-- **Actual Implementation:** Semantic routing with intelligent branching
-- **Rationale:** More flexible, conversational, and generalizable than fixed phases
+- **Sprint 1:** Semantic routing with intelligent branching
+- **Sprint 2:** Linear playbooks pattern (when NOT to use semantic routing)
+- **Key Insight:** Use semantic routing for decisions, linear playbooks for known sequences
 
-**Sprint 1: Core Infrastructure** (In Progress)
+**Sprint 1: Core Infrastructure** ✅ Complete
 - [x] **TemplatedSemanticAgent Step** (264 lines)
   - [x] Reusable agent loop with EEx templating
   - [x] Full context access via `@context`
@@ -566,8 +568,8 @@ Combining WireframeStateCache (for initial load) with PubSub (for updates) elega
   - [x] Scope isolation per branch
   - [x] Config lenses enhance base (not replace)
 
-- [x] **WireframeDesign Demo** (~200 lines)
-  - [x] Semantic routing (answer_directly, targeted_change, build_from_scratch)
+- [x] **WireframeDesignRoutine** (~200 lines)
+  - [x] Semantic routing with 7 sub-routines
   - [x] Proper lens configuration per branch
   - [x] Manual testing and validation
 
@@ -577,19 +579,39 @@ Combining WireframeStateCache (for initial load) with PubSub (for updates) elega
   - [x] Partial success in modify_elements
   - [x] Updated tests (49 passing)
 
-- [ ] **Documentation** (Partial)
+- [x] **Documentation**
   - [x] M5 milestone doc (docs/milestones/M5.md)
   - [x] Sprint 1 plan (docs/sprints/m5-sprint-1-plan.md)
+  - [x] Semantic routing guide (docs/guides/SEMANTIC_ROUTING.md)
   - [x] BACKLOG update (this)
-  - [ ] Semantic routing guide (docs/guides/SEMANTIC_ROUTING.md)
-  - [ ] Code cleanup and polish
 
-**Sprint 2: Advanced Workflows** (Planned)
-- [ ] Additional workflow examples (semantic search, file editing)
-- [ ] Nested semantic routing
-- [ ] Conditional lens activation
-- [ ] Workflow composition patterns
-- [ ] Performance optimization
+**Sprint 2: Linear Playbooks & Polish** ✅ Complete
+- [x] **BuildWireframeRoutine** (260 lines)
+  - [x] Linear playbook: planning → layout → behavior → testing → polish → complete
+  - [x] Anti-loop instructions (screenshot verification)
+  - [x] Combined HTML + layout CSS (functional layout)
+  - [x] Demonstrates when NOT to use semantic routing
+
+- [x] **WireframeDesignRoutine Improvements** (30 lines)
+  - [x] Added interact_wireframe sub-routine (full tool access)
+  - [x] Changed to Sonnet 4.5 for routing decisions
+  - [x] Now has 7 distinct sub-routines
+
+- [x] **Observability Enhancements** (~200 lines)
+  - [x] Raw Messages tab in ChatPanel (debugging)
+  - [x] Resizable panel divider with iframe overlay fix
+  - [x] Better debugging of agent behavior
+
+- [x] **Documentation**
+  - [x] Sprint 2 summary (docs/sprints/m5-sprint-2-summary.md)
+  - [x] Linear playbook pattern in SEMANTIC_ROUTING.md
+  - [x] Updated examples to use production routines
+  - [x] M5 milestone doc updated
+
+- [x] **Tests** (180 lines)
+  - [x] WireframeDesignRoutine tests (95 lines)
+  - [x] BuildWireframeRoutine tests (85 lines)
+  - [x] 963 total tests, 0 failures
 
 **Dependencies:** M2-M4 (everything)
 
@@ -600,12 +622,13 @@ Combining WireframeStateCache (for initial load) with PubSub (for updates) elega
 - ✅ Handlers work in preview
 - ✅ Empty wireframes show correct state
 - ✅ Partial batch operations succeed
-- [ ] Multiple workflow types implemented
-- [ ] Nested routing works
-- [ ] Performance acceptable
+- ✅ Multiple workflow types implemented (semantic + linear)
+- ✅ Nested routing works (BuildWireframeRoutine called from WireframeDesignRoutine)
+- ✅ Clear documentation of both patterns
+- ⚠️ Performance benchmarks (deferred to post-M5)
 
-**Lines:** ~800 (Sprint 1)
-**Status:** Sprint 1 In Progress
+**Lines:** ~1,544 total (Sprint 1: ~800, Sprint 2: ~744)
+**Tests:** 963 tests, 0 failures
 
 ---
 

@@ -18,8 +18,9 @@ defmodule Koalemos.Routines.WireframeDesignRoutineTest do
       assert Map.has_key?(definition, :routing)
 
       # Sub-routines
-      assert Map.has_key?(definition, :answer_directly)
       assert Map.has_key?(definition, :interact_wireframe)
+      assert Map.has_key?(definition, :play)
+      assert Map.has_key?(definition, :debug)
       assert Map.has_key?(definition, :targeted_change)
       assert Map.has_key?(definition, :build_from_scratch)
       assert Map.has_key?(definition, :modify_existing)
@@ -40,8 +41,9 @@ defmodule Koalemos.Routines.WireframeDesignRoutineTest do
       transitions = definition.routing.transitions
 
       # Should have transitions to all sub-routines
-      assert Enum.find(transitions, fn {dest, _} -> dest == :answer_directly end)
       assert Enum.find(transitions, fn {dest, _} -> dest == :interact_wireframe end)
+      assert Enum.find(transitions, fn {dest, _} -> dest == :play end)
+      assert Enum.find(transitions, fn {dest, _} -> dest == :debug end)
       assert Enum.find(transitions, fn {dest, _} -> dest == :targeted_change end)
       assert Enum.find(transitions, fn {dest, _} -> dest == :build_from_scratch end)
       assert Enum.find(transitions, fn {dest, _} -> dest == :modify_existing end)

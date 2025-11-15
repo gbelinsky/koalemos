@@ -101,11 +101,36 @@ Hooks.ScrollToBottom = {
   }
 }
 
-// Auto-focus input field on page load
+// Auto-focus input field on page load and handle Enter key submit
 Hooks.AutoFocus = {
   mounted() {
     // Focus the element after a brief delay to ensure LiveView is ready
     setTimeout(() => this.el.focus(), 100)
+
+    this.handleKeyDown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        // Enter without Shift: prevent newline and trigger submit
+        e.preventDefault()
+
+        // Get the send button ID from the textarea ID (textarea is "id-textarea", button is "id-send-button")
+        const textareaId = this.el.id
+        const buttonId = textareaId.replace('-textarea', '-send-button')
+        const sendButton = document.getElementById(buttonId)
+
+        if (sendButton && !sendButton.disabled) {
+          sendButton.click()
+        }
+      }
+      // Shift+Enter: do nothing, allow default newline
+    }
+
+    this.el.addEventListener('keydown', this.handleKeyDown)
+  },
+
+  destroyed() {
+    if (this.handleKeyDown) {
+      this.el.removeEventListener('keydown', this.handleKeyDown)
+    }
   }
 }
 
@@ -177,6 +202,29 @@ let liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
   hooks: Hooks
+})
+
+// Handle download events from LiveView (blob download - works via localhost or HTTPS)
+window.addEventListener("phx:download", (e) => {
+  const { filename, content, mime_type } = e.detail
+  const blob = new Blob([content], { type: mime_type })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+})
+
+// Handle clear-input events from LiveView
+window.addEventListener("phx:clear-input", (event) => {
+  const { id } = event.detail
+  const input = document.getElementById(id)
+  if (input) {
+    input.value = ''
+  }
 })
 
 // Show progress bar on live navigation and form submits

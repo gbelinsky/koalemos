@@ -9,6 +9,7 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
   - Extracts thoughts from tool_use and tool_result messages
   """
   use Phoenix.Component
+  import KoalemosWeb.MarkdownHelper
 
   attr :messages, :list, required: true, doc: "All messages to extract thinking from"
   attr :card_id, :string, default: "thinking-card", doc: "Card ID for expand/collapse"
@@ -88,9 +89,16 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
                     <span class="text-xs font-bold text-teal-700">{thought.number}</span>
                   </div>
                   <div class="flex-1">
-                    <p class="text-sm text-slate-700 leading-relaxed">
-                      {thought.text}
-                    </p>
+                    <div class="text-sm text-slate-700 leading-relaxed prose prose-sm prose-slate max-w-none
+                                prose-p:my-1 prose-p:leading-relaxed
+                                prose-headings:mt-2 prose-headings:mb-1
+                                prose-ul:my-1 prose-ol:my-1
+                                prose-li:my-0.5
+                                prose-code:text-xs prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                                prose-pre:my-2 prose-pre:bg-slate-100
+                                prose-strong:font-semibold prose-strong:text-slate-900">
+                      {safe_markdown_to_html(thought.text)}
+                    </div>
                     <%= if thought.revision do %>
                       <span class="text-xs text-amber-600 mt-1 inline-block">
                         🔄 Revision of thought {thought.revises_thought}

@@ -50,6 +50,7 @@ defmodule KoalemosWeb.ChatPanel do
 
   alias KoalemosWeb.MessageFeed
   alias KoalemosWeb.UserInputComponent
+  alias KoalemosWeb.StatusBar
 
   @impl true
   def mount(socket) do
@@ -69,6 +70,9 @@ defmodule KoalemosWeb.ChatPanel do
       |> assign_new(:messages, fn -> Map.get(assigns, :initial_messages, []) end)
       |> assign_new(:mock_responses, fn -> Map.get(assigns, :mock_responses, false) end)
       |> assign_new(:current_step, fn -> nil end)
+      |> assign_new(:routine_module, fn -> nil end)
+      |> assign_new(:execution_stack, fn -> [] end)
+      |> assign_new(:step_module, fn -> nil end)
       |> assign_new(:show_screenshot_checkbox, fn ->
         Map.get(assigns, :show_screenshot_checkbox, false)
       end)
@@ -134,6 +138,17 @@ defmodule KoalemosWeb.ChatPanel do
           </div>
         <% end %>
       </div>
+
+      <!-- Status Bar (between conversation and input) -->
+      <.live_component
+        module={StatusBar}
+        id={"#{@id}-status"}
+        current_step={@current_step}
+        routine_module={@routine_module}
+        execution_stack={@execution_stack}
+        step_module={@step_module}
+        status={@status}
+      />
 
       <!-- User Input (flexible height at bottom, max 50% of container) -->
       <div class="border-t-2 border-slate-300/60 bg-white p-4 max-h-[50%] overflow-y-auto flex-shrink-0">

@@ -8,10 +8,11 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
   ## Architecture Pattern
 
   **Linear Sequential Flow:**
-  planning → layout_and_structure → behavior → testing → polish → complete
+  planning → layout_and_structure → behavior → testing → polish
 
   Each stage has a specific responsibility and executes in a predetermined order.
   No routing decisions - this is a known sequence for building wireframes.
+  The parent routine (WireframeDesignRoutine) handles result summarization.
 
   ## Build Stages
 
@@ -20,7 +21,6 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
   - **behavior** - Add event handlers and JavaScript interactivity
   - **testing** - Test interactions using trigger_interaction tool
   - **polish** - Add visual styling CSS (colors, typography, effects)
-  - **complete** - Summarize and return to parent routine
 
   ## Linear Playbook
 
@@ -45,7 +45,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
     ↓
   polish → add visual CSS (colors, typography, shadows)
     ↓
-  complete → summarize what was built → return to parent routine
+  (returns to parent routine's show_result step)
   ```
 
   ## Initial Context
@@ -64,7 +64,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
   Returns the routine definition as a linear build sequence.
 
   Sequential flow:
-  planning → layout_and_structure → behavior → testing → polish → complete
+  planning → layout_and_structure → behavior → testing → polish
   """
   def routine_definition do
     %{
@@ -78,7 +78,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
 
           Review the recent conversation to understand what the user asked for.
 
-          Use think_step to:
+          Use sequential_thinking to:
           1. Break down what components are needed (e.g., header, form, buttons, etc.)
           2. Plan the HTML structure and hierarchy
           3. Consider what interactions and behaviors will be needed
@@ -160,15 +160,26 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
           template: """
           Test the wireframe functionality using trigger_interaction.
 
-          Verify the wireframe works as expected:
-          - Click buttons to see if they respond
-          - Fill in forms and submit
-          - Test all interactive elements
-          - Verify JavaScript handlers execute correctly
+          TESTING APPROACH - Keep it focused and efficient:
+          - Test each interactive element ONCE to verify it works
+          - One successful verification per element is sufficient
+          - Don't retry or re-test elements that already responded correctly
+          - Move on immediately after basic verification
+
+          What to test:
+          - Click primary buttons to verify click handlers work
+          - If there's a form: fill in ONE field and submit ONCE
+          - Test one example of each interaction type (click, submit, etc.)
+          - Verify JavaScript handlers execute (check LIVE DOM STATE for changes)
+
+          COMPLETION CRITERIA:
+          - Each interactive element tested once → Done
+          - Basic functionality verified → Move to polish stage
+          - Don't aim for exhaustive testing - one verification per element is enough
 
           Use trigger_interaction to test (changes are ephemeral).
           Check the LIVE DOM STATE in context to see what happened.
-          Document what works and what might need adjustment.
+          Document what works, then MOVE ON to polish stage.
           """,
           lenses: [
             "Koalemos.Lenses.WireframeEditor",
@@ -202,26 +213,6 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
           """,
           lenses: [
             "Koalemos.Lenses.WireframeEditor",
-            "Koalemos.Lenses.SequentialThinking"
-          ]
-        },
-        transitions: [{:complete, :always}]
-      },
-
-      # Completion - signal we're done
-      complete: %{
-        type: TemplatedSemanticAgent,
-        config: %{
-          template: """
-          Summarize what was built:
-          - What components were created
-          - What functionality is available
-          - Any notable features or styling
-
-          Let the user know their wireframe is ready.
-          """,
-          lenses: [
-            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },

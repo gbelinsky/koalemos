@@ -97,29 +97,6 @@ defmodule KoalemosWeb.MessageFeed do
                 />
             <% end %>
           <% end %>
-          <!-- Thinking indicator when AI is processing -->
-          <%= if @current_step == :llm_request or @current_step == "llm_request" do %>
-            <div class="flex items-center gap-3 px-4 py-3 bg-gradient-to-br from-indigo-50/50 to-blue-50/30 rounded-2xl border-l-[3px] border-indigo-300/40 shadow-sm">
-              <div class="flex gap-1.5">
-                <div
-                  class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                  style="animation-delay: 0ms;"
-                >
-                </div>
-                <div
-                  class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                  style="animation-delay: 150ms;"
-                >
-                </div>
-                <div
-                  class="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"
-                  style="animation-delay: 300ms;"
-                >
-                </div>
-              </div>
-              <span class="text-sm text-indigo-600/80 font-medium">thinking...</span>
-            </div>
-          <% end %>
           <!-- Error card at bottom (full width) -->
           <%= if @last_error do %>
             <ErrorCard.render error_message={@last_error} card_id="routine-error" />

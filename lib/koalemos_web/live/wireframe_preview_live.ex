@@ -119,7 +119,13 @@ defmodule KoalemosWeb.WireframePreviewLive do
     if socket.assigns.routine_id == requested_id do
       Logger.info("[WireframePreviewLive] Snapshot requested, triggering client capture")
       skip_screenshot = Keyword.get(opts || [], :skip_screenshot, false)
-      {:noreply, push_event(socket, "capture_state", %{skip_screenshot: skip_screenshot})}
+      variable_names = Map.keys(socket.assigns.custom_variables)
+
+      {:noreply,
+       push_event(socket, "capture_state", %{
+         skip_screenshot: skip_screenshot,
+         variable_names: variable_names
+       })}
     else
       Logger.warning(
         "[WireframePreviewLive] Snapshot request for wrong routine_id: #{requested_id} != #{socket.assigns.routine_id}"
@@ -145,11 +151,27 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
     # Store DOM in DOMStateCache (use format expected by cache)
     if dom_tree = snapshot_data["dom_tree"] do
-      Koalemos.Caches.DOMStateCache.add_dom_state(routine_id, %{
+      cache_entry = %{
         "liveDOMTree" => dom_tree,
         "changeType" => "snapshot",
         "timestamp" => System.system_time(:millisecond)
-      })
+      }
+
+      # Include variables if captured
+      cache_entry =
+        if variables = snapshot_data["variables"] do
+          Logger.info(
+            "[WireframePreviewLive] 📦 Storing #{map_size(variables)} variable values in cache: #{inspect(variables)}"
+          )
+
+          Map.put(cache_entry, "variables", variables)
+        else
+          Logger.warning("[WireframePreviewLive] ⚠️  No variables in snapshot_data")
+          cache_entry
+        end
+
+      Koalemos.Caches.DOMStateCache.add_dom_state(routine_id, cache_entry)
+      Logger.info("[WireframePreviewLive] ✓ Cache entry stored with keys: #{inspect(Map.keys(cache_entry))}")
     end
 
     # Store console messages in ConsoleCache (if any new messages)
@@ -422,7 +444,7 @@ defmodule KoalemosWeb.WireframePreviewLive do
     end
   end
 
-  defp render_custom_css(custom_css) when is_map(custom_css) do
+  def render_custom_css(custom_css) when is_map(custom_css) do
     custom_css
     |> Enum.map(fn {selector, rules} ->
       # Handle both string format and structured format
@@ -450,16 +472,16 @@ defmodule KoalemosWeb.WireframePreviewLive do
     |> Enum.join("\n")
   end
 
-  defp render_custom_css(_), do: ""
+  def render_custom_css(_), do: ""
 
-  defp render_dom_tree(nil), do: ""
+  def render_dom_tree(nil), do: ""
 
-  defp render_dom_tree(%{} = tree) do
+  def render_dom_tree(%{} = tree) do
     # Only wrap in Phoenix.HTML.raw at the top level
     Phoenix.HTML.raw(render_element_as_string(tree))
   end
 
-  defp render_dom_tree(_invalid), do: ""
+  def render_dom_tree(_invalid), do: ""
 
   # Recursive function that returns plain strings (no {:safe, _} tuples)
   defp render_element_as_string(%{tag: tag} = element) when is_binary(tag) do
@@ -557,7 +579,7 @@ defmodule KoalemosWeb.WireframePreviewLive do
       (is_map(handlers) && map_size(handlers) > 0)
   end
 
-  defp render_custom_variables(variables) when is_map(variables) and map_size(variables) > 0 do
+  def render_custom_variables(variables) when is_map(variables) and map_size(variables) > 0 do
     variables
     |> Enum.map(fn {name, value} ->
       # Encode value as JSON for safe JavaScript representation
@@ -567,9 +589,9 @@ defmodule KoalemosWeb.WireframePreviewLive do
     |> Enum.join("\n")
   end
 
-  defp render_custom_variables(_), do: ""
+  def render_custom_variables(_), do: ""
 
-  defp render_custom_functions(functions) when is_map(functions) and map_size(functions) > 0 do
+  def render_custom_functions(functions) when is_map(functions) and map_size(functions) > 0 do
     functions
     |> Enum.map(fn {name, code} ->
       # Functions are stored as arrow function code: "function() { ... }"
@@ -579,9 +601,9 @@ defmodule KoalemosWeb.WireframePreviewLive do
     |> Enum.join("\n\n")
   end
 
-  defp render_custom_functions(_), do: ""
+  def render_custom_functions(_), do: ""
 
-  defp render_init_scripts(init_scripts)
+  def render_init_scripts(init_scripts)
        when is_map(init_scripts) and map_size(init_scripts) > 0 do
     # Execute init scripts, handling both initial load and reload cases
     scripts_code =
@@ -602,5 +624,5 @@ defmodule KoalemosWeb.WireframePreviewLive do
     """
   end
 
-  defp render_init_scripts(_), do: ""
+  def render_init_scripts(_), do: ""
 end

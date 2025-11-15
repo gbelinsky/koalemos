@@ -103,11 +103,19 @@ defmodule Koalemos.Lenses.WireframeEditor do
         {:snapshot_ready, ^routine_id, _timestamp} ->
           Logger.debug("[WireframeEditor] Snapshot ready, fetching from caches")
 
-          # Fetch from caches
-          dom_tree =
+          # Fetch from caches (use string keys to match what wireframe_preview_live.ex stores)
+          {dom_tree, variables} =
             case DOMStateCache.get_dom_state(routine_id) do
-              nil -> nil
-              dom_state when is_map(dom_state) -> Map.get(dom_state, :live_dom_tree)
+              nil ->
+                Logger.warning("[WireframeEditor] 📭 No DOM state in cache")
+                {nil, %{}}
+
+              dom_state when is_map(dom_state) ->
+                Logger.info("[WireframeEditor] 📥 Cache keys available: #{inspect(Map.keys(dom_state))}")
+                tree = Map.get(dom_state, :live_dom_tree)
+                vars = Map.get(dom_state, :variables, %{})
+                Logger.info("[WireframeEditor] 📊 Extracted #{map_size(vars)} variables: #{inspect(vars)}")
+                {tree, vars}
             end
 
           # Get all console messages from the session (up to limit)
@@ -141,6 +149,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
           running_state = %{
             dom_tree: dom_tree,
+            variables: variables,
             console_output: console_output || [],
             screenshot: screenshot_data,
             captured_at: DateTime.utc_now(),
@@ -829,10 +838,15 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
   defp build_variables_section(%{custom_variables: vars}, %{variables: runtime_vars})
        when map_size(vars) > 0 do
+    Logger.info("[WireframeEditor] 🔍 Building variables section:")
+    Logger.info("  - Designed vars (#{map_size(vars)}): #{inspect(Map.keys(vars))}")
+    Logger.info("  - Runtime vars (#{map_size(runtime_vars || %{})}): #{inspect(runtime_vars)}")
+
     var_list =
       Enum.map_join(vars, "\n", fn {name, initial} ->
         current = Map.get(runtime_vars || %{}, name)
         status = if current == initial, do: "", else: " ⚠️ (current: #{inspect(current)})"
+        Logger.info("  - Variable '#{name}': initial=#{inspect(initial)}, current=#{inspect(current)}")
         "- #{name} = #{inspect(initial)}#{status}"
       end)
 
