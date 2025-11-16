@@ -5,8 +5,7 @@ defmodule KoalemosWeb.StartSessionModalTest do
   alias KoalemosWeb.StartSessionModal
 
   setup do
-    # Start necessary processes
-    {:ok, _} = start_supervised(Koalemos.SimpleCredentialManager)
+    # Credential manager already running globally from application.ex
     :ok
   end
 

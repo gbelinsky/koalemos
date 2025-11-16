@@ -28,20 +28,12 @@ defmodule Koalemos.Application do
       # Lens state for wireframe preview
       Koalemos.Caches.WireframeStateCache,
       # NodeJS Supervisor - for JavaScript parsing
-      {NodeJS.Supervisor, [path: Path.join([:code.priv_dir(:koalemos), "nodejs"]), pool_size: 4]}
+      {NodeJS.Supervisor, [path: Path.join([:code.priv_dir(:koalemos), "nodejs"]), pool_size: 4]},
+      # Credential manager
+      Koalemos.SimpleCredentialManager,
+      # Web endpoint
+      KoalemosWeb.Endpoint
     ]
-
-    # Add credential manager only in non-test environments
-    # Tests start their own instances for better isolation
-    children =
-      if Mix.env() != :test do
-        children ++ [Koalemos.SimpleCredentialManager]
-      else
-        children
-      end
-
-    # Web endpoint
-    children = children ++ [KoalemosWeb.Endpoint]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

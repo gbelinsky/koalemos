@@ -69,3 +69,10 @@ config :phoenix_live_view,
   debug_heex_annotations: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+# Event logging configuration (for debugging)
+config :koalemos,
+  # Enable event logging in development
+  enable_event_logging: true,
+  # Write to tmp directory (not included in releases)
+  event_log_path: "tmp/events.log"
