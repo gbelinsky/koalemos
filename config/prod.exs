@@ -10,5 +10,10 @@ config :koalemos, KoalemosWeb.Endpoint, cache_static_manifest: "priv/static/cach
 # Do not print debug messages in production
 config :logger, level: :info
 
+# Event logging configuration
+config :koalemos,
+  # Disable event logging in production (it's for debugging only)
+  enable_event_logging: false
+
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.
