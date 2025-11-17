@@ -56,7 +56,6 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
   alias Koalemos.Integrations.ParsingIntegration
   require Logger
 
-  @fixtures_path "test/fixtures"
   @sample_files %{
     "simple" => "wireframe_simple.html",
     "medium" => "wireframe_medium.html",
@@ -334,7 +333,9 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
          "Unknown sample: #{sample_id}. Available: #{Map.keys(@sample_files) |> Enum.join(", ")}"}
 
       filename ->
-        path = Path.join([@fixtures_path, filename])
+        # Compute path at runtime for release compatibility
+        fixtures_path = Path.join([:code.priv_dir(:koalemos), "wireframes"])
+        path = Path.join([fixtures_path, filename])
 
         case File.read(path) do
           {:ok, content} -> {:ok, content}

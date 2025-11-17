@@ -43,7 +43,6 @@ defmodule Koalemos.LLMProviders.Ollama do
 
   require Logger
 
-  @default_base_url "http://localhost:11434"
   @default_model "llama2"
   @default_max_tokens 16384
   @default_temperature 0.1
@@ -107,7 +106,11 @@ defmodule Koalemos.LLMProviders.Ollama do
 
   # Make HTTP request to Ollama API
   defp make_request(credentials, json_body, _routine_id) do
-    base_url = credentials.base_url || @default_base_url
+    # Priority order for base_url:
+    # 1. OLLAMA_BASE_URL environment variable (highest - for Docker/config)
+    # 2. credentials.base_url (from credential store)
+    # 3. http://localhost:11434 (default fallback)
+    base_url = System.get_env("OLLAMA_BASE_URL") || credentials.base_url || "http://localhost:11434"
     url = "#{base_url}/v1/chat/completions"
 
     # Ollama doesn't require authentication headers

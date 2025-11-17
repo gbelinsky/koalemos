@@ -36,7 +36,6 @@ defmodule KoalemosWeb.WireframeTestLive do
   alias Koalemos.Routines.{WireframeTestRoutine, WireframeDesignRoutine}
   alias KoalemosWeb.ChatPanel
 
-  @fixtures_path "test/fixtures"
   @available_samples [
     {"simple", "Simple Wireframe", "wireframe_simple.html"},
     {"medium", "Medium Wireframe", "wireframe_medium.html"},
@@ -1176,7 +1175,9 @@ defmodule KoalemosWeb.WireframeTestLive do
   defp load_sample_html(sample_id) do
     case Enum.find(@available_samples, fn {id, _name, _file} -> id == sample_id end) do
       {_id, _name, filename} ->
-        path = Path.join([@fixtures_path, filename])
+        # Compute path at runtime for release compatibility
+        fixtures_path = Path.join([:code.priv_dir(:koalemos), "wireframes"])
+        path = Path.join([fixtures_path, filename])
 
         case File.read(path) do
           {:ok, content} -> {:ok, content}

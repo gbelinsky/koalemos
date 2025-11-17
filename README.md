@@ -154,6 +154,38 @@ GenServer-based execution engine that:
    - Wireframe test: http://localhost:4000/test/wireframe
    - Lens combinator: http://localhost:4000/test/lens-combinator
 
+### Docker Deployment
+
+Build and run Koalemos in a Docker container:
+
+```bash
+# Build the image
+docker build -t koalemos:latest .
+
+# Run with environment variables
+docker run --rm \
+  -p 8080:4000 \
+  --add-host=host.docker.internal:host-gateway \
+  -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+  -e PORT=4000 \
+  koalemos:latest
+
+# Or use host networking (Linux only)
+docker run --rm \
+  --network host \
+  -e PORT=8080 \
+  -e OLLAMA_BASE_URL=http://localhost:11434 \
+  koalemos:latest
+```
+
+**Environment Variables:**
+- `PORT` - Web server port (default: 4000)
+- `OLLAMA_BASE_URL` - Ollama API endpoint (default: http://localhost:11434)
+- `SECRET_KEY_BASE` - Crypto key (auto-generated if not set)
+- `PHX_SERVER` - Start server (default: true)
+
+**Note:** Credentials are managed through the web UI. The container uses ephemeral storage, so credentials are lost on restart.
+
 ### Your First Lens
 
 Create a simple context-only lens:
@@ -281,14 +313,14 @@ Infrastructure
 ### Run Tests
 
 ```bash
-# All tests (excludes real API tests)
-mix test
+# All tests (excludes pending and real API tests)
+mix test --exclude pending --exclude real_api
 
 # With coverage
-mix coveralls
+mix coveralls --exclude pending --exclude real_api
 
-# Include real API tests (requires credentials)
-mix test --include real_api
+# Include real API tests (requires valid credentials in .koalemos/.credentials.json)
+mix test --exclude pending
 ```
 
 ### Manual Testing
