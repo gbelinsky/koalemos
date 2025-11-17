@@ -13,7 +13,8 @@
 - [x] **BUG-001: OAuth invalid_grant** - Simplified credential refresh (always reload from disk)
 
 ### Documentation
-- [ ] **README Quick Start** - Clear setup instructions (deps, credentials, run)
+- [x] **README Quick Start** - Clear setup instructions (deps, credentials, run, Docker) (DONE: Updated with Docker deployment section)
+- [ ] **Documentation Overhaul** - Sanitize and update all documentation to ensure it's current and accurate
 - [ ] **Usage Guide** - How to use the wireframe editor demo
 - [ ] **Credentials Setup** - How to add API keys to `.koalemos/.credentials.json`
 
@@ -37,9 +38,10 @@
 - [x] **Return key submit** - Make return key work on user input component (DONE: Enter submits, Shift+Enter newline)
 
 ### Docker Container (Production-Ready)
-- [ ] **Dockerfile** - Multi-stage build for production
+- [x] **Dockerfile** - Multi-stage build for production (DONE: Node.js 20, priv/wireframes, npm dependencies)
 - [ ] **docker-compose.yml** - Easy local development setup
 - [ ] **Container Publishing** - Publish to Docker Hub/GHCR for one-command quick start
+- [x] **Configuration Management** - Support environment variables (OLLAMA_BASE_URL, PORT, SECRET_KEY_BASE) with proper precedence (DONE: env > credentials > defaults)
 - [ ] **Credentials Handling** - Document how to pass API keys to container (env vars or volume mount)
 - [ ] **Build & Test** - Verify container builds and runs successfully
 
@@ -84,6 +86,7 @@
 ## Post-Demo Work (Future Improvements)
 
 **Technical debt and improvements to address after demo:**
+- **Generalized config management subsystem** - Refactor scattered environment variables (OLLAMA_BASE_URL, PORT, etc.) into a centralized config system with clear precedence rules: env vars > config files > defaults. Current implementation works but has config spread across multiple modules.
 - **Robust user step detection** - Currently hardcoded to check if `step_module == Koalemos.Steps.User.ChatUserInput`. Should detect by checking `waiting_for` state and event types (e.g., `:user_input`) instead of hardcoding step modules.
 - **StatusBar polish** - Review StatusBar behavior with multiple routine types and edge cases
 - **Integrate Persona lens** - Add persona/agent configuration system to routines for customizable agent behavior and tone
@@ -94,7 +97,7 @@
 
 **M6 Started:** 2025-11-14
 **Current Status:** In Progress
-**Completed:** 12/21 critical items
+**Completed:** 15/22 critical items (Docker build + config management + README done)
 
 ### Sprint 1: Bug Fixes & Core Docs
 - [x] Fix flicker (BUG-004)

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complex Wireframe - Dashboard</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            gap: 2rem;
+        }
+
+        nav a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: #667eea;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            height: fit-content;
+        }
+
+        .sidebar-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-section h3 {
+            color: #667eea;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 0.5rem;
+            margin-bottom: 0.25rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .sidebar-menu li:hover,
+        .sidebar-menu li.active {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin: 0 0 0.5rem 0;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-change {
+            font-size: 0.9rem;
+            color: #10b981;
+            margin-top: 0.5rem;
+        }
+
+        .stat-change.negative {
+            color: #ef4444;
+        }
+
+        .content-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header h2 {
+            margin: 0;
+            color: #333;
+        }
+
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .button.secondary {
+            background: #6b7280;
+        }
+
+        .button.secondary:hover {
+            background: #4b5563;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .data-table th {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .data-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo">Complex Dashboard</div>
+                <nav>
+                    <ul>
+                        <li><a href="#overview">Overview</a></li>
+                        <li><a href="#analytics">Analytics</a></li>
+                        <li><a href="#reports">Reports</a></li>
+                        <li><a href="#settings">Settings</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>Main Menu</h3>
+                    <ul class="sidebar-menu">
+                        <li class="active" id="menu-dashboard">Dashboard</li>
+                        <li id="menu-projects">Projects</li>
+                        <li id="menu-tasks">Tasks</li>
+                        <li id="menu-team">Team</li>
+                    </ul>
+                </div>
+                <div class="sidebar-section">
+                    <h3>Quick Actions</h3>
+                    <ul class="sidebar-menu">
+                        <li id="new-project-btn">New Project</li>
+                        <li id="new-task-btn">New Task</li>
+                        <li id="invite-btn">Invite Member</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <div class="main-content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Projects</h3>
+                        <div id="total-projects" class="stat-value">24</div>
+                        <div class="stat-change">+3 this month</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Active Tasks</h3>
+                        <div id="active-tasks" class="stat-value">156</div>
+                        <div class="stat-change">+12 this week</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Team Members</h3>
+                        <div id="team-members" class="stat-value">8</div>
+                        <div class="stat-change">+1 this month</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Completion Rate</h3>
+                        <div id="completion-rate" class="stat-value">87%</div>
+                        <div class="stat-change negative">-2% this week</div>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="card-header">
+                        <h2>Project Overview</h2>
+                        <button id="refresh-btn" class="button">Refresh Data</button>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Project Name</th>
+                                <th>Status</th>
+                                <th>Progress</th>
+                                <th>Due Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projects-table">
+                            <tr>
+                                <td>Website Redesign</td>
+                                <td>Active</td>
+                                <td>75%</td>
+                                <td>2025-12-15</td>
+                                <td><button class="button secondary">View</button></td>
+                            </tr>
+                            <tr>
+                                <td>Mobile App</td>
+                                <td>Active</td>
+                                <td>45%</td>
+                                <td>2026-01-30</td>
+                                <td><button class="button secondary">View</button></td>
+                            </tr>
+                            <tr>
+                                <td>API Integration</td>
+                                <td>Completed</td>
+                                <td>100%</td>
+                                <td>2025-11-01</td>
+                                <td><button class="button secondary">View</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="project-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Project</h2>
+                <button id="close-modal" class="close-button">×</button>
+            </div>
+            <form id="project-form">
+                <div class="form-group">
+                    <label for="project-name">Project Name</label>
+                    <input type="text" id="project-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="project-status">Status</label>
+                    <select id="project-status">
+                        <option value="planning">Planning</option>
+                        <option value="active">Active</option>
+                        <option value="on-hold">On Hold</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="project-description">Description</label>
+                    <textarea id="project-description" rows="4"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="cancel-btn" class="button secondary">Cancel</button>
+                    <button type="submit" class="button">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ===== APPLICATION STATE (window.* for parseability) =====
+
+        window.currentView = 'dashboard';
+        window.isRefreshing = false;
+        window.projectCount = 24;
+
+        // ===== MODAL FUNCTIONS (parseable pattern) =====
+
+        window.openModal = function() {
+            var modal = document.getElementById('project-modal');
+            modal.classList.add('show');
+        };
+
+        window.closeModal = function() {
+            var modal = document.getElementById('project-modal');
+            modal.classList.remove('show');
+        };
+
+        window.resetForm = function() {
+            document.getElementById('project-name').value = '';
+            document.getElementById('project-status').value = 'planning';
+            document.getElementById('project-description').value = '';
+        };
+
+        // ===== PROJECT FUNCTIONS (parseable pattern) =====
+
+        window.addProject = function(name, status) {
+            var table = document.getElementById('projects-table');
+            var newRow = table.insertRow(0);
+            newRow.innerHTML = '<td>' + name + '</td>' +
+                              '<td>' + status + '</td>' +
+                              '<td>0%</td>' +
+                              '<td>TBD</td>' +
+                              '<td><button class="button secondary">View</button></td>';
+
+            window.projectCount++;
+            document.getElementById('total-projects').textContent = window.projectCount;
+        };
+
+        window.handleFormSubmit = function(event) {
+            event.preventDefault();
+
+            var projectName = document.getElementById('project-name').value;
+            var projectStatus = document.getElementById('project-status').value;
+            var projectDescription = document.getElementById('project-description').value;
+
+            console.log('New project:', projectName, projectStatus, projectDescription);
+
+            window.addProject(projectName, projectStatus);
+            window.closeModal();
+            window.resetForm();
+        };
+
+        // ===== REFRESH FUNCTIONS (parseable pattern) =====
+
+        window.refreshData = function() {
+            if (window.isRefreshing) return;
+
+            window.isRefreshing = true;
+            var btn = document.getElementById('refresh-btn');
+            btn.textContent = 'Refreshing...';
+
+            setTimeout(function() {
+                btn.textContent = 'Refresh Data';
+                window.isRefreshing = false;
+                console.log('Data refreshed');
+            }, 1000);
+        };
+
+        // ===== MENU FUNCTIONS (parseable pattern) =====
+
+        window.switchView = function(view, elementId) {
+            window.currentView = view;
+            console.log('Switching to view:', view);
+
+            // Update active menu item
+            var menuItems = document.querySelectorAll('.sidebar-menu li');
+            for (var i = 0; i < menuItems.length; i++) {
+                menuItems[i].classList.remove('active');
+            }
+            document.getElementById(elementId).classList.add('active');
+        };
+
+        // ===== EVENT HANDLERS (parseable pattern - direct attachment) =====
+
+        // Modal controls
+        document.getElementById('new-project-btn').addEventListener('click', function() {
+            window.openModal();
+        });
+
+        document.getElementById('close-modal').addEventListener('click', function() {
+            window.closeModal();
+        });
+
+        document.getElementById('cancel-btn').addEventListener('click', function() {
+            window.closeModal();
+        });
+
+        document.getElementById('project-modal').addEventListener('click', function(e) {
+            if (e.target.id === 'project-modal') {
+                window.closeModal();
+            }
+        });
+
+        // Form submission
+        document.getElementById('project-form').addEventListener('submit', function(e) {
+            window.handleFormSubmit(e);
+        });
+
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', function() {
+            window.refreshData();
+        });
+
+        // Menu items
+        document.getElementById('menu-dashboard').addEventListener('click', function() {
+            window.switchView('dashboard', 'menu-dashboard');
+        });
+
+        document.getElementById('menu-projects').addEventListener('click', function() {
+            window.switchView('projects', 'menu-projects');
+        });
+
+        document.getElementById('menu-tasks').addEventListener('click', function() {
+            window.switchView('tasks', 'menu-tasks');
+        });
+
+        document.getElementById('menu-team').addEventListener('click', function() {
+            window.switchView('team', 'menu-team');
+        });
+
+        // Log initialization
+        console.log('Complex wireframe initialized successfully');
+    </script>
+</body>
+</html>

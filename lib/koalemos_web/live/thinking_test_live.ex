@@ -22,7 +22,8 @@ defmodule KoalemosWeb.ThinkingTestLive do
         messages: [],
         current_step: nil,
         recent_events: [],
-        show_debug: Mix.env() == :dev,
+        # Only show debug in dev mode (Mix not available in releases)
+        show_debug: Code.ensure_loaded?(Mix) and Mix.env() == :dev,
         status: :running,
         last_error: nil
       )

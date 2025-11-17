@@ -29,7 +29,8 @@ defmodule KoalemosWeb.RoutineChatLive do
        last_error: nil,
        config: %{llm_provider: "anthropic", model: "claude-haiku-4-5"},
        recent_events: [],
-       show_debug: Mix.env() == :dev,
+       # Only show debug in dev mode (Mix not available in releases)
+       show_debug: Code.ensure_loaded?(Mix) and Mix.env() == :dev,
        show_modal: false
      )}
   end

@@ -7,8 +7,6 @@ defmodule Koalemos.OllamaClient do
 
   require Logger
 
-  @default_base_url "http://localhost:11434"
-
   @doc """
   Check if Ollama server is reachable.
 
@@ -22,7 +20,10 @@ defmodule Koalemos.OllamaClient do
       iex> OllamaClient.check_connection("http://localhost:99999")
       {:error, "Connection refused"}
   """
-  def check_connection(base_url \\ @default_base_url) do
+  def check_connection(base_url \\ nil) do
+    # Allow configuring Ollama URL via environment variable (useful for Docker)
+    # Compute at runtime, not compile time
+    base_url = base_url || System.get_env("OLLAMA_BASE_URL") || "http://localhost:11434"
     url = "#{base_url}/api/tags"
 
     try do
@@ -63,7 +64,10 @@ defmodule Koalemos.OllamaClient do
       iex> OllamaClient.list_models("http://localhost:99999")
       {:error, "Connection refused - is Ollama running at http://localhost:99999?"}
   """
-  def list_models(base_url \\ @default_base_url) do
+  def list_models(base_url \\ nil) do
+    # Allow configuring Ollama URL via environment variable (useful for Docker)
+    # Compute at runtime, not compile time
+    base_url = base_url || System.get_env("OLLAMA_BASE_URL") || "http://localhost:11434"
     url = "#{base_url}/api/tags"
 
     try do
