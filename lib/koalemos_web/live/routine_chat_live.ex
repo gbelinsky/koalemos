@@ -13,7 +13,7 @@ defmodule KoalemosWeb.RoutineChatLive do
   use KoalemosWeb, :live_view
   require Logger
 
-  alias KoalemosWeb.{ChatPanel, StartSessionModal}
+  alias KoalemosWeb.{ChatPanel, StartSessionModal, ErrorDisplay}
   alias Koalemos.{EngineManager, Engine}
   alias Koalemos.Routines.TestChatRoutine
 
@@ -397,6 +397,12 @@ defmodule KoalemosWeb.RoutineChatLive do
         class="flex-1 overflow-hidden"
       >
         <div class="max-w-6xl mx-auto h-full">
+          <!-- Error Display -->
+          <%= if @last_error do %>
+            <div class="px-4 py-4">
+              <ErrorDisplay.error_banner error={@last_error} />
+            </div>
+          <% end %>
           <.live_component
             module={ChatPanel}
             id="chat-panel"

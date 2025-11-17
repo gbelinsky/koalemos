@@ -67,9 +67,9 @@ GenServer-based execution engine that:
 
 ---
 
-## Features (Milestone 4)
+## Features
 
-### M4 Highlights
+### Current Capabilities (M6 Demo Release)
 
 **Advanced Lens System:**
 - ✅ PersonaLens (dimensional persona configuration)
@@ -342,22 +342,22 @@ Interactive test pages:
 
 ## Project Status
 
-**Current Milestone:** M4 (Advanced Lens System) - Sprint 8 of 8
+**Current Milestone:** M6 (Demo Release) - Final Polish
 
 **Completed:**
-- ✅ M1: Engine Foundation (79.2% coverage, 235 tests)
-- ✅ M2: UI Foundation + Simple Agent Loop (chat works)
+- ✅ M1: Engine Foundation
+- ✅ M2: UI Foundation + Simple Agent Loop
 - ✅ M3: Infrastructure (screenshots, parsers, provider config)
-- ✅ M4 Sprint 1-7: Three advanced lenses, tool execution, feedback loop
+- ✅ M4: Advanced Lens System (tool execution, feedback loop)
+- ✅ M5: WireframeDesign Routine (end-to-end workflow)
 
-**In Progress:**
-- 🔄 M4 Sprint 8: Developer documentation, production roadmap
+**M6 In Progress:**
+- 🔄 Demo polish (landing page, example flow, error messages)
+- 🔄 Documentation overhaul (setup guides, usage guide)
+- 🔄 Docker deployment (compose, env config)
+- ⏳ Quality assurance (testing, bug fixes)
 
-**Next:**
-- M5: WireframeDesign Routine (end-to-end workflow with phases)
-- M6: Polish & Production-Ready (deployment, monitoring, docs)
-
-→ **Full roadmap:** [`docs/BACKLOG.md`](docs/BACKLOG.md)
+**Test Coverage:** 92.4% (1003 tests passing)
 
 ---
 

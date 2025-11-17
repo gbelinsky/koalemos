@@ -5,16 +5,16 @@ defmodule KoalemosWeb.HomeLiveTest do
     conn = get(conn, ~p"/")
     response = html_response(conn, 200)
 
-    assert response =~ "koalemos"
-    assert response =~ "your ai conversation companion"
-    assert response =~ "start chat session"
+    assert response =~ "welcome to koalemos"
+    assert response =~ "koalemos is running"
+    assert response =~ "a developer framework for building conversational AI applications"
   end
 
   test "displays start button", %{conn: conn} do
     conn = get(conn, ~p"/")
     response = html_response(conn, 200)
 
-    assert response =~ "start chat session"
+    assert response =~ "start chat"
   end
 
   test "has link to test pages", %{conn: conn} do

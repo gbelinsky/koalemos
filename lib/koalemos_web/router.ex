@@ -18,6 +18,7 @@ defmodule KoalemosWeb.Router do
     pipe_through :browser
 
     live "/", HomeLive
+    live "/example/login-form", ExampleGuideLive
     live "/chat/:routine_id", RoutineChatLive
 
     # Test pages

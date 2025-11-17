@@ -1,6 +1,6 @@
 # Contributing to Koalemos
 
-**Status:** Active development (Milestone 2+)
+**Status:** Active development - M6 (Demo Release)
 
 ---
 
@@ -20,7 +20,7 @@ We use Git Flow for structured development:
    ```bash
    git checkout develop
    git pull origin develop
-   git checkout -b feature/m2-ui-foundation
+   git checkout -b feature/my-feature-name
    ```
 
 2. **Develop and Test**
@@ -41,9 +41,9 @@ We use Git Flow for structured development:
 
 4. **Create Pull Request**
    - Target: `develop` branch
-   - Title: Descriptive (e.g., "M2: Add basic LiveView chat interface")
+   - Title: Descriptive (e.g., "Add persona configuration to chat interface")
    - Description: What changed, why, test results
-   - Link to milestone/issue if applicable
+   - Link to issue if applicable
 
 5. **Code Review**
    - At least one approval required
@@ -54,24 +54,20 @@ We use Git Flow for structured development:
    - Squash commits if many small ones
    - Delete feature branch after merge
 
-7. **Milestone Release**
-   - When milestone complete, merge `develop` → `main`
-   - Tag release: `git tag v2.0.0-milestone2`
+7. **Release**
+   - When release ready, merge `develop` → `main`
+   - Tag release: `git tag v1.0.0`
    - Push tags: `git push --tags`
 
 ---
 
-## Milestone Structure
+## Project Status
 
-See [BACKLOG.md](./BACKLOG.md) for detailed milestone breakdown.
+**Current Status:** M6 Demo Release
+- ✅ M1-M5: Core framework complete (Engine, Lenses, Routines, Wireframe Editor)
+- 🚧 M6: Demo polish and documentation (in progress)
 
-**Current Milestones:**
-- ✅ M1: Foundation (complete)
-- 🚧 M2: UI Foundation + Simple Agent Loop (in progress)
-- ⏳ M3: Infrastructure Layer
-- ⏳ M4: WireframeEditor Lens
-- ⏳ M5: WireframeDesign Routine (MVP complete)
-- ⏳ M6: Polish & Production-Ready
+See `docs/internal/` for detailed milestone history and development tracking.
 
 ---
 
@@ -90,11 +86,10 @@ See [BACKLOG.md](./BACKLOG.md) for detailed milestone breakdown.
 - Target: >85% test coverage
 - Run: `mix test` or `mix coveralls.detail`
 
-**Naming:**
-- See [NAMING.md](./NAMING.md) for conventions
-- Modules: `PascalCase`
-- Functions: `snake_case`
-- Atoms: `:snake_case`
+**Naming Conventions:**
+- Modules: `PascalCase` (e.g., `Koalemos.Lenses.PersonaLens`)
+- Functions: `snake_case` (e.g., `provide_context/2`)
+- Atoms: `:snake_case` (e.g., `:llm_provider`)
 
 ### LiveView/JavaScript
 
@@ -168,11 +163,10 @@ end
 
 ### When to Update Docs
 
-- **BACKLOG.md** - When completing milestones, marking todos done
-- **COVERAGE_LOG.md** - After each phase/milestone, log test coverage
-- **ARCHITECTURE.md** - When adding major components or changing design
-- **NAMING.md** - When establishing new naming conventions
 - **README.md** - When changing setup, requirements, or usage
+- **ARCHITECTURE.md** - When adding major components or changing design
+- **guides/** - When adding new lenses, routines, or features
+- **CHANGELOG.md** - For any user-facing changes
 
 ### Documentation Style
 
@@ -208,15 +202,13 @@ mix phx.server
 
 ## Release Process
 
-**Milestone Release:**
-1. Complete all milestone todos
-2. Run full test suite: `mix test`
-3. Update COVERAGE_LOG.md with final stats
-4. Update BACKLOG.md (mark milestone complete)
-5. Merge `develop` → `main`
-6. Tag release: `git tag v2.0.0-milestone2 -m "Milestone 2: UI Foundation + Simple Agent Loop"`
-7. Push: `git push origin main --tags`
-8. Create GitHub release with changelog
+**Creating a Release:**
+1. Ensure all tests pass: `mix test`
+2. Update CHANGELOG.md with changes
+3. Merge `develop` → `main`
+4. Tag release: `git tag v1.0.0 -m "Release v1.0.0: Description"`
+5. Push: `git push origin main --tags`
+6. Create GitHub release with changelog
 
 ---
 

@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  koalemos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      # Server configuration
+      - PORT=4000
+      - PHX_SERVER=true
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE:-}
+
+      # LLM Provider configuration (choose one or configure multiple)
+      # Anthropic Claude
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-5}
+
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+
+      # Ollama (local models)
+      # Use host.docker.internal to reach Ollama running on host machine
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
+
+      # Provider selection (anthropic, openai, or ollama)
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+
+    # Optional: Mount credentials file (alternative to environment variables)
+    # volumes:
+    #   - ./.koalemos:/app/.koalemos:ro
+
+    # Optional: Use host networking (Linux only, better for Ollama access)
+    # network_mode: "host"
+
+    # Add host.docker.internal mapping for non-Docker Desktop environments
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Run Ollama in a separate container (instead of on host)
+  # Uncomment this section if you want Ollama fully containerized
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   restart: unless-stopped
+  #   # For GPU support (NVIDIA):
+  #   # deploy:
+  #   #   resources:
+  #   #     reservations:
+  #   #       devices:
+  #   #         - driver: nvidia
+  #   #           count: 1
+  #   #           capabilities: [gpu]
+
+# Optional: Volume for Ollama data persistence
+# volumes:
+#   ollama_data:
