@@ -8,7 +8,6 @@ defmodule KoalemosWeb.ErrorDisplay do
   - Expandable technical details
   """
   use Phoenix.Component
-  import KoalemosWeb.CoreComponents
 
   alias KoalemosWeb.ErrorHelper
 

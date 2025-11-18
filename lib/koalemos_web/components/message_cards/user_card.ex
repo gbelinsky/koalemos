@@ -40,12 +40,12 @@ defmodule KoalemosWeb.MessageCards.UserCard do
 
     ~H"""
     <div
-      class="bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 border-l-[6px] border-t border-r-2 border-blue-400/60 rounded-2xl shadow-[2px_4px_12px_-2px_rgba(59,130,246,0.15)] hover:shadow-[3px_6px_16px_-2px_rgba(59,130,246,0.25)] transition-all duration-300"
+      class="bg-gradient-to-br from-slate-50 to-blue-50/30 p-3 border-l-[6px] border-t border-r-2 border-blue-400/60 rounded-2xl shadow-[2px_4px_12px_-2px_rgba(59,130,246,0.15)] hover:shadow-[3px_6px_16px_-2px_rgba(59,130,246,0.25)] transition-all duration-300"
       id={@card_id}
     >
       <!-- Header with label and expand/collapse button -->
-      <div class="flex items-center justify-between mb-2.5">
-        <div class="text-[0.65rem] font-medium text-blue-600/80 tracking-wider flex items-center gap-2">
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="text-[0.6rem] font-medium text-blue-600/80 tracking-wider flex items-center gap-1.5">
           <span>you</span>
           <%= if @has_images && !@expanded do %>
             <KoalemosWeb.MessageCards.ImageGallery.render
@@ -62,7 +62,7 @@ defmodule KoalemosWeb.MessageCards.UserCard do
             phx-click={@on_collapse}
             phx-value-card={@card_id}
             phx-target={@target}
-            class="text-blue-400/60 hover:text-blue-600 hover:bg-blue-50/50 transition-all px-3 py-2 rounded-lg text-sm"
+            class="text-blue-400/60 hover:text-blue-600 hover:bg-blue-50/50 transition-all px-2 py-1 rounded-lg text-xs"
             title="Collapse images"
           >
             ▲ collapse
@@ -71,12 +71,12 @@ defmodule KoalemosWeb.MessageCards.UserCard do
       </div>
       <!-- Tool Results -->
       <%= if @has_tool_results do %>
-        <div class="space-y-2 mb-2.5">
+        <div class="space-y-1.5 mb-2">
           <%= for tool_result <- @tool_results do %>
-            <div class="bg-green-50/50 border border-green-200 rounded-lg p-3">
-              <div class="flex items-center gap-2 mb-1">
+            <div class="bg-green-50/50 border border-green-200 rounded-lg p-2">
+              <div class="flex items-center gap-1.5 mb-0.5">
                 <svg
-                  class="w-4 h-4 text-green-600"
+                  class="w-3.5 h-3.5 text-green-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -88,11 +88,11 @@ defmodule KoalemosWeb.MessageCards.UserCard do
                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span class="text-xs font-medium text-green-900">
+                <span class="text-[0.65rem] font-medium text-green-900">
                   Tool Result
                 </span>
               </div>
-              <div class="text-xs text-green-800 bg-white/60 p-2 rounded border border-green-100">
+              <div class="text-[0.65rem] text-green-800 bg-white/60 p-1.5 rounded border border-green-100">
                 {format_tool_result_content(tool_result)}
               </div>
             </div>
@@ -101,7 +101,7 @@ defmodule KoalemosWeb.MessageCards.UserCard do
       <% end %>
       <!-- Text content -->
       <%= if @text_content != "" do %>
-        <div class="text-slate-700 text-[0.9rem] leading-relaxed mb-2.5">
+        <div class="text-slate-700 text-[0.8rem] leading-snug mb-2">
           {safe_markdown_to_html(@text_content)}
         </div>
       <% end %>

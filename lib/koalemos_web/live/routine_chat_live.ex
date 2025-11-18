@@ -413,6 +413,8 @@ defmodule KoalemosWeb.RoutineChatLive do
             disabled={@status in [:completed, :error] || @last_error != nil}
             status={@status}
             last_error={@last_error}
+            tool_display={:inline}
+            show_system_messages={false}
           />
         </div>
       </div>

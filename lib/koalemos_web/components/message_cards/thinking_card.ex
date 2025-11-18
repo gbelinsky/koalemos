@@ -35,7 +35,7 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
     ~H"""
     <%= if @has_thoughts do %>
       <div
-        class="bg-gradient-to-br from-teal-50 to-blue-50/30 p-4 border-l-[6px] border-t border-r-2 border-teal-400/60 rounded-2xl shadow-[2px_4px_12px_-2px_rgba(20,184,166,0.15)] hover:shadow-[3px_6px_16px_-2px_rgba(20,184,166,0.25)] transition-all duration-300"
+        class="bg-gradient-to-br from-teal-50 to-blue-50/30 p-3 border-l-[6px] border-t border-r-2 border-teal-400/60 rounded-2xl shadow-[2px_4px_12px_-2px_rgba(20,184,166,0.15)] hover:shadow-[3px_6px_16px_-2px_rgba(20,184,166,0.25)] transition-all duration-300"
         id={@card_id}
       >
         <!-- Clickable Header with progress -->
@@ -45,33 +45,33 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
           phx-target={@target}
           class="w-full text-left"
         >
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <div class="text-[0.65rem] font-medium text-teal-600/80 tracking-wider">
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center gap-1.5">
+              <div class="text-[0.6rem] font-medium text-teal-600/80 tracking-wider">
                 sequential thinking
               </div>
               <%= if @complete do %>
-                <span class="text-xs text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">
+                <span class="text-[0.65rem] text-teal-700 bg-teal-100 px-1.5 py-0.5 rounded-full">
                   {@total} Thoughts
                 </span>
               <% else %>
-                <span class="text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full animate-pulse">
+                <span class="text-[0.65rem] text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full animate-pulse">
                   Thinking...
                 </span>
               <% end %>
-              <span class="text-xs text-teal-600/70">
+              <span class="text-[0.65rem] text-teal-600/70">
                 {@current} / {@total}
               </span>
             </div>
-            <div class="text-teal-400/60 hover:text-teal-600 transition-all text-sm px-2">
+            <div class="text-teal-400/60 hover:text-teal-600 transition-all text-xs px-1.5">
               {if @expanded, do: "▲", else: "▼"}
             </div>
           </div>
           <!-- Progress bar (only when not complete) -->
           <%= if !@complete do %>
-            <div class="w-full bg-teal-100 rounded-full h-2">
+            <div class="w-full bg-teal-100 rounded-full h-1.5">
               <div
-                class="bg-teal-500 h-2 rounded-full transition-all duration-500"
+                class="bg-teal-500 h-1.5 rounded-full transition-all duration-500"
                 style={"width: #{progress_percentage(@current, @total)}%"}
               >
               </div>
@@ -81,26 +81,27 @@ defmodule KoalemosWeb.MessageCards.ThinkingCard do
 
         <%= if @expanded do %>
           <!-- Expanded: Show all thoughts -->
-          <div class="space-y-2 mt-3">
+          <div class="space-y-1.5 mt-2">
             <%= for thought <- @thoughts do %>
-              <div class="bg-white/60 border border-teal-200 rounded-lg p-3">
-                <div class="flex items-start gap-2">
-                  <div class="flex-shrink-0 w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
-                    <span class="text-xs font-bold text-teal-700">{thought.number}</span>
+              <div class="bg-white/60 border border-teal-200 rounded-lg p-2">
+                <div class="flex items-start gap-1.5">
+                  <div class="flex-shrink-0 w-5 h-5 bg-teal-100 rounded-full flex items-center justify-center">
+                    <span class="text-[0.65rem] font-bold text-teal-700">{thought.number}</span>
                   </div>
                   <div class="flex-1">
-                    <div class="text-sm text-slate-700 leading-relaxed prose prose-sm prose-slate max-w-none
-                                prose-p:my-1 prose-p:leading-relaxed
-                                prose-headings:mt-2 prose-headings:mb-1
-                                prose-ul:my-1 prose-ol:my-1
+                    <div class="text-xs text-slate-700 leading-snug prose prose-sm prose-slate max-w-none
+                                prose-p:my-0.5 prose-p:leading-snug
+                                prose-headings:mt-1.5 prose-headings:mb-0.5
+                                prose-ul:my-0.5 prose-ol:my-0.5
                                 prose-li:my-0.5
-                                prose-code:text-xs prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-                                prose-pre:my-2 prose-pre:bg-slate-100
+                                prose-code:text-[0.65rem] prose-code:bg-slate-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-slate-900
+                                prose-pre:my-1.5 prose-pre:bg-slate-800 prose-pre:text-slate-100 prose-pre:p-2 prose-pre:rounded
+                                [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-slate-100
                                 prose-strong:font-semibold prose-strong:text-slate-900">
                       {safe_markdown_to_html(thought.text)}
                     </div>
                     <%= if thought.revision do %>
-                      <span class="text-xs text-amber-600 mt-1 inline-block">
+                      <span class="text-[0.65rem] text-amber-600 mt-0.5 inline-block">
                         🔄 Revision of thought {thought.revises_thought}
                       </span>
                     <% end %>

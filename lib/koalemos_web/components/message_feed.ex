@@ -39,7 +39,7 @@ defmodule KoalemosWeb.MessageFeed do
     ~H"""
     <div class="message-feed h-full flex flex-col">
       <div
-        class="flex-1 overflow-y-auto p-4 space-y-3"
+        class="flex-1 overflow-y-auto p-3 space-y-2"
         id={"#{@id}-container"}
         phx-hook="ScrollToBottom"
       >
@@ -83,7 +83,11 @@ defmodule KoalemosWeb.MessageFeed do
                       target={@myself}
                     />
                   <% true -> %>
-                    <AssistantCard.render message={message} card_id={card_id} />
+                    <AssistantCard.render
+                      message={message}
+                      card_id={card_id}
+                      tool_display={@tool_display}
+                    />
                 <% end %>
               <% :thinking_chain -> %>
                 <% chain_messages = data %>
@@ -144,7 +148,9 @@ defmodule KoalemosWeb.MessageFeed do
        grouped_items: [],
        current_step: nil,
        status: :running,
-       last_error: nil
+       last_error: nil,
+       show_system_messages: true,
+       tool_display: :full
      )}
   end
 
@@ -156,8 +162,30 @@ defmodule KoalemosWeb.MessageFeed do
     messages = Map.get(assigns, :messages, [])
     deduplicated = deduplicate_messages(messages)
 
+    # Filter system messages if show_system_messages is false
+    show_system_messages = Map.get(assigns, :show_system_messages, true)
+    tool_display = Map.get(assigns, :tool_display, :full)
+
+    filtered =
+      deduplicated
+      |> then(fn msgs ->
+        if show_system_messages do
+          msgs
+        else
+          Enum.reject(msgs, &is_system_message?/1)
+        end
+      end)
+      |> then(fn msgs ->
+        # Filter tool result messages when using inline or hidden tool display
+        if tool_display in [:inline, :hidden] do
+          Enum.reject(msgs, &is_tool_result_message?/1)
+        else
+          msgs
+        end
+      end)
+
     # Group messages into renderable items (regular messages and thinking chains)
-    grouped_items = group_messages_into_items(deduplicated)
+    grouped_items = group_messages_into_items(filtered)
 
     current_step = Map.get(assigns, :current_step)
     status = Map.get(assigns, :status, :running)
@@ -166,11 +194,13 @@ defmodule KoalemosWeb.MessageFeed do
     {:ok,
      assign(socket,
        messages: messages,
-       deduplicated_messages: deduplicated,
+       deduplicated_messages: filtered,
        grouped_items: grouped_items,
        current_step: current_step,
        status: status,
-       last_error: last_error
+       last_error: last_error,
+       show_system_messages: show_system_messages,
+       tool_display: tool_display
      )}
   end
 
@@ -337,6 +367,32 @@ defmodule KoalemosWeb.MessageFeed do
 
       _ ->
         nil
+    end
+  end
+
+  # Check if message is a system message
+  # System messages are user messages with metadata.source == :system or "system"
+  defp is_system_message?(message) do
+    source =
+      get_in(message, [:metadata, :source]) ||
+        get_in(message, ["metadata", "source"])
+
+    source == :system || source == "system"
+  end
+
+  # Check if message contains tool results
+  defp is_tool_result_message?(message) do
+    content = Map.get(message, :content) || Map.get(message, "content")
+
+    case content do
+      content when is_list(content) ->
+        Enum.any?(content, fn item ->
+          type = Map.get(item, :type) || Map.get(item, "type")
+          type == "tool_result" || type == :tool_result
+        end)
+
+      _ ->
+        false
     end
   end
 

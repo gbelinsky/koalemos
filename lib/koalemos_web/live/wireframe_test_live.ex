@@ -76,7 +76,10 @@ defmodule KoalemosWeb.WireframeTestLive do
        # Tab selection
        active_tab: "preview",
        # Panel sizing
-       left_panel_width: 33
+       left_panel_width: 33,
+       # Display options
+       tool_display: :full,
+       show_system_messages: true
      )
      |> allow_upload(:html_file,
        accept: ~w(.html .htm),
@@ -224,6 +227,30 @@ defmodule KoalemosWeb.WireframeTestLive do
 
     Logger.info("[WireframeTestLive] Selected routine: #{inspect(routine_module)}")
     {:noreply, assign(socket, selected_routine: routine_module)}
+  end
+
+  @impl true
+  def handle_event("set_tool_display", params, socket) do
+    # Handle both "mode" and "value" keys depending on how the event is triggered
+    mode = params["mode"] || params["value"]
+
+    tool_display =
+      case mode do
+        "full" -> :full
+        "inline" -> :inline
+        "hidden" -> :hidden
+        _ -> :full
+      end
+
+    Logger.info("[WireframeTestLive] Set tool display to: #{tool_display} (params: #{inspect(params)})")
+    {:noreply, assign(socket, tool_display: tool_display)}
+  end
+
+  @impl true
+  def handle_event("toggle_system_messages", _params, socket) do
+    new_value = !socket.assigns.show_system_messages
+    Logger.info("[WireframeTestLive] Toggle system messages to: #{new_value}")
+    {:noreply, assign(socket, show_system_messages: new_value)}
   end
 
   @impl true
@@ -570,6 +597,8 @@ defmodule KoalemosWeb.WireframeTestLive do
               disabled={@status in [:completed, :error] || @last_error != nil}
               status={@status}
               last_error={@last_error}
+              tool_display={@tool_display}
+              show_system_messages={@show_system_messages}
             />
           </div>
         <% else %>
@@ -615,6 +644,58 @@ defmodule KoalemosWeb.WireframeTestLive do
                   <% end %>
                 </div>
               </div>
+
+              <!-- Display Options -->
+              <div>
+                <h2 class="text-lg font-semibold text-slate-800 mb-3">Display Options</h2>
+                <div class="space-y-3">
+                  <!-- Tool Display Mode -->
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                      Tool Display
+                    </label>
+                    <form phx-change="set_tool_display">
+                      <select
+                        name="mode"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="full" selected={@tool_display == :full}>
+                          Full (Purple Cards)
+                        </option>
+                        <option value="inline" selected={@tool_display == :inline}>
+                          Inline (Subtle Indicators)
+                        </option>
+                        <option value="hidden" selected={@tool_display == :hidden}>
+                          Hidden
+                        </option>
+                      </select>
+                    </form>
+                  </div>
+                  <!-- Show System Messages -->
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-slate-700">
+                      Show System Messages
+                    </label>
+                    <button
+                      phx-click="toggle_system_messages"
+                      class={[
+                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                        if(@show_system_messages,
+                          do: "bg-blue-600",
+                          else: "bg-slate-300"
+                        )
+                      ]}
+                    >
+                      <span class={[
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        if(@show_system_messages, do: "translate-x-6", else: "translate-x-1")
+                      ]}>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <!-- Routine Selection -->
               <div>
                 <h2 class="text-lg font-semibold text-slate-800 mb-3">Select Routine</h2>

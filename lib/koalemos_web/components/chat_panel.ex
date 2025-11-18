@@ -25,6 +25,8 @@ defmodule KoalemosWeb.ChatPanel do
   - `routine_id` (string, required): Identifier for the chat session (unused in Sprint 4, ready for Sprint 6)
   - `mock_responses` (boolean, optional): If true, adds mock AI responses after user messages (default: false)
   - `initial_messages` (list, optional): Pre-populate with messages (default: [])
+  - `tool_display` (atom, optional): Tool display mode - `:full` (purple cards), `:inline` (subtle indicators), `:hidden` (default: `:full`)
+  - `show_system_messages` (boolean, optional): Whether to show system messages in conversation (default: `true`)
 
   ## Message Format
 
@@ -79,6 +81,10 @@ defmodule KoalemosWeb.ChatPanel do
       |> assign_new(:disabled, fn -> Map.get(assigns, :disabled, false) end)
       |> assign_new(:status, fn -> :running end)
       |> assign_new(:last_error, fn -> nil end)
+      |> assign_new(:tool_display, fn -> Map.get(assigns, :tool_display, :full) end)
+      |> assign_new(:show_system_messages, fn ->
+        Map.get(assigns, :show_system_messages, true)
+      end)
 
     {:ok, socket}
   end
@@ -131,6 +137,8 @@ defmodule KoalemosWeb.ChatPanel do
             current_step={@current_step}
             status={@status}
             last_error={@last_error}
+            tool_display={@tool_display}
+            show_system_messages={@show_system_messages}
           />
         <% else %>
           <div class="h-full overflow-auto p-4 bg-slate-50 font-mono text-xs">
