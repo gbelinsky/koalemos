@@ -66,9 +66,25 @@ defmodule KoalemosWeb.ChatPanel do
 
   @impl true
   def update(assigns, socket) do
+    # TODO: Re-enable screenshot preview once we have server-side rendering (Puppeteer/Playwright)
+    # Client-side libraries don't capture CSS gradients properly, making previews look washed out
+    # Fetch latest screenshot from cache if routine_id is available
+    # screenshot_data =
+    #   case Map.get(assigns, :routine_id) do
+    #     nil ->
+    #       nil
+    #
+    #     routine_id ->
+    #       case Koalemos.Caches.ScreenshotCache.get(routine_id) do
+    #         {:ok, data} -> data
+    #         {:error, _} -> nil
+    #       end
+    #   end
+
     socket =
       socket
       |> assign(assigns)
+      |> assign(:screenshot_data, nil)  # Disabled until server-side screenshots implemented
       |> assign_new(:messages, fn -> Map.get(assigns, :initial_messages, []) end)
       |> assign_new(:mock_responses, fn -> Map.get(assigns, :mock_responses, false) end)
       |> assign_new(:current_step, fn -> nil end)
@@ -93,43 +109,45 @@ defmodule KoalemosWeb.ChatPanel do
   def render(assigns) do
     ~H"""
     <div class="chat-panel h-full flex flex-col">
-      <!-- Tab Header -->
-      <div class="border-b border-slate-200 bg-white">
-        <div class="flex">
-          <button
-            phx-click="switch_tab"
-            phx-value-tab="conversation"
-            phx-target={@myself}
-            class={[
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
-              if(@active_tab == "conversation",
-                do: "border-blue-500 text-blue-600",
-                else: "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
-              )
-            ]}
-          >
-            Conversation
-          </button>
-          <button
-            phx-click="switch_tab"
-            phx-value-tab="raw"
-            phx-target={@myself}
-            class={[
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
-              if(@active_tab == "raw",
-                do: "border-blue-500 text-blue-600",
-                else: "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
-              )
-            ]}
-          >
-            Raw Messages
-          </button>
+      <!-- Tab Header (only shown when system messages are visible) -->
+      <%= if @show_system_messages do %>
+        <div class="border-b border-slate-200 bg-white">
+          <div class="flex">
+            <button
+              phx-click="switch_tab"
+              phx-value-tab="conversation"
+              phx-target={@myself}
+              class={[
+                "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                if(@active_tab == "conversation",
+                  do: "border-blue-500 text-blue-600",
+                  else: "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+                )
+              ]}
+            >
+              Conversation
+            </button>
+            <button
+              phx-click="switch_tab"
+              phx-value-tab="raw"
+              phx-target={@myself}
+              class={[
+                "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                if(@active_tab == "raw",
+                  do: "border-blue-500 text-blue-600",
+                  else: "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+                )
+              ]}
+            >
+              Raw Messages
+            </button>
+          </div>
         </div>
-      </div>
+      <% end %>
 
       <!-- Content Area -->
       <div class="flex-1 overflow-hidden min-h-0">
-        <%= if @active_tab == "conversation" do %>
+        <%= if !@show_system_messages || @active_tab == "conversation" do %>
           <.live_component
             module={MessageFeed}
             id={"#{@id}-feed"}
@@ -165,6 +183,7 @@ defmodule KoalemosWeb.ChatPanel do
           id={"#{@id}-input"}
           placeholder="type your message..."
           show_screenshot_checkbox={@show_screenshot_checkbox}
+          screenshot_data={@screenshot_data}
           disabled={@disabled}
         />
       </div>

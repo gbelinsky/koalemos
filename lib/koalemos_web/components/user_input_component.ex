@@ -313,10 +313,21 @@ defmodule KoalemosWeb.UserInputComponent do
               ><%= @current_input %></textarea>
             </div>
             
-    <!-- Right side: Screenshot checkbox (optional) and Send button stacked -->
+    <!-- Right side: Preview screenshot (optional) or Screenshot checkbox and Send button stacked -->
             <div class="flex flex-col gap-2">
-              <!-- Screenshot Checkbox (conditional) -->
-              <%= if @show_screenshot_checkbox do %>
+              <!-- Screenshot Preview (conditional) -->
+              <%= if assigns[:screenshot_data] do %>
+                <div class="flex justify-end">
+                  <img
+                    src={"data:image/png;base64,#{@screenshot_data}"}
+                    alt="Preview screenshot"
+                    class="w-32 max-h-24 object-contain rounded-lg border-2 border-slate-300 shadow-sm"
+                  />
+                </div>
+              <% end %>
+
+              <!-- Screenshot Checkbox (conditional, only when no preview screenshot) -->
+              <%= if @show_screenshot_checkbox && !assigns[:screenshot_data] do %>
                 <div class="flex justify-end">
                   <label class={"flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors #{if @disabled, do: "opacity-50 cursor-not-allowed", else: "cursor-pointer"}"}>
                     <input

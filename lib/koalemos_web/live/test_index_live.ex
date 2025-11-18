@@ -201,7 +201,64 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-          
+
+    <!-- Wireframe Editor (Production) -->
+          <a
+            href="/wireframe-editor"
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border-2 border-blue-500"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <h2 class="text-xl font-semibold text-slate-800">
+                    Wireframe Editor
+                  </h2>
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    Production
+                  </span>
+                </div>
+                <p class="text-slate-600 mb-3">
+                  Build and modify web pages through conversation with AI. Production-ready interface with sample selection, real-time preview, and save functionality. Clean UX without debug UI.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    M6 Demo
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                    WireframeDesignRoutine
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Live Preview
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
     <!-- Wireframe Test Page -->
           <a
             href="/test/wireframe"

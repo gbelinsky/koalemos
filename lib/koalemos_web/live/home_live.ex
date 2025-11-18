@@ -86,31 +86,27 @@ defmodule KoalemosWeb.HomeLive do
               </svg>
             </a>
           </div>
-          <!-- Option 2: Free Play -->
+          <!-- Option 2: Wireframe Editor -->
           <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow border-2 border-blue-500">
             <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mb-4">
               <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fill-rule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                  clip-rule="evenodd"
-                />
+                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
               </svg>
             </div>
             <div class="flex items-center gap-2 mb-2">
-              <h3 class="text-xl font-bold text-slate-800">try the demo</h3>
+              <h3 class="text-xl font-bold text-slate-800">wireframe editor</h3>
               <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
                 recommended
               </span>
             </div>
             <p class="text-slate-600 mb-4 text-sm">
-              jump right in! start a chat and build whatever you imagine. the AI will help you.
+              build and modify web pages through conversation. watch as the AI makes changes in real-time.
             </p>
-            <button
-              phx-click="open_modal"
+            <a
+              href="/wireframe-editor"
               class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm"
             >
-              <span>start chat</span>
+              <span>open editor</span>
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fill-rule="evenodd"
@@ -118,7 +114,7 @@ defmodule KoalemosWeb.HomeLive do
                   clip-rule="evenodd"
                 />
               </svg>
-            </button>
+            </a>
           </div>
           <!-- Option 3: Explore -->
           <div class="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow">

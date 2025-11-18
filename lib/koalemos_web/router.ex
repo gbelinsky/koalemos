@@ -19,6 +19,7 @@ defmodule KoalemosWeb.Router do
 
     live "/", HomeLive
     live "/example/login-form", ExampleGuideLive
+    live "/wireframe-editor", WireframeEditorLive
     live "/chat/:routine_id", RoutineChatLive
 
     # Test pages

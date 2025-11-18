@@ -37,8 +37,10 @@ const WireframeHooks = {}
 /**
  * ScreenshotCapture Hook
  *
- * Captures screenshots from DOM elements using html2canvas library.
+ * Captures screenshots from DOM elements using html-to-image library.
  * Screenshots are converted to base64 PNG and sent to Elixir via LiveView events.
+ *
+ * Uses html-to-image (instead of html2canvas) for better CSS gradient support.
  *
  * Sprint 2: Manual trigger via button click
  * Sprint 3: Will add auto-capture and tool integration
@@ -49,12 +51,12 @@ const WireframeHooks = {}
  *   </div>
  *
  * Requires:
- *   - html2canvas library (loaded from CDN)
+ *   - html-to-image library (loaded from CDN)
  *   - LiveView event handler for "screenshot_captured"
  */
 WireframeHooks.ScreenshotCapture = {
   /**
-   * Hook mounted - setup and load html2canvas
+   * Hook mounted - setup and load html-to-image
    */
   mounted() {
     INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Hook mounted on element:", this.el.id)
@@ -93,31 +95,31 @@ WireframeHooks.ScreenshotCapture = {
   },
 
   /**
-   * Load html2canvas library from CDN
+   * Load screenshot library from CDN (html-to-image for better gradient support)
    */
   loadHtml2Canvas() {
     // Check if already loaded
-    if (window.html2canvas) {
-      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] html2canvas already loaded")
+    if (window.htmlToImage) {
+      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] html-to-image already loaded")
       this.html2canvasReady = true
       return
     }
 
-    INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Loading html2canvas from CDN...")
+    INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Loading html-to-image from CDN...")
 
     const script = document.createElement('script')
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
+    script.src = 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js'
     script.async = true
 
     script.onload = () => {
-      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] html2canvas loaded successfully")
+      INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] html-to-image loaded successfully")
       this.html2canvasReady = true
     }
 
     script.onerror = (error) => {
-      INFRASTRUCTURE_CONSOLE.error("[ScreenshotCapture] Failed to load html2canvas:", error)
+      INFRASTRUCTURE_CONSOLE.error("[ScreenshotCapture] Failed to load html-to-image:", error)
       this.pushEvent("screenshot_failed", {
-        error: "Failed to load html2canvas library",
+        error: "Failed to load html-to-image library",
         timestamp: Date.now()
       })
     }
@@ -128,13 +130,13 @@ WireframeHooks.ScreenshotCapture = {
   /**
    * Capture screenshot of the element
    *
-   * Converts the element to a canvas using html2canvas,
+   * Converts the element to PNG using html-to-image,
    * then encodes as base64 PNG and sends to LiveView.
    */
   async captureScreenshot() {
     // Check if library is ready
-    if (!this.html2canvasReady || !window.html2canvas) {
-      INFRASTRUCTURE_CONSOLE.warn("[ScreenshotCapture] html2canvas not ready, skipping capture")
+    if (!this.html2canvasReady || !window.htmlToImage) {
+      INFRASTRUCTURE_CONSOLE.warn("[ScreenshotCapture] html-to-image not ready, skipping capture")
       return
     }
 
@@ -228,23 +230,24 @@ WireframeHooks.ScreenshotCapture = {
       return { canvas, base64: base64Data }
     }
 
-    // Capture element to canvas
-    const canvas = await window.html2canvas(element, {
+    // Capture element to PNG using html-to-image
+    const dataUrl = await window.htmlToImage.toPng(element, {
       backgroundColor: '#ffffff',
-      scale: 1,
-      useCORS: true,
-      allowTaint: false,
-      removeContainer: true,
+      pixelRatio: 1,
       height: element.scrollHeight,
-      windowHeight: element.scrollHeight,
-      logging: false  // Disable html2canvas console logs
+      width: element.scrollWidth
     })
 
-    INFRASTRUCTURE_CONSOLE.log(`[ScreenshotCapture] Canvas created: ${canvas.width}x${canvas.height}`)
-
-    // Convert canvas to base64 PNG
-    const dataUrl = canvas.toDataURL('image/png')
+    // Extract base64 data
     const base64Data = dataUrl.split(',')[1] // Remove "data:image/png;base64," prefix
+
+    // Create a temporary canvas to get dimensions (html-to-image doesn't return canvas)
+    const img = new Image()
+    img.src = dataUrl
+    await new Promise(resolve => { img.onload = resolve })
+
+    const canvas = { width: img.width, height: img.height }
+    INFRASTRUCTURE_CONSOLE.log(`[ScreenshotCapture] PNG created: ${canvas.width}x${canvas.height}`)
 
     return { canvas, base64: base64Data }
   },
@@ -265,8 +268,8 @@ WireframeHooks.ScreenshotCapture = {
    */
   async captureScreenshotBlocking(opts = {}) {
     // Check if library is ready
-    if (!this.html2canvasReady || !window.html2canvas) {
-      INFRASTRUCTURE_CONSOLE.warn("[ScreenshotCapture] html2canvas not ready for blocking capture")
+    if (!this.html2canvasReady || !window.htmlToImage) {
+      INFRASTRUCTURE_CONSOLE.warn("[ScreenshotCapture] html-to-image not ready for blocking capture")
       return null
     }
 
