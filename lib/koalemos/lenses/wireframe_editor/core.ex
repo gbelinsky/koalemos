@@ -188,23 +188,32 @@ defmodule Koalemos.Lenses.WireframeEditor do
     designed = Map.get(lens_state, :designed, %{})
 
     # Capture current live state before building context (Sprint 7)
-    # Include screenshots by default (Phase 5) - provides visual feedback
+    # Skip screenshot in snapshot - we'll generate it server-side with Puppeteer
     running =
       if routine_id do
-        case capture_current_state(routine_id, skip_screenshot: false) do
+        Logger.info("[WireframeEditor] 🔍 Calling capture_current_state with skip_screenshot: true (will use SERVER-SIDE screenshot)")
+
+        case capture_current_state(routine_id, skip_screenshot: true) do
           {:ok, current_state} ->
             has_dom = current_state[:dom_tree] != nil
-            Logger.info("[WireframeEditor] Captured live state for context - has DOM: #{has_dom}")
+            Logger.info("[WireframeEditor] ✅ Captured live state - has DOM: #{has_dom}")
             current_state
 
           {:error, reason} ->
-            Logger.warning("[WireframeEditor] Failed to capture live state: #{inspect(reason)}")
+            Logger.warning("[WireframeEditor] ⚠️  Failed to capture live state: #{inspect(reason)}")
             Map.get(lens_state, :running, %{})
         end
       else
         Logger.debug("[WireframeEditor] No routine_id, skipping state capture")
         Map.get(lens_state, :running, %{})
       end
+
+    # Update lens_state in cache with the new running data so screenshot can use it
+    if routine_id && map_size(running) > 0 do
+      updated_lens_state = Map.put(lens_state, :running, running)
+      Koalemos.Caches.WireframeStateCache.put_state(routine_id, updated_lens_state)
+      Logger.debug("[WireframeEditor] Updated WireframeStateCache with live DOM data")
+    end
 
     context_parts = [
       build_design_dom_section(designed),
@@ -219,8 +228,23 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
     context_text = Enum.join(Enum.reject(context_parts, &is_nil/1), "\n\n")
 
-    # Add screenshot if available (Sprint 7 Phase 6)
-    screenshot_block = build_screenshot_block(running)
+    # Generate SERVER-SIDE screenshot using Puppeteer with live DOM (Sprint 7 Phase 6)
+    screenshot_block =
+      if routine_id do
+        Logger.info("[WireframeEditor] 🎨 Requesting SERVER-SIDE screenshot with live DOM")
+
+        case Koalemos.Lenses.Helpers.ScreenshotCapture.capture(routine_id, use_live_dom: true) do
+          {:ok, image_block} ->
+            Logger.info("[WireframeEditor] ✅ SERVER-SIDE screenshot received")
+            image_block
+
+          {:error, reason} ->
+            Logger.warning("[WireframeEditor] ⚠️  SERVER-SIDE screenshot failed: #{inspect(reason)}")
+            nil
+        end
+      else
+        nil
+      end
 
     # Return text block + optional image block
     # Image blocks go in messages array (not system) via LensRendering
@@ -980,22 +1004,6 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
     nil
   end
-
-  # Build screenshot image block (Sprint 7 Phase 6)
-  # Returns image block in format expected by Anthropic provider
-  # Will be added to messages array (not system) by LensRendering
-  defp build_screenshot_block(%{screenshot: screenshot_data}) when not is_nil(screenshot_data) do
-    %{
-      type: "image",
-      source: %{
-        type: "base64",
-        media_type: "image/png",
-        data: screenshot_data
-      }
-    }
-  end
-
-  defp build_screenshot_block(_), do: nil
 
   defp build_tools_guide do
     """

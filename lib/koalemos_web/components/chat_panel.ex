@@ -66,25 +66,24 @@ defmodule KoalemosWeb.ChatPanel do
 
   @impl true
   def update(assigns, socket) do
-    # TODO: Re-enable screenshot preview once we have server-side rendering (Puppeteer/Playwright)
-    # Client-side libraries don't capture CSS gradients properly, making previews look washed out
     # Fetch latest screenshot from cache if routine_id is available
-    # screenshot_data =
-    #   case Map.get(assigns, :routine_id) do
-    #     nil ->
-    #       nil
-    #
-    #     routine_id ->
-    #       case Koalemos.Caches.ScreenshotCache.get(routine_id) do
-    #         {:ok, data} -> data
-    #         {:error, _} -> nil
-    #       end
-    #   end
+    # Now using server-side Puppeteer rendering with full CSS gradient support
+    screenshot_data =
+      case Map.get(assigns, :routine_id) do
+        nil ->
+          nil
+
+        routine_id ->
+          case Koalemos.Caches.ScreenshotCache.get(routine_id) do
+            {:ok, data} -> data
+            {:error, _} -> nil
+          end
+      end
 
     socket =
       socket
       |> assign(assigns)
-      |> assign(:screenshot_data, nil)  # Disabled until server-side screenshots implemented
+      |> assign(:screenshot_data, screenshot_data)
       |> assign_new(:messages, fn -> Map.get(assigns, :initial_messages, []) end)
       |> assign_new(:mock_responses, fn -> Map.get(assigns, :mock_responses, false) end)
       |> assign_new(:current_step, fn -> nil end)

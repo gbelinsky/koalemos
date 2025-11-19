@@ -4,6 +4,6 @@ defmodule KoalemosWeb.HomePageTest do
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
     assert html_response(conn, 200) =~ "welcome to koalemos"
-    assert html_response(conn, 200) =~ "start chat"
+    assert html_response(conn, 200) =~ "wireframe editor"
   end
 end

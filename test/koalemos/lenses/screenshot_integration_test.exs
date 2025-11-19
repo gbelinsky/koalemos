@@ -29,20 +29,24 @@ defmodule Koalemos.Lenses.ScreenshotIntegrationTest do
 
       :ok = ScreenshotCache.put(routine_id, fake_screenshot)
 
-      # Subscribe to response topic (needed for screenshot capture helper)
-      Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:response:#{routine_id}")
-
-      # Simulate screenshot_ready message (this would normally come from LiveView)
-      # We'll spawn a process to broadcast it after a short delay
-      spawn(fn ->
-        Process.sleep(10)
-
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "screenshot:response:#{routine_id}",
-          {:screenshot_ready, routine_id}
-        )
-      end)
+      # NEW: Set up lens_state in WireframeStateCache for server-side screenshot rendering
+      # The new implementation needs lens_state with DOM tree to render HTML
+      lens_state = %{
+        designed: %{
+          dom_tree: %{
+            tag: "div",
+            id: "root",
+            classes: [],
+            attributes: %{},
+            children: [
+              %{tag: "h1", classes: [], attributes: %{}, content: "Test", children: []}
+            ],
+            content: nil
+          },
+          custom_css: %{}
+        }
+      }
+      Koalemos.Caches.WireframeStateCache.put_state(routine_id, lens_state)
 
       # Create state with :request_screenshot flag
       state = %{
@@ -66,7 +70,10 @@ defmodule Koalemos.Lenses.ScreenshotIntegrationTest do
       assert %{type: "image"} = screenshot_block
       assert screenshot_block.source.type == "base64"
       assert screenshot_block.source.media_type == "image/png"
-      assert screenshot_block.source.data == fake_screenshot
+      # Note: Server-side rendering will generate a different screenshot than the fake one,
+      # so we just verify it's not empty
+      assert is_binary(screenshot_block.source.data)
+      assert String.length(screenshot_block.source.data) > 0
     end
 
     test "skips screenshot when :request_screenshot is false" do

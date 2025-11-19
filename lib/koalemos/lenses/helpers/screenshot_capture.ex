@@ -1,71 +1,39 @@
 defmodule Koalemos.Lenses.Helpers.ScreenshotCapture do
   @moduledoc """
-  Helper for capturing screenshots from LiveView pages via JavaScript hook.
+  Helper for capturing screenshots using server-side Puppeteer rendering.
 
   ## Overview
 
-  This module provides a reusable screenshot capture system for lenses that need
-  to include visual context from the current page state. It's particularly useful
-  for lenses that work with visual interfaces (e.g., WireframeEditor).
+  This module provides a screenshot capture system for lenses that need to include
+  visual context from the current page state. It uses server-side rendering with
+  Puppeteer to capture pixel-perfect screenshots with full CSS support including
+  gradients, transforms, and filters.
 
   ## Architecture
 
-  The screenshot system involves multiple components working together:
+  **Server-Side Rendering (Current - M6+)**
 
-  ### 1. JavaScript Hook: `ScreenshotCapture`
+  The screenshot system uses Puppeteer via NodeJS.Supervisor:
 
-  **Location:** `assets/js/wireframe_hooks.js`
+  1. Retrieve lens_state from WireframeStateCache
+  2. Convert lens_state to standalone HTML (ScreenshotRenderer)
+  3. Send HTML to Puppeteer for headless Chrome rendering
+  4. Receive base64 PNG with full CSS gradient support
+  5. Store in ScreenshotCache for caching/reuse
+  6. Return formatted image content block
 
-  **Purpose:** Captures DOM elements as PNG images using html2canvas
+  **Benefits:**
+  - Pixel-perfect screenshots with CSS gradients, transforms, filters
+  - No client-side dependencies or LiveView communication
+  - Faster and more reliable (no PubSub/WebSocket overhead)
+  - Works without active browser session
 
-  **Lifecycle:**
-  - `mounted()`: Sets up event listener for "trigger_screenshot_capture"
-  - On trigger: Uses html2canvas to render DOM element to canvas
-  - Converts canvas to Base64 PNG string
-  - Sends result back via `pushEvent("screenshot_captured", {data: base64})`
+  **Legacy Client-Side (Pre-M6)**
 
-  **Usage in Template:**
-  ```heex
-  <div id="screenshot-target" phx-hook="ScreenshotCapture">
-    <!-- Content to capture -->
-  </div>
-  ```
+  Previously used html-to-image via JavaScript hook, but couldn't properly
+  capture CSS gradients. See git history for old implementation.
 
-  ### 2. PubSub Messages (Elixir ↔ LiveView)
-
-  **Request Message:**
-  - **Topic:** `"screenshot:request:\#{routine_id}"`
-  - **Message:** `{:screenshot_request, %{routine_id: string, timestamp: DateTime}}`
-  - **Direction:** Lens (Engine process) → LiveView
-  - **Purpose:** Trigger screenshot capture in the browser
-
-  **Notification Message:**
-  - **Topic:** N/A (direct send to Engine process)
-  - **Message:** `{:screenshot_ready, routine_id}`
-  - **Direction:** LiveView → Lens (Engine process)
-  - **Purpose:** Notify lens that screenshot is ready in cache
-
-  ### 3. WebSocket Events (LiveView ↔ JavaScript)
-
-  **Trigger Event:**
-  - **Event:** `"trigger_screenshot_capture"`
-  - **Payload:** `%{}` (empty)
-  - **Direction:** LiveView → JavaScript hook
-  - **Sent via:** `push_event(socket, "trigger_screenshot_capture", %{})`
-
-  **Result Event:**
-  - **Event:** `"screenshot_captured"`
-  - **Payload:** `%{data: base64_png_string}`
-  - **Direction:** JavaScript hook → LiveView
-  - **Sent via:** `pushEvent("screenshot_captured", {data: base64})`
-
-  **Error Event:**
-  - **Event:** `"screenshot_failed"`
-  - **Payload:** `%{error: error_message}`
-  - **Direction:** JavaScript hook → LiveView
-  - **Sent via:** `pushEvent("screenshot_failed", {error: message})`
-
-  ### 4. ScreenshotCache
+  ## ScreenshotCache
 
   **Module:** `Koalemos.Caches.ScreenshotCache`
 
@@ -76,75 +44,6 @@ defmodule Koalemos.Lenses.Helpers.ScreenshotCapture do
   - `get(routine_id)` - Retrieve screenshot
   - `clear(routine_id)` - Remove screenshot
 
-  ### 5. LiveView Integration
-
-  **Required in LiveView:**
-  ```elixir
-  # In mount/3 or handle_params/3:
-  Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:request:\#{routine_id}")
-
-  # Handle screenshot request from lens:
-  def handle_info({:screenshot_request, %{routine_id: requested_id}}, socket) do
-    if socket.assigns.routine_id == requested_id do
-      {:noreply, push_event(socket, "trigger_screenshot_capture", %{})}
-    else
-      {:noreply, socket}
-    end
-  end
-
-  # Handle captured screenshot from JavaScript:
-  def handle_event("screenshot_captured", %{"data" => data}, socket) do
-    routine_id = socket.assigns.routine_id
-    :ok = ScreenshotCache.put(routine_id, data)
-
-    # Notify waiting Engine process
-    case EngineManager.get_routine(routine_id) do
-      {:ok, routine_info} ->
-        send(routine_info.pid, {:screenshot_ready, routine_id})
-      {:error, _} ->
-        :ok
-    end
-
-    {:noreply, socket}
-  end
-  ```
-
-  ## Complete Flow
-
-  ```
-  1. Tool sets :request_screenshot flag in lens_state
-     ↓
-  2. Lens provide_context() checks flag
-     ↓
-  3. Lens calls ScreenshotCapture.capture(routine_id)
-     ↓
-  4. Helper broadcasts PubSub message (screenshot:request:routine_id)
-     ↓
-  5. LiveView receives PubSub message
-     ↓
-  6. LiveView sends WebSocket event (trigger_screenshot_capture)
-     ↓
-  7. JavaScript hook receives event
-     ↓
-  8. Hook uses html2canvas to capture DOM → canvas → Base64 PNG
-     ↓
-  9. Hook sends WebSocket event (screenshot_captured with data)
-     ↓
-  10. LiveView receives event and stores in ScreenshotCache
-      ↓
-  11. LiveView sends notification to Engine process ({:screenshot_ready, routine_id})
-      ↓
-  12. Helper's receive block unblocks
-      ↓
-  13. Helper retrieves from ScreenshotCache
-      ↓
-  14. Helper returns formatted image content block
-      ↓
-  15. Lens includes screenshot in context blocks
-      ↓
-  16. AI receives screenshot with next message
-  ```
-
   ## Usage in Lenses
 
   ```elixir
@@ -152,18 +51,12 @@ defmodule Koalemos.Lenses.Helpers.ScreenshotCapture do
     text_blocks = [%{type: "text", text: "Base context"}]
 
     screenshot_blocks =
-      if Map.get(Map.get(state.context, :lens_state, %{}), :request_screenshot, false) do
-        routine_id = state.routine_id
-
-        case Koalemos.Lenses.Helpers.ScreenshotCapture.capture(routine_id) do
-          {:ok, image_block} ->
-            [image_block]
-          {:error, reason} ->
-            Logger.warning("Screenshot capture failed: \#{inspect(reason)}")
-            []
-        end
-      else
-        []
+      case Koalemos.Lenses.Helpers.ScreenshotCapture.capture(state.routine_id) do
+        {:ok, image_block} ->
+          [image_block]
+        {:error, reason} ->
+          Logger.warning("Screenshot capture failed: \#{inspect(reason)}")
+          []
       end
 
     text_blocks ++ screenshot_blocks
@@ -172,41 +65,42 @@ defmodule Koalemos.Lenses.Helpers.ScreenshotCapture do
 
   ## Requirements
 
-  - LiveView must subscribe to `screenshot:request:\#{routine_id}` PubSub topic
-  - LiveView must have `phx-hook="ScreenshotCapture"` on target element
-  - LiveView must handle `screenshot_captured` and `screenshot_failed` events
-  - LiveView must store in ScreenshotCache and notify Engine process
+  - WireframeStateCache must contain lens_state for the routine_id
+  - NodeJS.Supervisor must be running with Puppeteer installed
   - ScreenshotCache must be running (added to Application supervision tree)
 
   ## Error Handling
 
   - Returns `{:error, :no_routine_id}` if routine_id is nil
-  - Returns `{:error, :timeout}` if screenshot capture takes > 5 seconds
-  - Returns `{:error, :cache_retrieval_failed}` if cache retrieval fails
-  - LiveView should log errors from JavaScript hook
+  - Returns `{:error, :no_lens_state}` if lens_state not found in cache
+  - Returns `{:error, reason}` if Puppeteer rendering fails
   """
 
   require Logger
   alias Koalemos.Caches.ScreenshotCache
-
-  @timeout_ms 5000
+  alias Koalemos.Caches.WireframeStateCache
+  alias Koalemos.ScreenshotRenderer
 
   @doc """
-  Capture a screenshot for the given routine.
+  Capture a screenshot for the given routine using server-side rendering.
 
   Returns `{:ok, image_block}` with a properly formatted image content block,
   or `{:error, reason}` if capture fails.
 
   ## Parameters
 
-  - `routine_id` - The routine ID (must match LiveView's routine_id)
+  - `routine_id` - The routine ID (must have lens_state in WireframeStateCache)
+  - `opts` - Optional keyword list:
+    - `:use_live_dom` - Boolean, use running DOM instead of designed DOM (default: false)
+    - `:viewport` - Map with :width and :height (default: %{width: 1280, height: 720})
+    - `:full_page` - Boolean, capture full page (default: false)
 
   ## Returns
 
   - `{:ok, %{type: "image", source: %{type: "base64", ...}}}` on success
   - `{:error, :no_routine_id}` if routine_id is nil
-  - `{:error, :timeout}` if capture takes too long
-  - `{:error, :cache_retrieval_failed}` if cache access fails
+  - `{:error, :no_lens_state}` if lens_state not found
+  - `{:error, reason}` if Puppeteer rendering fails
 
   ## Example
 
@@ -218,66 +112,60 @@ defmodule Koalemos.Lenses.Helpers.ScreenshotCapture do
           []
       end
   """
-  def capture(nil) do
+  def capture(routine_id, opts \\ [])
+
+  def capture(nil, _opts) do
     {:error, :no_routine_id}
   end
 
-  def capture(routine_id) when is_binary(routine_id) do
-    Logger.debug("[ScreenshotCapture] Requesting screenshot for routine #{routine_id}")
+  def capture(routine_id, opts) when is_binary(routine_id) do
+    use_live_dom = Keyword.get(opts, :use_live_dom, false)
+    dom_type = if use_live_dom, do: "LIVE", else: "DESIGNED"
 
-    # Spawn Task to handle async screenshot request
-    # This keeps screenshot logic out of Engine's message queue
-    task =
-      Task.async(fn ->
-        # Subscribe to response topic
-        Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:response:#{routine_id}")
+    Logger.info("[ScreenshotCapture] 📸 SCREENSHOT CAPTURE CALLED for routine #{routine_id} (#{dom_type} DOM)")
 
-        # 1. Broadcast PubSub request to trigger screenshot capture in LiveView
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "screenshot:request:#{routine_id}",
-          {:screenshot_request, %{routine_id: routine_id, timestamp: DateTime.utc_now()}}
+    # 1. Retrieve lens_state from cache (returns lens_state or nil, not a tuple)
+    Logger.debug("[ScreenshotCapture] Retrieving lens_state from WireframeStateCache...")
+
+    case WireframeStateCache.get_state(routine_id) do
+      nil ->
+        Logger.warning(
+          "[ScreenshotCapture] ⚠️  No lens_state found in cache for routine #{routine_id}"
         )
 
-        # 2. Wait for screenshot capture to complete (with timeout)
-        receive do
-          {:screenshot_ready, ^routine_id} ->
-            Logger.debug(
-              "[ScreenshotCapture] Screenshot ready notification received for #{routine_id}"
+        {:error, :no_lens_state}
+
+      lens_state when is_map(lens_state) ->
+        Logger.info("[ScreenshotCapture] ✅ lens_state retrieved, calling ScreenshotRenderer with #{dom_type} DOM...")
+
+        # 2. Use ScreenshotRenderer to capture via Puppeteer
+        renderer_opts = [routine_id: routine_id] ++ opts
+
+        case ScreenshotRenderer.capture_from_lens_state(lens_state, renderer_opts) do
+          {:ok, base64_data} ->
+            # 3. Store in ScreenshotCache for consistency with existing code
+            Logger.info("[ScreenshotCapture] 💾 Storing SERVER-SIDE screenshot in ScreenshotCache for #{routine_id}")
+            :ok = ScreenshotCache.put(routine_id, base64_data)
+
+            # 4. Return formatted image content block
+            Logger.info("[ScreenshotCapture] ✅ SERVER-SIDE screenshot complete, returning image block")
+            {:ok,
+             %{
+               type: "image",
+               source: %{
+                 type: "base64",
+                 media_type: "image/png",
+                 data: base64_data
+               }
+             }}
+
+          {:error, reason} = error ->
+            Logger.error(
+              "[ScreenshotCapture] ❌ Puppeteer rendering failed for #{routine_id}: #{inspect(reason)}"
             )
 
-            # 3. Retrieve from ScreenshotCache
-            case ScreenshotCache.get(routine_id) do
-              {:ok, base64_data} ->
-                # Return formatted image content block
-                {:ok,
-                 %{
-                   type: "image",
-                   source: %{
-                     type: "base64",
-                     media_type: "image/png",
-                     data: base64_data
-                   }
-                 }}
-
-              {:error, reason} ->
-                Logger.error(
-                  "[ScreenshotCapture] Failed to retrieve screenshot from cache: #{inspect(reason)}"
-                )
-
-                {:error, :cache_retrieval_failed}
-            end
-        after
-          @timeout_ms ->
-            Logger.warning(
-              "[ScreenshotCapture] Screenshot capture timeout after #{@timeout_ms}ms for #{routine_id}"
-            )
-
-            {:error, :timeout}
+            error
         end
-      end)
-
-    # Wait for task (slightly longer than receive timeout to avoid race)
-    Task.await(task, @timeout_ms + 1000)
+    end
   end
 end

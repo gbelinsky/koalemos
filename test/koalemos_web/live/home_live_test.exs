@@ -10,11 +10,12 @@ defmodule KoalemosWeb.HomeLiveTest do
     assert response =~ "a developer framework for building conversational AI applications"
   end
 
-  test "displays start button", %{conn: conn} do
+  test "displays wireframe editor option", %{conn: conn} do
     conn = get(conn, ~p"/")
     response = html_response(conn, 200)
 
-    assert response =~ "start chat"
+    assert response =~ "wireframe editor"
+    assert response =~ "open editor"
   end
 
   test "has link to test pages", %{conn: conn} do

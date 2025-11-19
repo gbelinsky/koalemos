@@ -312,10 +312,11 @@ defmodule KoalemosWeb.WireframeEditorLive do
     error_msg = get_in(event, [:metadata, :reason]) || "Unknown error"
     Logger.error("[WireframeEditor] Routine error: #{error_msg}")
 
+    # Don't set last_error - routine errors are already shown in chat messages
+    # last_error overlay is only for UI/system errors, not routine/agent errors
     {:noreply,
      assign(socket,
        status: :error,
-       last_error: error_msg,
        current_step: nil
      )}
   end

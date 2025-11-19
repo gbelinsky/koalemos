@@ -113,12 +113,14 @@ defmodule KoalemosWeb.WireframePreviewLive do
   @impl true
   def handle_info({:snapshot_request, requested_id, opts}, socket) do
     Logger.info(
-      "[WireframePreviewLive] Received snapshot_request for #{requested_id}, my routine_id: #{socket.assigns.routine_id}"
+      "[WireframePreviewLive] 📥 Received snapshot_request for #{requested_id}, my routine_id: #{socket.assigns.routine_id}"
     )
 
     if socket.assigns.routine_id == requested_id do
-      Logger.info("[WireframePreviewLive] Snapshot requested, triggering client capture")
       skip_screenshot = Keyword.get(opts || [], :skip_screenshot, false)
+
+      Logger.info("[WireframePreviewLive] 🔄 Triggering CLIENT-SIDE snapshot capture (skip_screenshot: #{skip_screenshot})")
+
       variable_names = Map.keys(socket.assigns.custom_variables)
 
       {:noreply,
@@ -194,7 +196,11 @@ defmodule KoalemosWeb.WireframePreviewLive do
 
     # Store screenshot in ScreenshotCache
     if screenshot_data = snapshot_data["screenshot"] do
+      Logger.info("[WireframePreviewLive] 📷 CLIENT-SIDE screenshot received (#{byte_size(screenshot_data)} bytes), storing in ScreenshotCache for #{routine_id}")
       Koalemos.Caches.ScreenshotCache.put(routine_id, screenshot_data)
+      Logger.info("[WireframePreviewLive] ✅ CLIENT-SIDE screenshot stored - THIS IS WHAT THE AGENT SEES")
+    else
+      Logger.warning("[WireframePreviewLive] ⚠️  No screenshot in snapshot_data")
     end
 
     # Broadcast ready notification
