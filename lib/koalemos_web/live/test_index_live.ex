@@ -25,7 +25,7 @@ defmodule KoalemosWeb.TestIndexLive do
             Manual testing and demonstration pages
           </p>
         </div>
-        
+
     <!-- Test Pages List -->
         <div class="space-y-4">
           <!-- Screenshot Test Page -->
@@ -85,7 +85,7 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-          
+
     <!-- Sequential Thinking Test Page -->
           <a
             href="/test/thinking"
@@ -143,7 +143,7 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-          
+
     <!-- Persona Test Page -->
           <a
             href="/test/persona"
@@ -259,6 +259,66 @@ defmodule KoalemosWeb.TestIndexLive do
             </div>
           </a>
 
+    <!-- Wireframe Editor V4 (Simplified Architecture) -->
+          <a
+            href={"/wireframe-editor-v4/v4-demo-#{:erlang.unique_integer([:positive])}"}
+            class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border-2 border-emerald-500"
+          >
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <svg
+                  class="w-6 h-6 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                </svg>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <h2 class="text-xl font-semibold text-slate-800">
+                    Wireframe Editor V4
+                  </h2>
+                  <span class="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded">
+                    Simplified
+                  </span>
+                </div>
+                <p class="text-slate-600 mb-3">
+                  V4 architecture: No PubSub, direct process communication via Registry. Blocking capture_state/execute_interaction. Two-state preview model (nil or pid). Simpler than V3.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span class="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded">
+                    V4 Architecture
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded">
+                    No PubSub
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded">
+                    Direct Registry
+                  </span>
+                  <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    Blocking Ops
+                  </span>
+                </div>
+              </div>
+              <div class="flex-shrink-0">
+                <svg
+                  class="w-6 h-6 text-emerald-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </div>
+            </div>
+          </a>
+
     <!-- Wireframe Test Page -->
           <a
             href="/test/wireframe"
@@ -316,7 +376,7 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-          
+
     <!-- Lens Combinator Test Page -->
           <a
             href="/test/lens-combinator"
@@ -374,7 +434,7 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-          
+
     <!-- Parsing Integration Test Page -->
           <a
             href="/test/parsing"
@@ -435,7 +495,7 @@ defmodule KoalemosWeb.TestIndexLive do
               </div>
             </div>
           </a>
-          
+
     <!-- Sample Page -->
           <a
             href="/test/sample"
@@ -491,7 +551,7 @@ defmodule KoalemosWeb.TestIndexLive do
             </div>
           </a>
         </div>
-        
+
     <!-- Back to Home -->
         <div class="mt-12 text-center">
           <a

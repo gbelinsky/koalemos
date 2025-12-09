@@ -23,29 +23,7 @@ defmodule KoalemosWeb.UserInputComponent do
 
   ## Required Parent Setup
 
-  **IMPORTANT**: The parent LiveView must forward two types of messages to this component.
-
-  ### 1. Upload Polling (Required for image uploads)
-
-  Due to technical limitations with LiveView upload event handling, the parent must
-  forward `:check_uploads` messages to ALL UserInputComponent instances:
-
-  ```elixir
-  @impl true
-  def handle_info(:check_uploads, socket) do
-    # Forward to UserInputComponent - use actual component IDs in your app
-    send_update(KoalemosWeb.UserInputComponent, id: "user-input", check_uploads: true)
-
-    # If component is nested in ChatPanel or other LiveComponents:
-    send_update(KoalemosWeb.UserInputComponent, id: "chat-panel-input", check_uploads: true)
-
-    {:noreply, socket}
-  end
-  ```
-
-  ### 2. User Input Submission (Required for functionality)
-
-  The parent must also handle the component's output message:
+  The parent LiveView must handle the component's output message:
 
   ```elixir
   @impl true
@@ -57,13 +35,6 @@ defmodule KoalemosWeb.UserInputComponent do
     {:noreply, socket}
   end
   ```
-
-  ## Tech Debt
-
-  This component uses polling to detect upload completion instead of proper LiveView
-  upload event handling. This is due to challenges with auto-upload event propagation
-  in LiveView components. The polling approach works reliably but should be replaced
-  with proper event handling in the future.
 
   ## Image Format
 
@@ -428,7 +399,7 @@ defmodule KoalemosWeb.UserInputComponent do
         in_progress = Enum.filter(entries, &(!&1.done?))
 
         if length(in_progress) > 0 do
-          Process.send_after(self(), :check_uploads, 500)
+          send_update_after(__MODULE__, [id: socket.assigns.id, check_uploads: true], 500)
         end
 
         processed_socket
@@ -461,9 +432,8 @@ defmodule KoalemosWeb.UserInputComponent do
     # Open the drawer when files are selected
     socket = assign(socket, :images_drawer_open, true)
 
-    # TECH DEBT: Using polling to check upload completion instead of proper event handling
-    # TODO: Replace with proper LiveView upload event handling (progress, auto-upload events)
-    Process.send_after(self(), :check_uploads, 500)
+    # Schedule self-update to check upload completion
+    send_update_after(__MODULE__, [id: socket.assigns.id, check_uploads: true], 500)
 
     {:noreply, socket}
   end

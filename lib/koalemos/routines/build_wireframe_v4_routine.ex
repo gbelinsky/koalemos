@@ -1,74 +1,32 @@
-defmodule Koalemos.Routines.BuildWireframeRoutine do
+defmodule Koalemos.Routines.BuildWireframeV4Routine do
   @moduledoc """
-  Multi-stage wireframe building routine with linear sequential flow.
+  V4 multi-stage wireframe building routine with linear sequential flow.
 
-  This routine demonstrates a scripted playbook by breaking down the "build from scratch"
-  task into multiple coordinated stages executed in sequence.
-
-  ## Architecture Pattern
-
-  **Linear Sequential Flow:**
-  planning → layout_and_structure → behavior → testing → polish
-
-  Each stage has a specific responsibility and executes in a predetermined order.
-  No routing decisions - this is a known sequence for building wireframes.
-  The parent routine (WireframeDesignRoutine) handles result summarization.
+  Clean V4 implementation using StateServer architecture:
+  - All stages use WireframeEditorV4 lens
+  - StateServer is single source of truth (inherited from parent)
+  - No lens_state in context
 
   ## Build Stages
 
-  - **planning** - Analyze requirements and plan the wireframe approach
-  - **layout_and_structure** - Build HTML structure + layout CSS (flexbox/grid/spacing)
-  - **behavior** - Add event handlers and JavaScript interactivity
-  - **testing** - Test interactions using trigger_interaction tool
-  - **polish** - Add visual styling CSS (colors, typography, effects)
+  Linear sequential flow (no routing decisions):
+  1. **planning** - Analyze requirements and plan the wireframe approach
+  2. **layout_and_structure** - Build HTML structure + layout CSS
+  3. **behavior** - Add event handlers and JavaScript interactivity
+  4. **testing** - Test interactions using trigger_interaction tool
+  5. **polish** - Add visual styling CSS
 
-  ## Linear Playbook
+  ## Flow
 
-  This is a scripted sequence - no routing decisions needed:
-  - We know the steps required to build a wireframe
-  - Each stage has a clear, specific responsibility
-  - Agent executes each stage in order
-  - Testing is guaranteed to happen (not agent-decided)
-
-  ## Example Flow
-
-  ```
-  User: "Build a login form"
-    ↓
-  planning → analyze requirements, plan structure
-    ↓
-  layout_and_structure → create HTML + layout CSS (flexbox, spacing, containers)
-    ↓
-  behavior → add click handlers, form validation
-    ↓
-  testing → test button clicks, form submission
-    ↓
-  polish → add visual CSS (colors, typography, shadows)
-    ↓
-  (returns to parent routine's show_result step)
-  ```
-
-  ## Initial Context
-
-  Inherits context from parent routine (WireframeDesignRoutine):
-  - `wireframe_html` - Current wireframe HTML
-  - `lens_state` - Current DOM tree and state
-  - `messages` - Conversation history with user's request
+  planning → layout_and_structure → behavior → testing → polish → (returns to parent)
   """
 
   alias Koalemos.Steps.Agent.TemplatedSemanticAgent
 
   def start, do: :planning
 
-  @doc """
-  Returns the routine definition as a linear build sequence.
-
-  Sequential flow:
-  planning → layout_and_structure → behavior → testing → polish
-  """
   def routine_definition do
     %{
-
       # Stage 1: Planning
       planning: %{
         type: TemplatedSemanticAgent,
@@ -221,16 +179,8 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
     }
   end
 
-  @doc """
-  Condition check function - always returns true.
-  All semantic routing is handled by SemanticTransition lens.
-  """
   def check_condition(:always, _context), do: true
 
-  @doc """
-  Returns default initial context.
-  Typically called as a sub-routine, so inherits parent context.
-  """
   def initial_context do
     %{
       messages: [],
@@ -241,10 +191,6 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
     }
   end
 
-  @doc """
-  Setup function - no special setup needed for build routine.
-  Inherits lens_state from parent routine.
-  """
   def setup(_routine_config, _state) do
     {:ok, []}
   end

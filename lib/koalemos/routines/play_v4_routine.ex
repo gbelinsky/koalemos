@@ -1,70 +1,44 @@
-defmodule Koalemos.Routines.PlayRoutine do
+defmodule Koalemos.Routines.PlayV4Routine do
   @moduledoc """
-  Tight interaction loop for playing with wireframe without routing overhead.
+  V4 tight interaction loop for playing with wireframe.
 
-  This routine provides a focused interaction mode where users can:
+  Clean V4 implementation using StateServer architecture:
+  - Uses WireframeEditorV4 lens
+  - StateServer is single source of truth (inherited from parent)
+  - No lens_state in context
+
+  ## Purpose
+
+  Provides a focused interaction mode where users can:
   - Play games implemented in the wireframe
   - Test and interact with wireframe features conversationally
   - Get immediate feedback from the agent
 
-  ## Architecture
+  ## Flow
 
   Simple two-step loop:
-  1. **start** - User provides input
-  2. **interact** - Agent responds and uses tools (readonly + trigger_interaction)
+  1. **start** - Agent responds and interacts with wireframe
+  2. **await_input** - Wait for user input
   3. Loop back to start
 
   ## Exit Mechanism
 
-  The agent uses workflow_transition("exit_play") when it detects the user wants to:
-  - Stop playing/interacting
-  - Make changes to the wireframe
-  - Return to the main design flow
+  The agent uses semantic transition to exit when it detects:
+  - User wants to stop playing
+  - User wants to make changes to the wireframe
+  - Game is over
 
   This exits the tight loop and returns control to the parent routine.
-
-  ## Tools Available
-
-  - Readonly WireframeEditor (read_dom, capture_screenshot)
-  - trigger_interaction (test interactions)
-  - SequentialThinking (for planning)
-  - WorkflowTransition (for exiting)
-
-  No modification tools - this is for interaction and testing only.
-
-  ## Example Flow
-
-  ```
-  User: "Let's play tic-tac-toe"
-    ↓
-  start → agent clicks cells, shows board state, decides to continue
-    ↓
-  await_input → User: "click top-left"
-    ↓
-  start → agent uses trigger_interaction, shows result, decides to continue
-    ↓
-  await_input → User: "actually, let's make the board bigger"
-    ↓
-  start → agent detects modification request
-        → choose_transition(:end, "User wants to modify board")
-    ↓
-  (exits to parent routine's show_result step)
-  ```
   """
 
   alias Koalemos.Steps.User.ChatUserInput
   alias Koalemos.Steps.Agent.TemplatedSemanticAgent
 
-  @doc """
-  Returns the routine definition with tight interaction loop.
+  def start, do: :start
 
-  Loop:
-  start (agent responds/interacts) → decide to continue or exit → await_input (if continuing) → start
-  Exit: via choose_transition to :end when user wants to stop
-  """
   def routine_definition do
     %{
-      # Agent interaction first - respond and interact with wireframe
+      # Agent interaction - respond and interact with wireframe
       start: %{
         type: TemplatedSemanticAgent,
         config: %{
@@ -118,13 +92,19 @@ defmodule Koalemos.Routines.PlayRoutine do
     }
   end
 
-  @doc """
-  Condition check function - always returns true.
-  """
   def check_condition(:always, _context), do: true
 
-  @doc """
-  Returns the start step for the routine.
-  """
-  def start, do: :start
+  def initial_context do
+    %{
+      messages: [],
+      lenses: [
+        "Koalemos.Lenses.WireframeEditorV4",
+        "Koalemos.Lenses.SequentialThinking"
+      ]
+    }
+  end
+
+  def setup(_routine_config, _state) do
+    {:ok, []}
+  end
 end

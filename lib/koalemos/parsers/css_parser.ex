@@ -10,44 +10,34 @@ defmodule Koalemos.Parsers.CSSParser do
       iex> css = ".button { padding: 20px; margin: 10px; }"
       iex> {:ok, result} = CSSParser.parse(css)
       iex> result.rules
-      [%{selector: ".button", declarations: %{"padding" => "20px", "margin" => "10px"}}]
+      %{".button" => %{"padding" => "20px", "margin" => "10px"}}
 
   ## Output Format
 
       %{
-        rules: [
-          %{
-            selector: ".button",
-            declarations: %{
-              "padding" => "20px",
-              "margin" => "10px"
-            }
-          },
-          %{
-            selector: "h1, h2",
-            declarations: %{
-              "color" => "blue"
-            }
-          }
-        ]
+        rules: %{
+          ".button" => %{"padding" => "20px", "margin" => "10px"},
+          "h1, h2" => %{"color" => "blue"}
+        }
       }
 
   ## Notes
 
   - Ignores @media, @keyframes, and other at-rules for MVP
   - Multiple selectors are joined with ", "
+  - Duplicate selectors are merged
   - Invalid CSS returns {:error, reason}
   """
 
   @doc """
   Parse CSS string into structured rules.
 
-  Returns `{:ok, %{rules: [...]}}` or `{:error, reason}`.
+  Returns `{:ok, %{rules: %{...}}}` or `{:error, reason}`.
 
   ## Examples
 
       iex> CSSParser.parse(".btn { color: red; }")
-      {:ok, %{rules: [%{selector: ".btn", declarations: %{"color" => "red"}}]}}
+      {:ok, %{rules: %{".btn" => %{"color" => "red"}}}}
 
       iex> CSSParser.parse("invalid {{{")
       {:error, "CSS parsing failed: ..."}
@@ -56,31 +46,10 @@ defmodule Koalemos.Parsers.CSSParser do
   def parse(css_content) when is_binary(css_content) do
     try do
       result = NodeJS.call!({"css_parser", :parseCSS}, [css_content])
-      parsed = parse_result(result)
-      {:ok, parsed}
+      {:ok, %{rules: Map.get(result, "rules", %{})}}
     rescue
       e ->
         {:error, "CSS parsing failed: #{Exception.message(e)}"}
     end
-  end
-
-  # Parse Node.js result into Elixir structures
-  defp parse_result(result) when is_map(result) do
-    rules =
-      result
-      |> Map.get("rules", [])
-      |> Enum.map(&parse_rule/1)
-
-    %{
-      rules: rules
-    }
-  end
-
-  # Parse a single CSS rule
-  defp parse_rule(rule) when is_map(rule) do
-    %{
-      selector: Map.get(rule, "selector", ""),
-      declarations: Map.get(rule, "declarations", %{})
-    }
   end
 end

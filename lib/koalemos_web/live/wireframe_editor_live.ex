@@ -23,6 +23,7 @@ defmodule KoalemosWeb.WireframeEditorLive do
   alias Koalemos.{EngineManager, Engine}
   alias Koalemos.Routines.WireframeDesignRoutine
   alias KoalemosWeb.ChatPanel
+  alias KoalemosWeb.WireframeConfigModal
 
   @available_samples [
     {"simple", "Simple Login Form", "wireframe_simple.html",
@@ -39,11 +40,14 @@ defmodule KoalemosWeb.WireframeEditorLive do
      socket
      |> assign(
        page_title: "Wireframe Editor",
-       # Sample selection state
-       show_sample_modal: true,
+       # Config modal state
+       show_config_modal: true,
        available_samples: @available_samples,
        current_sample: nil,
        loaded_html: nil,
+       # Configuration (from modal)
+       provider: nil,
+       model: nil,
        # Routine state
        routine_id: nil,
        messages: [],
@@ -68,90 +72,6 @@ defmodule KoalemosWeb.WireframeEditorLive do
        max_file_size: 1_000_000,
        auto_upload: true
      ), layout: false}
-  end
-
-  @impl true
-  def handle_event("select_sample", %{"sample" => sample_id}, socket) do
-    Logger.info("[WireframeEditor] Loading sample: #{sample_id}")
-
-    case load_sample_html(sample_id) do
-      {:ok, html_content} ->
-        sample_name = get_sample_name(sample_id)
-
-        # Generate unique routine_id for this session
-        routine_id = "wireframe-editor-#{:erlang.unique_integer([:positive])}"
-
-        # Parse HTML and create lens state
-        {lens_state, _agent_context} = parse_and_create_lens_state(html_content)
-
-        # Store lens_state in cache for preview
-        if lens_state do
-          Koalemos.Caches.WireframeStateCache.put_state(routine_id, lens_state)
-
-          # Broadcast initial DOM tree
-          dom_tree = get_in(lens_state, [:designed, :dom_tree])
-
-          Phoenix.PubSub.broadcast(
-            Koalemos.PubSub,
-            "wireframe_updates:#{routine_id}",
-            {:dom_tree_updated, dom_tree, %{source: :initial_load}}
-          )
-        end
-
-        # Subscribe to routine events
-        if connected?(socket) do
-          Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
-          Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
-        end
-
-        # Auto-start WireframeDesignRoutine with this sample
-        user_context = %{
-          routine_id: routine_id,
-          llm_provider: "anthropic",
-          llm_model: "claude-sonnet-4-5",
-          max_tokens: 64000,
-          temperature: 0.7,
-          wireframe_html: html_content
-        }
-
-        case EngineManager.start_routine(routine_id, WireframeDesignRoutine, user_context) do
-          {:ok, _pid} ->
-            Logger.info(
-              "[WireframeEditor] Started WireframeDesignRoutine #{routine_id} with sample #{sample_id}"
-            )
-
-            {:noreply,
-             assign(socket,
-               routine_id: routine_id,
-               loaded_html: html_content,
-               current_sample: sample_name,
-               lens_state: lens_state,
-               show_sample_modal: false,
-               agent_running: true,
-               status: :running,
-               messages: [],
-               last_error: nil
-             )}
-
-          {:error, reason} ->
-            Logger.error(
-              "[WireframeEditor] Failed to start routine #{routine_id}: #{inspect(reason)}"
-            )
-
-            {:noreply,
-             assign(socket,
-               last_error: "Failed to start routine: #{inspect(reason)}"
-             )}
-        end
-
-      {:error, reason} ->
-        Logger.error("[WireframeEditor] Failed to load sample #{sample_id}: #{inspect(reason)}")
-
-        {:noreply,
-         assign(socket,
-           last_error: "Failed to load sample: #{reason}"
-         )}
-    end
   end
 
   @impl true
@@ -180,10 +100,12 @@ defmodule KoalemosWeb.WireframeEditorLive do
 
     {:noreply,
      assign(socket,
-       show_sample_modal: true,
+       show_config_modal: true,
        routine_id: nil,
        loaded_html: nil,
        current_sample: nil,
+       provider: nil,
+       model: nil,
        lens_state: nil,
        messages: [],
        status: :idle,
@@ -237,6 +159,114 @@ defmodule KoalemosWeb.WireframeEditorLive do
     # Clamp between 30% and 60%
     clamped_width = max(30, min(60, width))
     {:noreply, assign(socket, left_panel_width: clamped_width)}
+  end
+
+  @impl true
+  def handle_info({:close_modal}, socket) do
+    {:noreply, assign(socket, show_config_modal: false)}
+  end
+
+  @impl true
+  def handle_info({:config_complete, config}, socket) do
+    Logger.info("[WireframeEditor] Config complete: #{inspect(config)}")
+
+    provider = Map.get(config, :provider)
+    model = Map.get(config, :model)
+    wireframe_sample = Map.get(config, :wireframe_sample, "blank")
+
+    # Load wireframe HTML based on sample selection
+    {html_content, sample_name} =
+      case wireframe_sample do
+        "blank" ->
+          {"<html><head><title>Blank Page</title></head><body></body></html>", "Blank Page"}
+
+        "login" ->
+          case load_sample_html("simple") do
+            {:ok, html} -> {html, "Login Form Example"}
+            {:error, _} -> {"<html><body>Error loading sample</body></html>", "Error"}
+          end
+
+        "dashboard" ->
+          case load_sample_html("medium") do
+            {:ok, html} -> {html, "Dashboard Layout Example"}
+            {:error, _} -> {"<html><body>Error loading sample</body></html>", "Error"}
+          end
+
+        "upload" ->
+          # File upload not yet implemented - use blank
+          {"<html><head><title>Blank Page</title></head><body></body></html>", "Blank Page"}
+
+        _ ->
+          {"<html><head><title>Blank Page</title></head><body></body></html>", "Blank Page"}
+      end
+
+    # Generate unique routine_id for this session
+    routine_id = "wireframe-editor-#{:erlang.unique_integer([:positive])}"
+
+    # Parse HTML and create lens state
+    {lens_state, _agent_context} = parse_and_create_lens_state(html_content)
+
+    # Store lens_state in cache for preview
+    if lens_state do
+      Koalemos.Caches.WireframeStateCache.put_state(routine_id, lens_state)
+
+      # Broadcast initial DOM tree
+      dom_tree = get_in(lens_state, [:designed, :dom_tree])
+
+      Phoenix.PubSub.broadcast(
+        Koalemos.PubSub,
+        "wireframe_updates:#{routine_id}",
+        {:dom_tree_updated, dom_tree, %{source: :initial_load}}
+      )
+    end
+
+    # Subscribe to routine events
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
+      Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
+    end
+
+    # Auto-start WireframeDesignRoutine with configured provider/model
+    user_context = %{
+      routine_id: routine_id,
+      llm_provider: provider,
+      llm_model: model,
+      max_tokens: 64000,
+      temperature: 0.7,
+      wireframe_html: html_content
+    }
+
+    case EngineManager.start_routine(routine_id, WireframeDesignRoutine, user_context) do
+      {:ok, _pid} ->
+        Logger.info(
+          "[WireframeEditor] Started WireframeDesignRoutine #{routine_id} with #{provider}/#{model}"
+        )
+
+        {:noreply,
+         assign(socket,
+           routine_id: routine_id,
+           loaded_html: html_content,
+           current_sample: sample_name,
+           provider: provider,
+           model: model,
+           lens_state: lens_state,
+           show_config_modal: false,
+           agent_running: true,
+           status: :running,
+           messages: [],
+           last_error: nil
+         )}
+
+      {:error, reason} ->
+        Logger.error(
+          "[WireframeEditor] Failed to start routine #{routine_id}: #{inspect(reason)}"
+        )
+
+        {:noreply,
+         assign(socket,
+           last_error: "Failed to start routine: #{inspect(reason)}"
+         )}
+    end
   end
 
   @impl true
@@ -440,64 +470,15 @@ defmodule KoalemosWeb.WireframeEditorLive do
           </div>
         </div>
       </div>
-      <!-- Sample Selection Modal -->
-      <%= if @show_sample_modal do %>
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 p-6">
-            <h2 class="text-2xl font-bold text-slate-800 mb-2">Choose a Wireframe to Edit</h2>
-            <p class="text-sm text-slate-600 mb-6">
-              Select a sample wireframe or upload your own HTML file to get started
-            </p>
-            <!-- Sample Selection -->
-            <div class="space-y-3 mb-6">
-              <%= for {id, name, _filename, description} <- @available_samples do %>
-                <button
-                  phx-click="select_sample"
-                  phx-value-sample={id}
-                  class="w-full px-4 py-4 rounded-xl border-2 border-slate-200 bg-white text-left hover:border-blue-400 hover:bg-blue-50 transition-all group"
-                >
-                  <div class="flex items-start justify-between">
-                    <div class="flex-1">
-                      <div class="font-semibold text-slate-800 group-hover:text-blue-700 mb-1">
-                        {name}
-                      </div>
-                      <div class="text-sm text-slate-600">{description}</div>
-                    </div>
-                    <svg
-                      class="w-5 h-5 text-slate-400 group-hover:text-blue-500 mt-1"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </button>
-              <% end %>
-            </div>
-            <!-- File Upload -->
-            <div class="border-t border-slate-200 pt-6">
-              <h3 class="text-sm font-semibold text-slate-700 mb-3">Or upload your own HTML</h3>
-              <form phx-change="validate">
-                <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 hover:border-blue-400 transition-colors bg-slate-50">
-                  <.live_file_input
-                    upload={@uploads.html_file}
-                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                  />
-                  <p class="text-xs text-slate-500 mt-2">
-                    HTML or HTM files only (max 1MB)
-                  </p>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      <% end %>
+      <!-- Config Modal -->
+      <.live_component
+        module={WireframeConfigModal}
+        id="wireframe-config-modal"
+        show={@show_config_modal}
+      />
+
+      <!-- ConfigStorage Hook (for localStorage integration) -->
+      <div phx-hook="ConfigStorage" id="config-storage" style="display: none;"></div>
       <!-- Main Content: Chat + Preview -->
       <%= if @agent_running && @routine_id && @lens_state do %>
         <div class="flex-1 overflow-hidden flex" id="resizable-container">
@@ -540,7 +521,7 @@ defmodule KoalemosWeb.WireframeEditorLive do
             </div>
             <div class="flex-1 overflow-hidden">
               <iframe
-                src={"/wireframe-preview/#{@routine_id}"}
+                src={"/wireframe-preview-v4/#{@routine_id}"}
                 class="w-full h-full border-0"
                 id="wireframe-preview"
                 sandbox="allow-scripts allow-same-origin allow-forms"
@@ -627,10 +608,11 @@ defmodule KoalemosWeb.WireframeEditorLive do
             end
 
             # Auto-start WireframeDesignRoutine with uploaded file
+            # Use configured provider/model from socket (set by config modal)
             user_context = %{
               routine_id: routine_id,
-              llm_provider: "anthropic",
-              llm_model: "claude-sonnet-4-5",
+              llm_provider: socket.assigns.provider || "anthropic",
+              llm_model: socket.assigns.model || "claude-sonnet-4-5",
               max_tokens: 64000,
               temperature: 0.7,
               wireframe_html: html_content
@@ -717,12 +699,13 @@ defmodule KoalemosWeb.WireframeEditorLive do
   end
 
   # Convert CSS rules list to map format (selector -> declarations)
+  # Handles both list format (old) and map format (new CSS parser returns maps)
   defp extract_css_rules_as_map(css_rules) when is_list(css_rules) do
     Enum.reduce(css_rules, %{}, fn rule, acc ->
       Map.put(acc, rule.selector, rule.declarations)
     end)
   end
-
+  defp extract_css_rules_as_map(css_rules) when is_map(css_rules), do: css_rules
   defp extract_css_rules_as_map(_), do: %{}
 
   # Convert init scripts list to map with index keys
@@ -827,12 +810,6 @@ defmodule KoalemosWeb.WireframeEditorLive do
     end
   end
 
-  defp get_sample_name(sample_id) do
-    case Enum.find(@available_samples, fn {id, _name, _file, _desc} -> id == sample_id end) do
-      {_id, name, _file, _desc} -> name
-      nil -> "Unknown"
-    end
-  end
 
   # Generate complete HTML file from designed wireframe state
   defp generate_wireframe_html(wireframe_state) when is_map(wireframe_state) do

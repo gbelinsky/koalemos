@@ -59,7 +59,7 @@ WireframeHooks.ScreenshotCapture = {
    * Hook mounted - setup and load html-to-image
    */
   mounted() {
-    INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] Hook mounted on element:", this.el.id)
+    INFRASTRUCTURE_CONSOLE.log("[ScreenshotCapture] ⚡ Hook mounted at timestamp:", Date.now(), "element:", this.el.id)
 
     // State
     this.html2canvasReady = false
@@ -313,7 +313,7 @@ WireframeHooks.ScreenshotCapture = {
  */
 WireframeHooks.JavaScriptUpdater = {
   mounted() {
-    INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] Hook mounted - ready to receive JS updates")
+    INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] ⚡ Hook mounted at timestamp:", Date.now())
 
     // Track attached handlers so we can remove them before re-attaching
     this.attachedHandlers = new Map() // Map<elementId, Map<eventType, handlerFunc>>
@@ -436,6 +436,67 @@ WireframeHooks.JavaScriptUpdater = {
     this.handleEvent("execute_interaction", (args) => {
       INFRASTRUCTURE_CONSOLE.log("[Interaction] Received execution request:", args)
       this.executeInteraction(args)
+    })
+
+    // Listen for init script execution (Sprint 8 - post-mount execution)
+    // Receives scripts from server and executes them after LiveView mount completes
+    // This fixes the bug where init-generated DOM elements would disappear
+    this.handleEvent("execute_init_scripts", ({scripts}) => {
+      INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] 🚀 Received init scripts to execute:", Object.keys(scripts))
+
+      // Track execution for debugging
+      const startTime = Date.now()
+      const scriptNames = Object.keys(scripts)
+      const scriptCount = scriptNames.length
+
+      INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] Executing ${scriptCount} init scripts in order: ${scriptNames.join(', ')}`)
+
+      try {
+        // Execute each script in map iteration order
+        // Note: Modern JavaScript preserves insertion order for object keys
+        Object.entries(scripts).forEach(([name, code], index) => {
+          try {
+            INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] [${index + 1}/${scriptCount}] Executing init script: ${name}`)
+
+            // Execute in global scope (matches behavior of inline <script> tags)
+            // Using Function constructor allows scripts to define globals, modify DOM, etc.
+            const func = new Function(code)
+            func()
+
+            INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] ✓ Init script '${name}' executed successfully`)
+          } catch (error) {
+            // Log error but continue with other scripts
+            // This matches browser behavior: one script error doesn't halt others
+            INFRASTRUCTURE_CONSOLE.error(`[JavaScriptUpdater] ✗ Init script '${name}' failed:`, error)
+            console.error(`Init script '${name}' error:`, error) // Also log to captured console for agent visibility
+          }
+        })
+
+        const duration = Date.now() - startTime
+        INFRASTRUCTURE_CONSOLE.log(`[JavaScriptUpdater] ✅ Completed ${scriptCount} init scripts in ${duration}ms`)
+
+        // Send acknowledgment back to server (Sprint 8 - screenshot timing fix)
+        // This allows manage_init_scripts tool to wait for execution to complete
+        // before returning, ensuring screenshots capture the correct state
+        this.pushEvent("init_scripts_complete", {
+          success: true,
+          executed_count: scriptCount,
+          duration_ms: duration,
+          timestamp: Date.now()
+        })
+        INFRASTRUCTURE_CONSOLE.log("[JavaScriptUpdater] 📤 Sent init_scripts_complete acknowledgment to server")
+
+      } catch (error) {
+        INFRASTRUCTURE_CONSOLE.error("[JavaScriptUpdater] ❌ Fatal error executing init scripts:", error)
+        console.error("Init scripts execution failed:", error) // Agent visibility
+
+        // Send failure acknowledgment
+        this.pushEvent("init_scripts_complete", {
+          success: false,
+          error: error.message,
+          timestamp: Date.now()
+        })
+      }
     })
   },
 
@@ -561,6 +622,23 @@ WireframeHooks.JavaScriptUpdater = {
         if (element.checked) {
           attributes['checked'] = 'true'
         }
+      }
+    }
+
+    // For canvas elements, capture current pixel content
+    // This allows screenshots to show canvas drawings
+    if (element.tagName === 'CANVAS') {
+      try {
+        // Capture canvas content as base64 data URL
+        const dataURL = element.toDataURL('image/png')
+        attributes['data-canvas-snapshot'] = dataURL
+
+        const sizeKB = Math.round(dataURL.length / 1024)
+        INFRASTRUCTURE_CONSOLE.log(`[StateCapture] Captured canvas ${element.id || '(no id)'}: ${sizeKB}KB`)
+      } catch (error) {
+        // Canvas may be tainted (CORS) or encounter other errors
+        INFRASTRUCTURE_CONSOLE.warn(`[StateCapture] Failed to capture canvas ${element.id || '(no id)'}:`, error.message)
+        attributes['data-canvas-error'] = error.message
       }
     }
 
@@ -705,6 +783,425 @@ WireframeHooks.JavaScriptUpdater = {
     // Console interception is handled by global script, no cleanup needed
     // Just clear the buffer reference
     this.consoleBuffer = null
+  }
+}
+
+/**
+ * ConfigStorage Hook
+ *
+ * Manages non-sensitive configuration in browser localStorage.
+ * Complements server-side ConfigStore for local preferences.
+ *
+ * Hierarchy (lowest to highest priority):
+ * 1. Defaults (hardcoded)
+ * 2. localStorage (browser preferences) <- This hook
+ * 3. .koalemos/.config.json (project config)
+ * 4. ~/.koalemos/.config.json (user config)
+ * 5. Environment variables (server-side, highest)
+ *
+ * Stores:
+ * - provider (anthropic, openai, ollama)
+ * - anthropic_model (e.g., "claude-sonnet-4-5")
+ * - openai_model (e.g., "gpt-4o")
+ * - ollama_model (e.g., "qwen2.5:7b")
+ * - ollama_base_url (e.g., "http://localhost:11434")
+ *
+ * Usage:
+ *   <div phx-hook="ConfigStorage" id="config-storage"></div>
+ */
+WireframeHooks.ConfigStorage = {
+  mounted() {
+    INFRASTRUCTURE_CONSOLE.log("[ConfigStorage] Hook mounted - loading config from localStorage")
+
+    // Load config from localStorage
+    const config = this.loadConfig()
+
+    // Push to LiveView if any config exists
+    if (Object.keys(config).length > 0) {
+      INFRASTRUCTURE_CONSOLE.log("[ConfigStorage] Loaded config from localStorage:", config)
+      this.pushEvent("config_loaded", { config })
+    }
+
+    // Listen for save requests from LiveView
+    this.handleEvent("save_config", ({ config }) => {
+      INFRASTRUCTURE_CONSOLE.log("[ConfigStorage] Saving config to localStorage:", config)
+      this.saveConfig(config)
+    })
+
+    // Listen for clear requests from LiveView
+    this.handleEvent("clear_config", () => {
+      INFRASTRUCTURE_CONSOLE.log("[ConfigStorage] Clearing config from localStorage")
+      this.clearConfig()
+    })
+  },
+
+  /**
+   * Load config from localStorage
+   * Returns empty object if not found or invalid
+   */
+  loadConfig() {
+    try {
+      const json = localStorage.getItem('koalemos_config')
+      if (!json) return {}
+
+      const config = JSON.parse(json)
+      return config || {}
+    } catch (error) {
+      INFRASTRUCTURE_CONSOLE.error("[ConfigStorage] Failed to load config from localStorage:", error)
+      return {}
+    }
+  },
+
+  /**
+   * Save config to localStorage
+   * Only saves non-sensitive data (no API keys)
+   */
+  saveConfig(config) {
+    try {
+      // Filter out any API keys (safety check - they shouldn't be here)
+      const safeConfig = {
+        provider: config.provider,
+        anthropic_model: config.anthropic_model,
+        openai_model: config.openai_model,
+        ollama_model: config.ollama_model,
+        ollama_base_url: config.ollama_base_url,
+        last_updated: new Date().toISOString()
+      }
+
+      // Remove undefined/null values
+      Object.keys(safeConfig).forEach(key => {
+        if (safeConfig[key] === undefined || safeConfig[key] === null) {
+          delete safeConfig[key]
+        }
+      })
+
+      localStorage.setItem('koalemos_config', JSON.stringify(safeConfig))
+      INFRASTRUCTURE_CONSOLE.log("[ConfigStorage] Config saved successfully")
+    } catch (error) {
+      INFRASTRUCTURE_CONSOLE.error("[ConfigStorage] Failed to save config to localStorage:", error)
+    }
+  },
+
+  /**
+   * Clear config from localStorage
+   */
+  clearConfig() {
+    try {
+      localStorage.removeItem('koalemos_config')
+      INFRASTRUCTURE_CONSOLE.log("[ConfigStorage] Config cleared from localStorage")
+    } catch (error) {
+      INFRASTRUCTURE_CONSOLE.error("[ConfigStorage] Failed to clear config:", error)
+    }
+  },
+
+  destroyed() {
+    INFRASTRUCTURE_CONSOLE.log("[ConfigStorage] Hook destroyed")
+    // No cleanup needed - localStorage persists
+  }
+}
+
+
+/**
+ * WireframePreviewV4 Hook
+ *
+ * V4 architecture: Direct process communication via Registry, no PubSub.
+ *
+ * Key differences from V3:
+ * - Simpler message flow (direct StateServer communication)
+ * - Same JS behavior but cleaner server-side coordination
+ *
+ * Signal flow:
+ * - After init: sends "preview_ready" → server registers with StateServer
+ * - On capture_state: sends "state_captured" (DOM + variables)
+ * - On execute_interaction: executes action, sends "interaction_complete"
+ * - Screenshots are captured server-side via Puppeteer
+ *
+ * Usage:
+ *   <div phx-hook="WireframePreviewV4" id="wireframe-preview-v4">
+ */
+WireframeHooks.WireframePreviewV4 = {
+  mounted() {
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Hook mounted")
+
+    // Set up console capture
+    this.setupConsoleCapture()
+
+    // Listen for capture_state requests from server
+    this.handleEvent("capture_state", () => {
+      INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Capture state requested")
+      this.captureAndSendState()
+    })
+
+    // Listen for interaction execution requests
+    this.handleEvent("execute_interaction", (args) => {
+      INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Execute interaction requested:", args)
+      this.executeInteraction(args)
+    })
+
+    // Execute after brief delay to ensure DOM is ready
+    setTimeout(() => this.executeInitScripts(), 50)
+  },
+
+  captureAndSendState() {
+    const wireframeData = window.__wireframeDataV4
+    const domTree = wireframeData?.domTree
+    const rootId = domTree?.id
+    const wireframeRoot = rootId ? document.getElementById(rootId) : null
+
+    const runningDom = wireframeRoot ? this.serializeDOM(wireframeRoot) : null
+
+    const variables = {}
+    const customVariables = wireframeData?.customVariables || {}
+    Object.keys(customVariables).forEach(name => {
+      if (name in window) variables[name] = window[name]
+    })
+
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Sending captured state, variables:", variables)
+
+    // Send state with keys matching Elixir running state structure
+    this.pushEvent("state_captured", {
+      dom_tree: runningDom,
+      variables: variables,
+      console_logs: this.consoleLogs,
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      },
+      scroll_position: {
+        x: window.scrollX || window.pageXOffset || 0,
+        y: window.scrollY || window.pageYOffset || 0
+      }
+    })
+  },
+
+  setupConsoleCapture() {
+    this.consoleLogs = []
+
+    if (!window.__originalConsole) {
+      window.__originalConsole = {
+        log: console.log.bind(console),
+        warn: console.warn.bind(console),
+        error: console.error.bind(console)
+      }
+    }
+
+    const captureLog = (level, ...args) => {
+      window.__originalConsole[level](...args)
+
+      const message = args.map(arg => {
+        if (typeof arg === 'string') return arg
+        if (arg instanceof Error) return `${arg.name}: ${arg.message}`
+        try { return JSON.stringify(arg) } catch(e) { return String(arg) }
+      }).join(' ')
+
+      this.consoleLogs.push({ level, message, timestamp: Date.now() })
+    }
+
+    console.log = (...args) => captureLog('log', ...args)
+    console.warn = (...args) => captureLog('warn', ...args)
+    console.error = (...args) => captureLog('error', ...args)
+  },
+
+  executeInitScripts() {
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Executing init scripts")
+
+    const wireframeData = window.__wireframeDataV4
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] wireframeData:", wireframeData)
+
+    if (!wireframeData) {
+      INFRASTRUCTURE_CONSOLE.warn("[WireframePreviewV4] No wireframe data found")
+      this.sendPreviewReady()
+      return
+    }
+
+    // Set up custom variables
+    const customVariables = wireframeData.customVariables || {}
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] customVariables:", customVariables)
+    Object.entries(customVariables).forEach(([name, value]) => {
+      window[name] = value
+      INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Set variable: ${name}`)
+    })
+
+    // Execute init scripts
+    const initScripts = wireframeData.initScripts || {}
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] initScripts:", initScripts)
+    const scriptNames = Object.keys(initScripts).sort()
+
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Executing ${scriptNames.length} init scripts`)
+
+    scriptNames.forEach(name => {
+      const code = initScripts[name]
+      try {
+        INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Executing: ${name}`)
+        window.eval(code)
+      } catch (error) {
+        INFRASTRUCTURE_CONSOLE.error(`[WireframePreviewV4] Script '${name}' failed:`, error)
+        console.error(`Init script '${name}' error: ${error.message}`)
+      }
+    })
+
+    // Attach handlers
+    this.attachHandlers(wireframeData.handlers || {})
+
+    // Brief delay then send preview_ready
+    setTimeout(() => this.sendPreviewReady(), 100)
+  },
+
+  attachHandlers(handlers) {
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Attaching handlers:", Object.keys(handlers))
+
+    Object.entries(handlers).forEach(([elementId, events]) => {
+      const element = document.getElementById(elementId)
+      if (!element) {
+        INFRASTRUCTURE_CONSOLE.warn(`[WireframePreviewV4] Element not found: ${elementId}`)
+        return
+      }
+
+      Object.entries(events).forEach(([eventName, handlerData]) => {
+        try {
+          const code = typeof handlerData === 'string' ? handlerData : handlerData.body
+          const handlerFunc = new Function('event', code)
+
+          element.addEventListener(eventName, (event) => {
+            INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Handler: ${elementId}.${eventName}`)
+            handlerFunc.call(element, event)
+          })
+
+          INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Attached ${eventName} to ${elementId}`)
+        } catch (error) {
+          INFRASTRUCTURE_CONSOLE.error(`[WireframePreviewV4] Handler attach failed:`, error)
+        }
+      })
+    })
+  },
+
+  sendPreviewReady() {
+    // Signal that preview is ready - server will register us with StateServer
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Sending preview_ready")
+    this.pushEvent("preview_ready", {})
+  },
+
+  executeInteraction(command) {
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Executing interaction:", command)
+
+    try {
+      switch(command.action) {
+        case "click":
+          this.triggerClick(command.element_id)
+          break
+        case "fill_input":
+          this.fillInput(command.element_id, command.value)
+          break
+        case "submit_form":
+          this.submitForm(command.element_id)
+          break
+        case "execute_js":
+          this.executeJavaScript(command.js_code || command.value)
+          break
+        default:
+          throw new Error(`Unknown interaction action: ${command.action}`)
+      }
+
+      // Wait for DOM changes to settle, then notify completion
+      setTimeout(() => {
+        this.pushEvent("interaction_complete", {
+          success: true,
+          action: command.action
+        })
+      }, 300)
+
+    } catch (error) {
+      INFRASTRUCTURE_CONSOLE.error("[WireframePreviewV4] Interaction failed:", error)
+      this.pushEvent("interaction_complete", {
+        success: false,
+        action: command.action,
+        error: error.message
+      })
+    }
+  },
+
+  triggerClick(elementId) {
+    const el = document.getElementById(elementId)
+    if (!el) throw new Error(`Element not found: ${elementId}`)
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Clicking: ${elementId}`)
+    el.click()
+  },
+
+  fillInput(elementId, value) {
+    const el = document.getElementById(elementId)
+    if (!el) throw new Error(`Element not found: ${elementId}`)
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Filling ${elementId} with: ${value}`)
+    el.value = value
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+  },
+
+  submitForm(elementId) {
+    const el = document.getElementById(elementId)
+    if (!el) throw new Error(`Element not found: ${elementId}`)
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Submitting form: ${elementId}`)
+    el.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  },
+
+  executeJavaScript(code) {
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Executing JS: ${code?.substring(0, 50)}...`)
+    const func = new Function(code)
+    func()
+  },
+
+  serializeDOM(element) {
+    if (!element || element.nodeType !== 1) return null
+    if (element.tagName === 'SCRIPT' || element.tagName === 'STYLE') return null
+
+    const attributes = {}
+    Array.from(element.attributes).forEach(attr => {
+      if (attr.name !== 'id' && attr.name !== 'class') {
+        attributes[attr.name] = attr.value
+      }
+    })
+
+    // For canvas elements, capture current pixel content
+    // This allows screenshots to show canvas drawings
+    if (element.tagName === 'CANVAS') {
+      try {
+        const dataURL = element.toDataURL('image/png')
+        attributes['data-canvas-snapshot'] = dataURL
+        const sizeKB = Math.round(dataURL.length / 1024)
+        INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Captured canvas ${element.id || '(no id)'}: ${sizeKB}KB`)
+      } catch (error) {
+        INFRASTRUCTURE_CONSOLE.warn(`[WireframePreviewV4] Failed to capture canvas ${element.id || '(no id)'}:`, error.message)
+        attributes['data-canvas-error'] = error.message
+      }
+    }
+
+    let content = null
+    if (element.children.length === 0) {
+      content = element.textContent?.trim() || null
+    }
+
+    const children = []
+    Array.from(element.children).forEach(child => {
+      const serialized = this.serializeDOM(child)
+      if (serialized) children.push(serialized)
+    })
+
+    return {
+      tag: element.tagName.toLowerCase(),
+      id: element.id || null,
+      classes: Array.from(element.classList || []),
+      attributes: attributes,
+      content: content,
+      children: children
+    }
+  },
+
+  destroyed() {
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Hook destroyed")
+    if (window.__originalConsole) {
+      console.log = window.__originalConsole.log
+      console.warn = window.__originalConsole.warn
+      console.error = window.__originalConsole.error
+    }
   }
 }
 

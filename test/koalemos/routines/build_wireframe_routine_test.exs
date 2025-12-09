@@ -51,10 +51,10 @@ defmodule Koalemos.Routines.BuildWireframeRoutineTest do
     test "planning stage is readonly" do
       definition = BuildWireframeRoutine.routine_definition()
 
-      # Planning should have readonly WireframeEditor lens
+      # Planning should have readonly WireframeEditorV4 lens
       planning_lenses = definition.planning.config.lenses
       assert Enum.any?(planning_lenses, fn
-               ["Koalemos.Lenses.WireframeEditor", %{readonly: true}] -> true
+               ["Koalemos.Lenses.WireframeEditorV4", %{readonly: true}] -> true
                _ -> false
              end)
     end
@@ -93,7 +93,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutineTest do
     test "has default lenses" do
       context = BuildWireframeRoutine.initial_context()
 
-      assert "Koalemos.Lenses.WireframeEditor" in context.lenses
+      assert "Koalemos.Lenses.WireframeEditorV4" in context.lenses
       assert "Koalemos.Lenses.SequentialThinking" in context.lenses
     end
   end

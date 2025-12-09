@@ -7,11 +7,8 @@ defmodule Koalemos.Parsers.CSSParserTest do
       css = ".button { padding: 20px; }"
 
       assert {:ok, result} = CSSParser.parse(css)
-      assert length(result.rules) == 1
-
-      rule = hd(result.rules)
-      assert rule.selector == ".button"
-      assert rule.declarations["padding"] == "20px"
+      assert map_size(result.rules) == 1
+      assert result.rules[".button"]["padding"] == "20px"
     end
 
     test "parses multiple declarations" do
@@ -24,13 +21,12 @@ defmodule Koalemos.Parsers.CSSParserTest do
       """
 
       assert {:ok, result} = CSSParser.parse(css)
-      assert length(result.rules) == 1
+      assert map_size(result.rules) == 1
 
-      rule = hd(result.rules)
-      assert rule.selector == ".card"
-      assert rule.declarations["padding"] == "20px"
-      assert rule.declarations["margin"] == "10px"
-      assert rule.declarations["background-color"] == "white"
+      declarations = result.rules[".card"]
+      assert declarations["padding"] == "20px"
+      assert declarations["margin"] == "10px"
+      assert declarations["background-color"] == "white"
     end
 
     test "parses multiple rules" do
@@ -40,79 +36,63 @@ defmodule Koalemos.Parsers.CSSParserTest do
       """
 
       assert {:ok, result} = CSSParser.parse(css)
-      assert length(result.rules) == 2
+      assert map_size(result.rules) == 2
 
-      [button, card] = result.rules
-      assert button.selector == ".button"
-      assert button.declarations["padding"] == "20px"
-
-      assert card.selector == ".card"
-      assert card.declarations["margin"] == "10px"
+      assert result.rules[".button"]["padding"] == "20px"
+      assert result.rules[".card"]["margin"] == "10px"
     end
 
     test "parses multiple selectors" do
       css = "h1, h2, h3 { color: blue; }"
 
       assert {:ok, result} = CSSParser.parse(css)
-      assert length(result.rules) == 1
-
-      rule = hd(result.rules)
-      assert rule.selector == "h1, h2, h3"
-      assert rule.declarations["color"] == "blue"
+      assert map_size(result.rules) == 1
+      assert result.rules["h1, h2, h3"]["color"] == "blue"
     end
 
     test "parses ID selectors" do
       css = "#header { height: 60px; }"
 
       assert {:ok, result} = CSSParser.parse(css)
-      rule = hd(result.rules)
-      assert rule.selector == "#header"
-      assert rule.declarations["height"] == "60px"
+      assert result.rules["#header"]["height"] == "60px"
     end
 
     test "parses element selectors" do
       css = "body { font-family: Arial; }"
 
       assert {:ok, result} = CSSParser.parse(css)
-      rule = hd(result.rules)
-      assert rule.selector == "body"
-      assert rule.declarations["font-family"] == "Arial"
+      assert result.rules["body"]["font-family"] == "Arial"
     end
 
     test "parses descendant selectors" do
       css = "div p { line-height: 1.5; }"
 
       assert {:ok, result} = CSSParser.parse(css)
-      rule = hd(result.rules)
-      assert rule.selector == "div p"
-      assert rule.declarations["line-height"] == "1.5"
+      assert result.rules["div p"]["line-height"] == "1.5"
     end
 
     test "parses child selectors" do
       css = "ul > li { list-style: none; }"
 
       assert {:ok, result} = CSSParser.parse(css)
-      rule = hd(result.rules)
-      assert rule.selector == "ul > li"
-      assert rule.declarations["list-style"] == "none"
+      assert result.rules["ul > li"]["list-style"] == "none"
     end
 
     test "parses pseudo-classes" do
       css = "a:hover { color: red; }"
 
       assert {:ok, result} = CSSParser.parse(css)
-      rule = hd(result.rules)
-      assert rule.selector == "a:hover"
-      assert rule.declarations["color"] == "red"
+      assert result.rules["a:hover"]["color"] == "red"
     end
 
     test "parses attribute selectors" do
       css = "input[type=\"text\"] { border: 1px solid gray; }"
 
       assert {:ok, result} = CSSParser.parse(css)
-      rule = hd(result.rules)
-      assert rule.selector =~ "input"
-      assert rule.declarations["border"] =~ "1px solid gray"
+      # Find the selector that contains "input"
+      {selector, declarations} = Enum.find(result.rules, fn {k, _v} -> k =~ "input" end)
+      assert selector =~ "input"
+      assert declarations["border"] =~ "1px solid gray"
     end
 
     test "parses complex values" do
@@ -124,16 +104,16 @@ defmodule Koalemos.Parsers.CSSParserTest do
       """
 
       assert {:ok, result} = CSSParser.parse(css)
-      rule = hd(result.rules)
-      assert rule.declarations["border"] =~ "1px solid rgba"
-      assert rule.declarations["box-shadow"] =~ "0 2px 4px rgba"
+      declarations = result.rules[".box"]
+      assert declarations["border"] =~ "1px solid rgba"
+      assert declarations["box-shadow"] =~ "0 2px 4px rgba"
     end
 
     test "parses empty CSS" do
       css = ""
 
       assert {:ok, result} = CSSParser.parse(css)
-      assert result.rules == []
+      assert result.rules == %{}
     end
 
     test "parses CSS with comments" do
@@ -146,11 +126,8 @@ defmodule Koalemos.Parsers.CSSParserTest do
       """
 
       assert {:ok, result} = CSSParser.parse(css)
-      assert length(result.rules) == 1
-
-      rule = hd(result.rules)
-      assert rule.selector == ".button"
-      assert rule.declarations["padding"] == "20px"
+      assert map_size(result.rules) == 1
+      assert result.rules[".button"]["padding"] == "20px"
     end
 
     test "handles invalid CSS" do
@@ -188,18 +165,12 @@ defmodule Koalemos.Parsers.CSSParserTest do
       """
 
       assert {:ok, result} = CSSParser.parse(css)
-      assert length(result.rules) == 4
+      assert map_size(result.rules) == 4
 
-      # Find rules by selector
-      counter_app = Enum.find(result.rules, &(&1.selector == ".counter-app"))
-      button = Enum.find(result.rules, &(&1.selector == "button"))
-      button_hover = Enum.find(result.rules, &(&1.selector == "button:hover"))
-      display = Enum.find(result.rules, &(&1.selector == "#display"))
-
-      assert counter_app.declarations["padding"] == "20px"
-      assert button.declarations["margin"] == "5px"
-      assert button_hover.declarations["background-color"] == "darkblue"
-      assert display.declarations["font-size"] == "24px"
+      assert result.rules[".counter-app"]["padding"] == "20px"
+      assert result.rules["button"]["margin"] == "5px"
+      assert result.rules["button:hover"]["background-color"] == "darkblue"
+      assert result.rules["#display"]["font-size"] == "24px"
     end
 
     test "ignores at-rules for MVP" do
@@ -215,8 +186,7 @@ defmodule Koalemos.Parsers.CSSParserTest do
       assert {:ok, result} = CSSParser.parse(css)
 
       # The .button rule outside @media should be present
-      button_rule = Enum.find(result.rules, &(&1.selector == ".button"))
-      assert button_rule.declarations["padding"] == "20px"
+      assert result.rules[".button"]["padding"] == "20px"
     end
   end
 end

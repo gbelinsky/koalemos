@@ -128,7 +128,7 @@ defmodule KoalemosWeb.HomeLive do
               check out the interactive test pages to see different lenses and features.
             </p>
             <a
-              href="/test/wireframe"
+              href="/test"
               class="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium text-sm"
             >
               <span>view test pages</span>

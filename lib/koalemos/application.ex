@@ -14,6 +14,10 @@ defmodule Koalemos.Application do
       {Phoenix.PubSub, name: Koalemos.PubSub},
       # Routine Registry - for looking up Engine processes by routine_id
       {Registry, keys: :unique, name: Koalemos.RoutineRegistry},
+      # WireframeStateServerV4 Registry - for V4 state servers (no PubSub, direct communication)
+      {Registry, keys: :unique, name: Koalemos.WireframeV4Registry},
+      # WireframeStateServerV4 Supervisor - manages V4 state servers per routine
+      {DynamicSupervisor, strategy: :one_for_one, name: KoalemosWeb.Supervisors.WireframeStateServerV4Supervisor},
       # Observer - for recording routine events
       Koalemos.Engine.Observer,
       # Cache GenServers - for storing wireframe runtime state

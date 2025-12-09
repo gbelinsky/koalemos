@@ -69,17 +69,21 @@ defmodule Koalemos.Parsers.JavaScriptParserTest do
              }
     end
 
-    test "ignores non-JSON variable values" do
+    test "handles Date values (serialize to ISO strings)" do
       code = """
       window.valid = 42;
-      window.invalid = new Date();
+      window.dateValue = new Date();
       window.alsoValid = "string";
       """
 
       assert {:ok, result} = JavaScriptParser.parse(code)
 
-      # Only JSON-parseable values are extracted
-      assert result.variables == %{"valid" => 42, "alsoValid" => "string"}
+      # Date objects serialize to ISO strings via JSON.stringify
+      assert result.variables["valid"] == 42
+      assert result.variables["alsoValid"] == "string"
+      # Date value exists as an ISO string
+      assert is_binary(result.variables["dateValue"])
+      assert result.variables["dateValue"] =~ ~r/^\d{4}-\d{2}-\d{2}T/
     end
   end
 

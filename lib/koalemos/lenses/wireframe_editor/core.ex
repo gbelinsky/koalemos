@@ -622,24 +622,34 @@ defmodule Koalemos.Lenses.WireframeEditor do
 
       Add, replace, or remove CSS rules for classes, IDs, pseudo-classes, @keyframes, @media.
       Changes are PERMANENT (persisted to design).
-
-      Example: Add .button style, replace @keyframes animation, remove old rules.
       """,
       input_schema: %{
         type: "object",
         properties: %{
           add: %{
             type: "object",
-            description: "CSS rules to add as {selector: rules_string}"
+            description:
+              "CSS rules to add. Example: {\"#app\": {\"padding\": \"20px\", \"background\": \"#fff\"}}",
+            additionalProperties: %{
+              type: "object",
+              description: "CSS declarations as property-value pairs",
+              additionalProperties: %{type: "string"}
+            }
           },
           replace: %{
             type: "object",
-            description: "CSS rules to replace as {selector: rules_string}"
+            description:
+              "CSS rules to replace. Example: {\".button\": {\"color\": \"blue\", \"border\": \"none\"}}",
+            additionalProperties: %{
+              type: "object",
+              description: "CSS declarations as property-value pairs",
+              additionalProperties: %{type: "string"}
+            }
           },
           remove: %{
             type: "array",
             items: %{type: "string"},
-            description: "Selectors to remove"
+            description: "CSS selectors to remove. Example: [\"#old-style\", \".deprecated\"]"
           }
         }
       }
@@ -655,24 +665,26 @@ defmodule Koalemos.Lenses.WireframeEditor do
       Scripts run once on DOMContentLoaded.
       Use for: canvas setup, library initialization, etc.
       Changes are PERMANENT (persisted to design).
-
-      Example: Add canvasSetup script, replace initialization, remove old scripts.
       """,
       input_schema: %{
         type: "object",
         properties: %{
           add: %{
             type: "object",
-            description: "Scripts to add as {name: code}"
+            description:
+              "Scripts to add. Example: {\"setup_counter\": \"window.count = 0;\"}",
+            additionalProperties: %{type: "string", description: "JavaScript code"}
           },
           replace: %{
             type: "object",
-            description: "Scripts to replace as {name: code}"
+            description:
+              "Scripts to replace. Example: {\"init_0\": \"console.log('new code');\"}",
+            additionalProperties: %{type: "string", description: "JavaScript code"}
           },
           remove: %{
             type: "array",
             items: %{type: "string"},
-            description: "Script names to remove"
+            description: "Script names to remove. Example: [\"old_script\", \"init_0\"]"
           }
         }
       }

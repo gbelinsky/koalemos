@@ -246,17 +246,18 @@ defmodule KoalemosWeb.MessageCards.InlineToolIndicator do
 
   # manage_css: Managed 5 CSS rules (4 added, 1 removed)
   defp summarize_manage_css(input) do
-    added = map_size(Map.get(input, "add", %{}))
+    # LLM sometimes sends JSON strings instead of maps - normalize them
+    added = safe_map_size(Map.get(input, "add", %{}))
     removed = length(Map.get(input, "remove", []))
-    replaced = map_size(Map.get(input, "replace", %{}))
+    replaced = safe_map_size(Map.get(input, "replace", %{}))
 
     total = added + removed + replaced
 
     if total == 1 do
       selector =
         cond do
-          added > 0 -> Map.keys(Map.get(input, "add", %{})) |> List.first()
-          replaced > 0 -> Map.keys(Map.get(input, "replace", %{})) |> List.first()
+          added > 0 -> safe_map_keys(Map.get(input, "add", %{})) |> List.first()
+          replaced > 0 -> safe_map_keys(Map.get(input, "replace", %{})) |> List.first()
           removed > 0 -> List.first(Map.get(input, "remove", []))
           true -> "rule"
         end
@@ -269,7 +270,7 @@ defmodule KoalemosWeb.MessageCards.InlineToolIndicator do
           true -> "Modified"
         end
 
-      "⌘ #{action} CSS rule #{selector}"
+      "⌘ #{action} CSS rule #{selector || "rule"}"
     else
       parts = []
       parts = if added > 0, do: ["#{added} added" | parts], else: parts
@@ -282,17 +283,18 @@ defmodule KoalemosWeb.MessageCards.InlineToolIndicator do
 
   # manage_init_scripts: Managed 2 init scripts
   defp summarize_manage_init_scripts(input) do
-    added = map_size(Map.get(input, "add", %{}))
+    # LLM sometimes sends JSON strings instead of maps - normalize them
+    added = safe_map_size(Map.get(input, "add", %{}))
     removed = length(Map.get(input, "remove", []))
-    replaced = map_size(Map.get(input, "replace", %{}))
+    replaced = safe_map_size(Map.get(input, "replace", %{}))
 
     total = added + removed + replaced
 
     if total == 1 do
       name =
         cond do
-          added > 0 -> Map.keys(Map.get(input, "add", %{})) |> List.first()
-          replaced > 0 -> Map.keys(Map.get(input, "replace", %{})) |> List.first()
+          added > 0 -> safe_map_keys(Map.get(input, "add", %{})) |> List.first()
+          replaced > 0 -> safe_map_keys(Map.get(input, "replace", %{})) |> List.first()
           removed > 0 -> List.first(Map.get(input, "remove", []))
           true -> "script"
         end
@@ -349,6 +351,30 @@ defmodule KoalemosWeb.MessageCards.InlineToolIndicator do
   # Helper to pluralize words
   defp pluralize(word, 1), do: word
   defp pluralize(word, _), do: "#{word}s"
+
+  # Safe map_size that handles JSON strings from LLM
+  defp safe_map_size(value) when is_map(value), do: map_size(value)
+
+  defp safe_map_size(value) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, map} when is_map(map) -> map_size(map)
+      _ -> 0
+    end
+  end
+
+  defp safe_map_size(_), do: 0
+
+  # Safe map keys extraction that handles JSON strings
+  defp safe_map_keys(value) when is_map(value), do: Map.keys(value)
+
+  defp safe_map_keys(value) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, map} when is_map(map) -> Map.keys(map)
+      _ -> []
+    end
+  end
+
+  defp safe_map_keys(_), do: []
 
   # Format tool input as pretty JSON
   defp format_input(input) when is_map(input) do

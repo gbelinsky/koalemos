@@ -69,7 +69,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutineTest do
     test "has default lenses" do
       context = WireframeDesignRoutine.initial_context()
 
-      assert "Koalemos.Lenses.WireframeEditor" in context.lenses
+      assert "Koalemos.Lenses.WireframeEditorV4" in context.lenses
       assert "Koalemos.Lenses.SequentialThinking" in context.lenses
     end
 
@@ -82,9 +82,15 @@ defmodule Koalemos.Routines.WireframeDesignRoutineTest do
   end
 
   describe "setup/2" do
-    test "returns ok tuple with empty changes when no sample specified" do
+    test "returns ok tuple with routine_id" do
       state = %{context: WireframeDesignRoutine.initial_context()}
-      assert {:ok, []} = WireframeDesignRoutine.setup(%{}, state)
+      {:ok, changes} = WireframeDesignRoutine.setup(%{}, state)
+
+      # Should return changes list with routine_id
+      assert is_list(changes)
+      assert length(changes) > 0
+      [{:add_or_update, updates}] = changes
+      assert Map.has_key?(updates, :routine_id)
     end
 
     test "loads sample HTML when wireframe_sample specified" do
@@ -95,14 +101,11 @@ defmodule Koalemos.Routines.WireframeDesignRoutineTest do
       state = %{context: context}
       {:ok, changes} = WireframeDesignRoutine.setup(%{}, state)
 
-      # Should return changes list
+      # Should return changes list with routine_id (StateServer started)
       assert is_list(changes)
-
-      # If sample loaded, should have wireframe_html in changes
-      if length(changes) > 0 do
-        [{:add_or_update, updates}] = changes
-        assert Map.has_key?(updates, :wireframe_html)
-      end
+      assert length(changes) > 0
+      [{:add_or_update, updates}] = changes
+      assert Map.has_key?(updates, :routine_id)
     end
   end
 

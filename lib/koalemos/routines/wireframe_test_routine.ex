@@ -243,7 +243,7 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
             dom_tree: wireframe.dom_tree,
             style_elements: wireframe.styles,
             script_elements: wireframe.scripts,
-            custom_css: extract_css_rules_as_map(wireframe.css_rules),
+            custom_css: wireframe.css_rules,
             custom_functions: Map.get(wireframe.javascript, :functions, %{}),
             custom_variables: Map.get(wireframe.javascript, :variables, %{}),
             init_scripts: extract_init_scripts_as_map(wireframe.javascript.init_scripts),
@@ -265,13 +265,6 @@ defmodule Koalemos.Routines.WireframeTestRoutine do
   end
 
   defp parse_and_initialize_lens_state(context), do: context
-
-  # Convert CSS rules list to map format (selector -> declarations)
-  defp extract_css_rules_as_map(css_rules) when is_list(css_rules) do
-    Enum.reduce(css_rules, %{}, fn rule, acc ->
-      Map.put(acc, rule.selector, rule.declarations)
-    end)
-  end
 
   # Convert init scripts list to map with index keys
   defp extract_init_scripts_as_map(init_scripts) when is_list(init_scripts) do

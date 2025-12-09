@@ -3,15 +3,14 @@ defmodule Koalemos.ScreenshotRenderer do
   Server-side screenshot rendering using Puppeteer.
 
   Converts lens_state DOM trees into standalone HTML documents and captures
-  pixel-perfect screenshots using headless Chrome. This replaces client-side
-  html-to-image which couldn't properly capture CSS gradients.
+  pixel-perfect screenshots using headless Chrome.
 
   ## Features
   - Full CSS gradient support (linear, radial, conic)
   - CSS transforms and filters
-  - Tailwind CSS classes
   - Custom CSS rules
-  - Proper font rendering
+  - Canvas element snapshots
+  - Viewport and scroll position from running state
 
   ## Usage
 
@@ -32,6 +31,7 @@ defmodule Koalemos.ScreenshotRenderer do
   - `opts`: Optional keyword list of options
     - `:use_live_dom` - Boolean, use :running DOM instead of :designed (default: false)
     - `:viewport` - Map with :width and :height (default: %{width: 1280, height: 720})
+    - `:scroll_position` - Map with :x and :y scroll offsets (default: %{x: 0, y: 0})
     - `:full_page` - Boolean, capture full page or viewport (default: false)
     - `:routine_id` - String, for logging purposes
 
@@ -55,17 +55,34 @@ defmodule Koalemos.ScreenshotRenderer do
       "[ScreenshotRenderer] Generated HTML from #{dom_type} DOM - length: #{String.length(html)} characters"
     )
 
-    # Prepare viewport options
-    viewport = Keyword.get(opts, :viewport, %{width: 1280, height: 720})
+    # Get viewport and scroll position from running state (captured from preview), or fall back to opts/defaults
+    # Normalize keys since JS sends string keys but Puppeteer expects atom keys
+    viewport =
+      case get_in(lens_state, [:running, :viewport]) do
+        %{"width" => w, "height" => h} -> %{width: w, height: h}
+        %{width: _, height: _} = v -> v
+        _ -> Keyword.get(opts, :viewport, %{width: 1280, height: 720})
+      end
+
+    scroll_position =
+      case get_in(lens_state, [:running, :scroll_position]) do
+        %{"x" => x, "y" => y} -> %{x: x, y: y}
+        %{x: _, y: _} = s -> s
+        _ -> Keyword.get(opts, :scroll_position, %{x: 0, y: 0})
+      end
+
     full_page = Keyword.get(opts, :full_page, false)
 
     puppeteer_opts = %{
       viewport: viewport,
-      fullPage: full_page
+      fullPage: full_page,
+      scrollPosition: scroll_position
     }
 
     # Call Puppeteer service via NodeJS bridge
-    Logger.info("[ScreenshotRenderer] 🚀 Calling Puppeteer with viewport #{inspect(viewport)}")
+    Logger.info(
+      "[ScreenshotRenderer] 🚀 Calling Puppeteer with viewport #{inspect(viewport)}, scroll: #{inspect(scroll_position)}"
+    )
 
     case call_puppeteer(html, puppeteer_opts) do
       {:ok, %{"base64" => base64, "width" => width, "height" => height}} ->
@@ -89,7 +106,7 @@ defmodule Koalemos.ScreenshotRenderer do
 
   Creates a complete HTML document with:
   - DOCTYPE and HTML structure
-  - Tailwind CSS CDN
+  - Base reset styles
   - Custom CSS rules
   - Rendered DOM tree
 
@@ -104,7 +121,11 @@ defmodule Koalemos.ScreenshotRenderer do
     source = if use_live_dom, do: :running, else: :designed
 
     dom_tree = get_in(lens_state, [source, :dom_tree])
-    custom_css = get_in(lens_state, [source, :custom_css]) || get_in(lens_state, [:designed, :custom_css]) || %{}
+
+    custom_css =
+      get_in(lens_state, [source, :custom_css]) ||
+      get_in(lens_state, [:designed, :custom_css]) ||
+      %{}
 
     Logger.debug("[ScreenshotRenderer] Rendering from #{source} - has DOM: #{dom_tree != nil}, CSS rules: #{map_size(custom_css)}")
 
@@ -115,7 +136,7 @@ defmodule Koalemos.ScreenshotRenderer do
     css_string = render_custom_css(custom_css)
 
     # Build complete HTML document
-    """
+    html = """
     <!DOCTYPE html>
     <html lang="en">
       <head>
@@ -123,13 +144,17 @@ defmodule Koalemos.ScreenshotRenderer do
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Screenshot</title>
 
-        <!-- Tailwind CSS CDN for class-based styling -->
-        <script src="https://cdn.tailwindcss.com"></script>
-
         <style>
           /* Reset and base styles */
           * { box-sizing: border-box; }
           body { margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+
+          /* Canvas snapshot styling - preserve dimensions and prevent scaling */
+          img.canvas-snapshot {
+            display: block;
+            max-width: none;
+            image-rendering: crisp-edges;
+          }
         </style>
         #{if css_string != "", do: "<style>\n/* Custom CSS */\n#{css_string}\n</style>", else: ""}
       </head>
@@ -138,6 +163,8 @@ defmodule Koalemos.ScreenshotRenderer do
       </body>
     </html>
     """
+
+    html
   end
 
   # Private Functions
@@ -172,12 +199,86 @@ defmodule Koalemos.ScreenshotRenderer do
   defp render_dom_tree(nil), do: ""
 
   defp render_dom_tree(%{} = tree) do
-    render_element_as_string(tree)
+    # Normalize keys to atoms (JS sends string keys, designed state has atom keys)
+    normalized = normalize_keys(tree)
+    render_element_as_string(normalized)
   end
 
   defp render_dom_tree(_invalid), do: ""
 
+  # Recursively normalize string keys to atoms for DOM tree
+  defp normalize_keys(%{} = map) do
+    map
+    |> Enum.map(fn
+      {"tag", v} -> {:tag, v}
+      {"id", v} -> {:id, v}
+      {"classes", v} -> {:classes, v}
+      {"attributes", v} -> {:attributes, normalize_attributes(v)}
+      {"content", v} -> {:content, v}
+      {"children", v} when is_list(v) -> {:children, Enum.map(v, &normalize_keys/1)}
+      {k, v} when is_atom(k) and k in [:tag, :id, :classes, :content] -> {k, v}
+      {:attributes, v} -> {:attributes, normalize_attributes(v)}
+      {:children, v} when is_list(v) -> {:children, Enum.map(v, &normalize_keys/1)}
+      {k, v} -> {k, v}
+    end)
+    |> Map.new()
+  end
+
+  defp normalize_keys(other), do: other
+
+  defp normalize_attributes(%{} = attrs) do
+    # Keep attribute keys as strings (HTML attributes are strings)
+    attrs
+    |> Enum.map(fn
+      {k, v} when is_atom(k) -> {Atom.to_string(k), v}
+      {k, v} -> {k, v}
+    end)
+    |> Map.new()
+  end
+
+  defp normalize_attributes(other), do: other
+
   # Recursive function that renders DOM elements as HTML strings
+
+  # Special handling for canvas elements - replace with image if snapshot available
+  defp render_element_as_string(%{tag: "canvas"} = element) do
+    # Extract canvas snapshot if available
+    snapshot = get_in(element, [:attributes, "data-canvas-snapshot"])
+
+    if snapshot && String.starts_with?(snapshot, "data:image/") do
+      # Replace canvas with img element to preserve visual content in screenshot
+      # Build img element attributes
+      id = Map.get(element, :id)
+      classes = Map.get(element, :classes, []) ++ ["canvas-snapshot"]
+
+      # Preserve original canvas attributes except the snapshot data itself
+      base_attributes =
+        element
+        |> Map.get(:attributes, %{})
+        |> Map.delete("data-canvas-snapshot")
+        |> Map.delete("data-canvas-error")
+
+      # Add image-specific attributes
+      img_attributes =
+        Map.merge(base_attributes, %{
+          "src" => snapshot,
+          "alt" => "Canvas: #{id || "unnamed"}"
+        })
+
+      attrs = build_attributes_string(id, classes, img_attributes)
+
+      "<img#{attrs} />"
+    else
+      # No snapshot available - render empty canvas (will appear blank)
+      id = Map.get(element, :id)
+      classes = Map.get(element, :classes, [])
+      attributes = Map.get(element, :attributes, %{})
+      attrs = build_attributes_string(id, classes, attributes)
+
+      "<canvas#{attrs}></canvas>"
+    end
+  end
+
   defp render_element_as_string(%{tag: tag} = element) when is_binary(tag) do
     # Extract element properties
     id = Map.get(element, :id)
@@ -210,10 +311,6 @@ defmodule Koalemos.ScreenshotRenderer do
 
       "<#{tag}#{attrs}>#{inner_html}</#{tag}>"
     end
-  end
-
-  defp render_element_as_string(%{type: :text, content: content}) when is_binary(content) do
-    Plug.HTML.html_escape(content)
   end
 
   defp render_element_as_string(invalid) do
@@ -266,22 +363,16 @@ defmodule Koalemos.ScreenshotRenderer do
   defp render_custom_css(custom_css) when is_map(custom_css) do
     custom_css
     |> Enum.map(fn {selector, rules} ->
-      # Handle both string format and structured format
+      # Handle both formats:
+      # - String from LLM tool calls: "padding: 20px; color: blue"
+      # - Map from parser: %{"padding" => "20px", "color" => "blue"}
       rules_str =
         case rules do
-          # String format: "property: value; property: value"
           str when is_binary(str) ->
             str
 
-          # Map format: %{"property" => "value", ...}
           map when is_map(map) ->
             Enum.map_join(map, "; ", fn {property, value} ->
-              "#{property}: #{value}"
-            end)
-
-          # List format: [{"property", "value"}, ...]
-          list when is_list(list) ->
-            Enum.map_join(list, "; ", fn {property, value} ->
               "#{property}: #{value}"
             end)
         end

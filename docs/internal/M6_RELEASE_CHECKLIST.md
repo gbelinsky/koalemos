@@ -14,7 +14,8 @@
 
 ### Documentation
 - [x] **README Quick Start** - Clear setup instructions (deps, credentials, run, Docker) (DONE: Updated with Docker deployment section)
-- [ ] **Documentation Overhaul** - Sanitize and update all documentation to ensure it's current and accurate
+- [x] **V4 Architecture** - Document V4 architecture replacing V3 PubSub (DONE: docs/guides/V4_ARCHITECTURE.md)
+- [x] **Documentation Reorganization** - Split BACKLOG.md into focused documents, archive historical docs (DONE: docs/internal/backlog/, docs/internal/archive/)
 - [ ] **Usage Guide** - How to use the wireframe editor demo
 - [ ] **Credentials Setup** - How to add API keys to `.koalemos/.credentials.json`
 
@@ -97,7 +98,7 @@
 
 **M6 Started:** 2025-11-14
 **Current Status:** In Progress
-**Completed:** 15/22 critical items (Docker build + config management + README done)
+**Completed:** 17/23 critical items (Docker build + config management + README + V4 docs + doc reorganization done)
 
 ### Sprint 1: Bug Fixes & Core Docs
 - [x] Fix flicker (BUG-004)

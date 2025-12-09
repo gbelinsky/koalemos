@@ -14,6 +14,16 @@ defmodule KoalemosWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Minimal pipeline for wireframe preview (no Tailwind, no root layout)
+  pipeline :wireframe do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {KoalemosWeb.Layouts, :wireframe}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
   scope "/", KoalemosWeb do
     pipe_through :browser
 
@@ -31,9 +41,20 @@ defmodule KoalemosWeb.Router do
     live "/test/parsing", ParsingTestLive
     live "/test/wireframe", WireframeTestLive
     live "/test/lens-combinator", LensCombinatorLive
+    # V4 test page (POC/debug)
+    live "/wireframe-editor-v4/:routine_id", WireframeEditorV4Live
+    # V4 production editor
+    live "/wireframe-editor-v4-production", WireframeEditorV4ProductionLive
 
     # Wireframe preview (LiveView in iframe)
     live "/wireframe-preview/:routine_id", WireframePreviewLive
+  end
+
+  # V4 preview uses minimal wireframe layout (no Tailwind)
+  scope "/", KoalemosWeb do
+    pipe_through :wireframe
+
+    live "/wireframe-preview-v4/:routine_id", WireframePreviewV4Live
   end
 
   # Other scopes may use custom stacks.

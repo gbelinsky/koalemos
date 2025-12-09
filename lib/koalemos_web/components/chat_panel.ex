@@ -175,6 +175,26 @@ defmodule KoalemosWeb.ChatPanel do
         status={@status}
       />
 
+      <!-- Token Usage Display -->
+      <%= if has_token_data?(@messages) do %>
+        <div class="border-t border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50/20 px-4 py-2">
+          <div class="flex items-center gap-4 text-xs text-slate-600">
+            <div class="flex items-center gap-1.5">
+              <span class="font-medium text-slate-500">Total In:</span>
+              <span class="font-mono font-semibold text-indigo-700">{format_number(total_input_tokens(@messages))}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-medium text-slate-500">Total Out:</span>
+              <span class="font-mono font-semibold text-indigo-700">{format_number(total_output_tokens(@messages))}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-medium text-slate-500">Last Context:</span>
+              <span class="font-mono font-semibold text-blue-700">{format_number(last_request_input_tokens(@messages))}</span>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
       <!-- User Input (flexible height at bottom, max 50% of container) -->
       <div class="border-t-2 border-slate-300/60 bg-white p-4 max-h-[50%] overflow-y-auto flex-shrink-0">
         <.live_component
@@ -290,4 +310,62 @@ defmodule KoalemosWeb.ChatPanel do
       }
     }
   end
+
+  # Token usage calculation helpers
+
+  defp has_token_data?(messages) do
+    Enum.any?(messages, fn message ->
+      usage = get_in(message, [:metadata, :usage]) || get_in(message, ["metadata", "usage"])
+      usage != nil && map_size(usage) > 0
+    end)
+  end
+
+  defp total_input_tokens(messages) do
+    messages
+    |> Enum.map(&get_message_input_tokens/1)
+    |> Enum.sum()
+  end
+
+  defp total_output_tokens(messages) do
+    messages
+    |> Enum.map(&get_message_output_tokens/1)
+    |> Enum.sum()
+  end
+
+  defp last_request_input_tokens(messages) do
+    # Find the last message with usage data (most recent API call)
+    messages
+    |> Enum.reverse()
+    |> Enum.find_value(0, fn message ->
+      usage = get_in(message, [:metadata, :usage]) || get_in(message, ["metadata", "usage"])
+
+      if usage && map_size(usage) > 0 do
+        Map.get(usage, "input_tokens") || Map.get(usage, :input_tokens) || 0
+      else
+        nil
+      end
+    end)
+  end
+
+  defp get_message_input_tokens(message) do
+    usage = get_in(message, [:metadata, :usage]) || get_in(message, ["metadata", "usage"]) || %{}
+    Map.get(usage, "input_tokens") || Map.get(usage, :input_tokens) || 0
+  end
+
+  defp get_message_output_tokens(message) do
+    usage = get_in(message, [:metadata, :usage]) || get_in(message, ["metadata", "usage"]) || %{}
+    Map.get(usage, "output_tokens") || Map.get(usage, :output_tokens) || 0
+  end
+
+  defp format_number(num) when is_integer(num) do
+    num
+    |> Integer.to_string()
+    |> String.graphemes()
+    |> Enum.reverse()
+    |> Enum.chunk_every(3)
+    |> Enum.join(",")
+    |> String.reverse()
+  end
+
+  defp format_number(_), do: "0"
 end

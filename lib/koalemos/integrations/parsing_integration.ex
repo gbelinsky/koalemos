@@ -87,7 +87,7 @@ defmodule Koalemos.Integrations.ParsingIntegration do
         dom_tree: %{tag: "div", id: "...", children: [...]},
         scripts: [%{type: :inline, content: "..."}, %{type: :external, src: "..."}],
         styles: [%{type: :inline, content: "..."}, %{type: :external, src: "..."}],
-        css_rules: [%{selector: "...", declarations: %{...}}],
+        css_rules: %{"selector" => %{"property" => "value", ...}},
         metadata: %{title: "...", meta_tags: [...]},
         javascript: %{
           variables: %{"varName" => value},
@@ -181,18 +181,20 @@ defmodule Koalemos.Integrations.ParsingIntegration do
   end
 
   # Parse all inline CSS snippets from HTML result
-  @spec parse_inline_styles(map()) :: {:ok, list(map()), list(String.t())}
+  # CSS parser returns rules as map: %{selector => %{prop => value}}
+  @spec parse_inline_styles(map()) :: {:ok, map(), list(String.t())}
   defp parse_inline_styles(html_result) do
     inline_styles =
       html_result.style_elements
       |> Enum.filter(&(&1.type == :inline))
 
     # Parse each style block, collecting all rules and errors
+    # Rules are merged (later declarations override earlier ones)
     {all_rules, errors} =
-      Enum.reduce(inline_styles, {[], []}, fn style, {rules, errs} ->
+      Enum.reduce(inline_styles, {%{}, []}, fn style, {rules, errs} ->
         case CSSParser.parse(style.content) do
           {:ok, result} ->
-            {rules ++ result.rules, errs}
+            {Map.merge(rules, result.rules), errs}
 
           {:error, reason} ->
             error_msg = "Failed to parse CSS: #{inspect(reason)}"

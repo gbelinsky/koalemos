@@ -21,11 +21,13 @@ const puppeteer = require('puppeteer');
  * @param {number} options.viewport.width - Viewport width in pixels (default: 1280)
  * @param {number} options.viewport.height - Viewport height in pixels (default: 720)
  * @param {boolean} options.fullPage - Capture full page or just viewport (default: false)
+ * @param {Object} options.scrollPosition - Scroll position {x: number, y: number} (default: {x: 0, y: 0})
  * @returns {Promise<Object>} Object with {base64: string, width: number, height: number}
  */
 async function captureScreenshot(html, options = {}) {
   const viewport = options.viewport || { width: 1280, height: 720 };
   const fullPage = options.fullPage !== undefined ? options.fullPage : false;
+  const scrollPosition = options.scrollPosition || { x: 0, y: 0 };
 
   let browser = null;
 
@@ -57,6 +59,13 @@ async function captureScreenshot(html, options = {}) {
     await page.setContent(html, {
       waitUntil: ['load', 'networkidle0']
     });
+
+    // Scroll to the specified position to match preview iframe
+    if (scrollPosition.x !== 0 || scrollPosition.y !== 0) {
+      await page.evaluate((x, y) => {
+        window.scrollTo(x, y);
+      }, scrollPosition.x, scrollPosition.y);
+    }
 
     // Wait a bit more for any animations or lazy-loaded styles
     // Using setTimeout instead of deprecated page.waitForTimeout

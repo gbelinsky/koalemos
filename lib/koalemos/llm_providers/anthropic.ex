@@ -54,6 +54,13 @@ defmodule Koalemos.LLMProviders.Anthropic do
     text_contexts = Map.get(lens_contexts, :text, [])
     image_contexts = Map.get(lens_contexts, :images, [])
 
+    # Debug: Log image context status
+    if length(image_contexts) > 0 do
+      Logger.info("[Anthropic] Including #{length(image_contexts)} image(s) as user messages")
+    else
+      Logger.debug("[Anthropic] No image contexts to append")
+    end
+
     # Build system content with text contexts only
     system_content = build_system_content(text_contexts)
 

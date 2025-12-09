@@ -126,6 +126,8 @@ RUN chown nobody /app
 ENV MIX_ENV="prod"
 # Set HOME so System.user_home!() works for nobody user
 ENV HOME="/app"
+# Signal that storage is ephemeral (no persistent volumes by default)
+ENV KOALEMOS_EPHEMERAL_STORAGE="true"
 
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/koalemos ./

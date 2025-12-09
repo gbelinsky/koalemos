@@ -140,12 +140,21 @@ function parseJavaScript(code) {
           const valueCode = code.substring(valueStart, valueEnd);
 
           try {
-            // Try to eval it as JSON
+            // First try JSON.parse (safe and fast for JSON literals)
             const value = JSON.parse(valueCode);
             variables[name] = value;
-          } catch (e) {
-            // If it's not valid JSON, skip it
-            console.error(`Could not parse value for ${name}: ${valueCode}`);
+          } catch (jsonError) {
+            // If JSON.parse fails, try evaluating as JavaScript
+            // This handles single-quoted strings, arrays with single quotes, etc.
+            try {
+              // Use Function constructor to safely evaluate the expression
+              // Returns the evaluated value without polluting scope
+              const value = new Function(`return ${valueCode}`)();
+              variables[name] = value;
+            } catch (evalError) {
+              // If both fail, log and skip
+              console.error(`Could not parse value for ${name}: ${valueCode}`, evalError.message);
+            }
           }
         }
 
