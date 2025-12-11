@@ -11,11 +11,11 @@ config :koalemos,
   generators: [timestamp_type: :utc_datetime]
 
 # Configures the endpoint
-config :koalemos, KoalemosWeb.Endpoint,
+config :koalemos, WireframeEditorWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: KoalemosWeb.ErrorHTML, json: KoalemosWeb.ErrorJSON],
+    formats: [html: WireframeEditorWeb.ErrorHTML, json: WireframeEditorWeb.ErrorJSON],
     layout: false
   ],
   pubsub_server: Koalemos.PubSub,

@@ -305,7 +305,7 @@ defmodule Koalemos.SemanticRoutingTest do
 
   describe "readonly lens configuration" do
     test "WireframeEditor returns no tools in readonly mode" do
-      alias KoalemosWeb.Lenses.WireframeEditor
+      alias WireframeEditorWeb.Lenses.WireframeEditor
 
       # Normal mode - returns all tools
       normal_tools = WireframeEditor.tools(%{})

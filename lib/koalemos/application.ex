@@ -9,7 +9,7 @@ defmodule Koalemos.Application do
   def start(_type, _args) do
     # Base children list
     children = [
-      KoalemosWeb.Telemetry,
+      WireframeEditorWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:koalemos, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Koalemos.PubSub},
       # Routine Registry - for looking up Engine processes by routine_id
@@ -17,7 +17,7 @@ defmodule Koalemos.Application do
       # WireframeStateServer Registry - for state servers (direct communication)
       {Registry, keys: :unique, name: Koalemos.WireframeRegistry},
       # WireframeStateServer Supervisor - manages state servers per routine
-      {DynamicSupervisor, strategy: :one_for_one, name: KoalemosWeb.Supervisors.WireframeStateServerSupervisor},
+      {DynamicSupervisor, strategy: :one_for_one, name: WireframeEditorWeb.Supervisors.WireframeStateServerSupervisor},
       # Observer - for recording routine events
       Koalemos.Engine.Observer,
       # Cache GenServers - for storing wireframe runtime state
@@ -36,7 +36,7 @@ defmodule Koalemos.Application do
       # Credential manager
       Koalemos.SimpleCredentialManager,
       # Web endpoint
-      KoalemosWeb.Endpoint
+      WireframeEditorWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -49,7 +49,7 @@ defmodule Koalemos.Application do
   # whenever the application is updated.
   @impl true
   def config_change(changed, _new, removed) do
-    KoalemosWeb.Endpoint.config_change(changed, removed)
+    WireframeEditorWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 end

@@ -6,7 +6,7 @@ import Config
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :koalemos, KoalemosWeb.Endpoint,
+config :koalemos, WireframeEditorWeb.Endpoint,
   # Binding to all interfaces to allow access from other machines
   http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("PORT") || "4000")],
   check_origin: false,
@@ -42,12 +42,12 @@ config :koalemos, KoalemosWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :koalemos, KoalemosWeb.Endpoint,
+config :koalemos, WireframeEditorWeb.Endpoint,
   live_reload: [
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/koalemos_web/(controllers|live|components)/.*(ex|heex)$"
+      ~r"lib/wireframe_editor_web/(controllers|live|components)/.*(ex|heex)$"
     ]
   ]
 
