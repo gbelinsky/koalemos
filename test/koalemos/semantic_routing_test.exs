@@ -44,15 +44,15 @@ defmodule Koalemos.SemanticRoutingTest do
 
       {:ok, diff} = TemplatedSemanticAgent.setup(config_sources, state)
 
-      # Should save base lenses and append the rendered template
+      # Should save base lenses and set step_system_prompt (not user message)
       assert Enum.any?(diff, fn
                {:add_or_update, %{_routine_base_lenses: _}} -> true
                _ -> false
              end)
 
       assert Enum.any?(diff, fn
-               {:append_to, %{messages: msg}} ->
-                 msg.role == "user" && msg.content == "User request: Hello world"
+               {:add_or_update, %{step_system_prompt: prompt}} ->
+                 prompt == "User request: Hello world"
 
                _ ->
                  false

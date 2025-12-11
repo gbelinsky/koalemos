@@ -370,7 +370,20 @@ defmodule Koalemos.Lenses.WireframeV3.EditorCore do
 
   defp normalize_css_rules(_), do: %{}
 
-  defp normalize_declarations(declarations) when is_map(declarations), do: declarations
+  defp normalize_declarations(declarations) when is_map(declarations) do
+    # Flatten any nested maps (LLM sometimes sends wrong structure)
+    Map.new(declarations, fn {prop, value} ->
+      case value do
+        v when is_binary(v) -> {prop, v}
+        v when is_number(v) -> {prop, to_string(v)}
+        v when is_map(v) ->
+          # Nested map - flatten it by taking first value or converting to string
+          flattened = Enum.map_join(v, "; ", fn {p, val} -> "#{p}: #{val}" end)
+          {prop, flattened}
+        _ -> {prop, inspect(value)}
+      end
+    end)
+  end
 
   defp normalize_declarations(declarations) when is_binary(declarations) do
     # Parse "padding: 20px; margin: 10px" into %{"padding" => "20px", "margin" => "10px"}
@@ -406,7 +419,7 @@ defmodule Koalemos.Lenses.WireframeV3.EditorCore do
     context_parts = [
       build_designed_section(designed),
       build_running_section(running),
-      build_tools_guide()
+      # build_tools_guide()
     ]
 
     text_content = Enum.reject(context_parts, &is_nil/1) |> Enum.join("\n\n")
@@ -628,11 +641,22 @@ defmodule Koalemos.Lenses.WireframeV3.EditorCore do
   end
 
   defp css_rules_to_string(rules) when is_map(rules) do
-    Enum.map_join(rules, "; ", fn {prop, val} -> "#{prop}: #{val}" end)
+    Enum.map_join(rules, "; ", fn {prop, val} ->
+      "#{prop}: #{css_value_to_string(val)}"
+    end)
   end
 
   defp css_rules_to_string(rules) when is_binary(rules), do: rules
   defp css_rules_to_string(_), do: ""
+
+  # Handle CSS values that might be nested maps (LLM sometimes sends wrong structure)
+  defp css_value_to_string(val) when is_binary(val), do: val
+  defp css_value_to_string(val) when is_number(val), do: to_string(val)
+  defp css_value_to_string(val) when is_map(val) do
+    # LLM sent nested map - flatten it
+    Enum.map_join(val, "; ", fn {p, v} -> "#{p}: #{css_value_to_string(v)}" end)
+  end
+  defp css_value_to_string(val), do: inspect(val)
 
   defp format_functions(functions) do
     Enum.map_join(functions, "\n", fn {name, _code} ->

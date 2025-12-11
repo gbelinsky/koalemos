@@ -128,19 +128,28 @@ defmodule Koalemos.Lenses.WireframeEditorV4 do
 
   @doc """
   Get available tools for this lens.
+
+  ## Config Options
+  - `readonly: true` - Provide context only, no modification tools (returns empty list)
   """
-  def tools(_config \\ %{}) do
-    [
-      {__MODULE__, :modify_classes},
-      {__MODULE__, :modify_elements},
-      {__MODULE__, :manage_attributes},
-      {__MODULE__, :manage_handlers},
-      {__MODULE__, :manage_functions},
-      {__MODULE__, :manage_variables},
-      {__MODULE__, :manage_css},
-      {__MODULE__, :manage_init_scripts},
-      {__MODULE__, :trigger_interaction}
-    ]
+  def tools(config \\ %{}) do
+    if Map.get(config, :readonly, false) do
+      # Readonly mode: no tools, only context via provide_context
+      []
+    else
+      # Normal mode: all 9 modification tools
+      [
+        {__MODULE__, :modify_classes},
+        {__MODULE__, :modify_elements},
+        {__MODULE__, :manage_attributes},
+        {__MODULE__, :manage_handlers},
+        {__MODULE__, :manage_functions},
+        {__MODULE__, :manage_variables},
+        {__MODULE__, :manage_css},
+        {__MODULE__, :manage_init_scripts},
+        {__MODULE__, :trigger_interaction}
+      ]
+    end
   end
 
   # ============================================================================

@@ -61,8 +61,9 @@ defmodule Koalemos.LLMProviders.Anthropic do
       Logger.debug("[Anthropic] No image contexts to append")
     end
 
-    # Build system content with text contexts only
-    system_content = build_system_content(text_contexts)
+    # Build system content with text contexts and step prompt
+    step_prompt = Map.get(lens_contexts, :step_prompt)
+    system_content = build_system_content(text_contexts, step_prompt)
 
     # Prepare messages using common utilities
     filtered_messages =
@@ -105,6 +106,7 @@ defmodule Koalemos.LLMProviders.Anthropic do
     # Add tools if any are available
     json_body =
       if length(tool_descriptions) > 0 do
+        Logger.debug("[Anthropic] Including #{length(tool_descriptions)} tools")
         Map.put(json_body, :tools, tool_descriptions)
       else
         json_body
@@ -236,8 +238,8 @@ defmodule Koalemos.LLMProviders.Anthropic do
     base_headers ++ [auth_header, beta_header]
   end
 
-  # Build system content by combining base prompt with lens contexts
-  defp build_system_content(lens_contexts) do
+  # Build system content by combining base prompt with lens contexts and step prompt
+  defp build_system_content(lens_contexts, step_prompt) do
     base_content = %{
       type: "text",
       text: "You are Claude Code, Anthropic's official CLI for Claude."
@@ -264,6 +266,14 @@ defmodule Koalemos.LLMProviders.Anthropic do
         end
       end)
 
-    [base_content | formatted_lens_contexts]
+    # Step prompt at the end (instruction for this turn) - most recent = most attention
+    step_prompt_content =
+      case step_prompt do
+        nil -> []
+        prompt when is_binary(prompt) -> [%{type: "text", text: prompt}]
+        _ -> []
+      end
+
+    [base_content] ++ formatted_lens_contexts ++ step_prompt_content
   end
 end

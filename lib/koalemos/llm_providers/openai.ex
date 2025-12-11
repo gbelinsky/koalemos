@@ -63,8 +63,9 @@ defmodule Koalemos.LLMProviders.OpenAI do
     # Convert to OpenAI format
     openai_messages = OpenAIFormatConverter.convert_messages_to_openai(filtered_messages)
 
-    # Build system message from text contexts
-    system_message = OpenAIFormatConverter.build_system_message(text_contexts)
+    # Build system message from text contexts and step prompt
+    step_prompt = Map.get(lens_contexts, :step_prompt)
+    system_message = OpenAIFormatConverter.build_system_message(text_contexts, step_prompt)
 
     # Convert image contexts to user messages
     image_messages =

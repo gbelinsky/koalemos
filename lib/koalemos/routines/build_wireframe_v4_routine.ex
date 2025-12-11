@@ -27,22 +27,19 @@ defmodule Koalemos.Routines.BuildWireframeV4Routine do
 
   def routine_definition do
     %{
-      # Stage 1: Planning
+      # Stage 1: Planning (no tools, just text response)
       planning: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Analyze what the user wants and plan the wireframe.
+          Based on the user's request, write a brief plan for the wireframe.
 
-          Review the recent conversation to understand what the user asked for.
+          Include:
+          - Components needed
+          - Basic structure
+          - Any interactions required
 
-          Use sequential_thinking to:
-          1. Break down what components are needed (e.g., header, form, buttons, etc.)
-          2. Plan the HTML structure and hierarchy
-          3. Consider what interactions and behaviors will be needed
-          4. Think about layout and styling approach
-
-          Document your plan clearly for the next stages.
+          Just respond with your plan in plain text.
           """,
           lenses: [
             ["Koalemos.Lenses.WireframeEditorV4", %{readonly: true}],
@@ -185,7 +182,7 @@ defmodule Koalemos.Routines.BuildWireframeV4Routine do
     %{
       messages: [],
       lenses: [
-        "Koalemos.Lenses.WireframeEditorV4",
+        # "Koalemos.Lenses.WireframeEditorV4",
         "Koalemos.Lenses.SequentialThinking"
       ]
     }

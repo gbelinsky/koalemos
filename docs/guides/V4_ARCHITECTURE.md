@@ -15,54 +15,54 @@ V4 simplifies the wireframe editing architecture by using a StateServer as the s
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Routine                                  │
+│                         Routine                                 │
 │  (WireframeDesignV4Routine, BuildWireframeV4Routine, etc.)      │
-│                                                                  │
-│  setup() starts StateServer with parsed HTML                     │
+│                                                                 │
+│  setup() starts StateServer with parsed HTML                    │
 └─────────────────────────┬───────────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   WireframeStateServerV4                         │
-│                      (Facade Module)                             │
-│                                                                  │
+│                   WireframeStateServerV4                        │
+│                      (Facade Module)                            │
+│                                                                 │
 │  API: update_designed, get_designed, capture_state,             │
-│       execute_interaction, reload_preview                        │
+│       execute_interaction, reload_preview                       │
 └───────────────────┬─────────────────────┬───────────────────────┘
                     │                     │
-          ┌────────▼────────┐   ┌────────▼────────┐
-          │   StateStore    │   │ PreviewCoordinator │
-          │   (GenServer)   │   │    (GenServer)     │
-          │                 │   │                    │
-          │ - designed      │   │ - preview_pid      │
-          │ - running       │   │ - request queue    │
-          │ - screenshot    │   │ - monitoring       │
-          └────────┬────────┘   └────────┬───────────┘
-                   │                     │
-                   │    Registry Lookup  │
-                   │    (WireframeV4Registry)
-                   │                     │
-┌──────────────────▼─────────────────────▼────────────────────────┐
+           ┌────────▼────────┐   ┌────────▼───────────┐
+           │   StateStore    │   │ PreviewCoordinator │
+           │   (GenServer)   │   │    (GenServer)     │
+           │                 │   │                    │
+           │ - designed      │   │ - preview_pid      │
+           │ - running       │   │ - request queue    │
+           │ - screenshot    │   │ - monitoring       │
+           └────────┬────────┘   └────────┬───────────┘
+                    │                     │
+                    │    Registry Lookup  │
+                    │    (WireframeV4Registry)
+                    │                     │
+┌───────────────────▼─────────────────────▼────────────────────────┐
 │                    WireframeEditorV4 Lens                        │
 │                                                                  │
-│  9 Tools: modify_classes, modify_elements, manage_attributes,   │
-│           manage_handlers, manage_functions, manage_variables,  │
-│           manage_css, manage_init_scripts, trigger_interaction  │
+│  9 Tools: modify_classes, modify_elements, manage_attributes,    │
+│           manage_handlers, manage_functions, manage_variables,   │
+│           manage_css, manage_init_scripts, trigger_interaction   │
 │                                                                  │
-│  Reuses: EditorCore for pure business logic                     │
-└─────────────────────────────────────────────────────────────────┘
+│  Reuses: EditorCore for pure business logic                      │
+└──────────────────────────────────────────────────────────────────┘
                           │
                           │ Direct calls to StateServer
                           ▼
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                   WireframePreviewV4Live                         │
 │                      (LiveView)                                  │
 │                                                                  │
 │  - Renders DOM tree from designed state                          │
 │  - Registers with StateServer on "preview_ready"                 │
-│  - Receives messages: capture_state, execute_interaction        │
-│  - JS hook executes init scripts and attaches handlers          │
-└─────────────────────────────────────────────────────────────────┘
+│  - Receives messages: capture_state, execute_interaction         │
+│  - JS hook executes init scripts and attaches handlers           │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## Components

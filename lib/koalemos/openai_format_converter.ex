@@ -203,6 +203,7 @@ defmodule Koalemos.OpenAIFormatConverter do
   Build system message from lens contexts for OpenAI/Ollama format.
 
   Returns a message with role="system" and combined text content.
+  Optional step_prompt is appended at the end (instruction for this turn).
 
   ## Examples
 
@@ -211,7 +212,7 @@ defmodule Koalemos.OpenAIFormatConverter do
       iex> result["role"]
       "system"
   """
-  def build_system_message(lens_contexts) do
+  def build_system_message(lens_contexts, step_prompt \\ nil) do
     base_text = ""
 
     lens_text =
@@ -226,12 +227,12 @@ defmodule Koalemos.OpenAIFormatConverter do
       |> Enum.reject(&(&1 == ""))
       |> Enum.join("\n\n")
 
-    combined_text =
-      if lens_text != "" do
-        "#{base_text}\n\n#{lens_text}"
-      else
-        base_text
-      end
+    # Combine: base + lens contexts + step prompt (at end)
+    parts =
+      [base_text, lens_text, step_prompt]
+      |> Enum.reject(&(is_nil(&1) || &1 == ""))
+
+    combined_text = Enum.join(parts, "\n\n")
 
     %{
       "role" => "system",
