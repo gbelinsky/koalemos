@@ -1,4 +1,4 @@
-defmodule KoalemosWeb.WireframePreviewV4Live do
+defmodule KoalemosWeb.WireframePreviewLive do
   @moduledoc """
   Wireframe preview page for V4 architecture.
 
@@ -31,14 +31,14 @@ defmodule KoalemosWeb.WireframePreviewV4Live do
   use KoalemosWeb, :live_view
   require Logger
 
-  alias KoalemosWeb.Servers.WireframeStateServerV4
+  alias KoalemosWeb.Servers.WireframeStateServer
 
   @impl true
   def mount(%{"routine_id" => routine_id}, _session, socket) do
     Logger.info("[WireframePreviewV4] Mounting for routine: #{routine_id}")
 
-    if WireframeStateServerV4.exists?(routine_id) do
-      designed = WireframeStateServerV4.get_designed(routine_id)
+    if WireframeStateServer.exists?(routine_id) do
+      designed = WireframeStateServer.get_designed(routine_id)
 
       if is_nil(designed) do
         Logger.warning("[WireframePreviewV4] No designed state for routine: #{routine_id}")
@@ -74,7 +74,7 @@ defmodule KoalemosWeb.WireframePreviewV4Live do
     Logger.info("[WireframePreviewV4] Preview ready for #{routine_id}, registering with StateServer")
 
     # Register with StateServer - this enables direct communication
-    WireframeStateServerV4.register_preview(routine_id, self())
+    WireframeStateServer.register_preview(routine_id, self())
 
     {:noreply, assign(socket, registered: true)}
   end

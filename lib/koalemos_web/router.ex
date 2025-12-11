@@ -40,16 +40,16 @@ defmodule KoalemosWeb.Router do
     live "/test/parsing", ParsingTestLive
     live "/test/lens-combinator", LensCombinatorLive
 
-    # V4 wireframe editor (will be renamed to canonical in next phase)
-    live "/wireframe-editor-v4/:routine_id", WireframeEditorV4Live
-    live "/wireframe-editor-v4-production", WireframeEditorV4ProductionLive
+    # Wireframe editor
+    live "/wireframe-editor/:routine_id", WireframeEditorLive
+    live "/wireframe-editor", WireframeEditorProductionLive
   end
 
-  # V4 preview uses minimal wireframe layout (no Tailwind)
+  # Wireframe preview uses minimal layout (no Tailwind)
   scope "/", KoalemosWeb do
     pipe_through :wireframe
 
-    live "/wireframe-preview-v4/:routine_id", WireframePreviewV4Live
+    live "/wireframe-preview/:routine_id", WireframePreviewLive
   end
 
   # Other scopes may use custom stacks.

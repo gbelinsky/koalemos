@@ -1,4 +1,4 @@
-defmodule KoalemosWeb.Servers.WireframeStateServerV4 do
+defmodule KoalemosWeb.Servers.WireframeStateServer do
   @moduledoc """
   V4 Wireframe State Server - facade module.
 
@@ -16,22 +16,22 @@ defmodule KoalemosWeb.Servers.WireframeStateServerV4 do
   ## Usage
 
       # Start both submodules (called from Routine.setup)
-      {:ok, _} = WireframeStateServerV4.start_link(routine_id: "abc", designed: %{...})
+      {:ok, _} = WireframeStateServer.start_link(routine_id: "abc", designed: %{...})
 
       # State operations
-      designed = WireframeStateServerV4.get_designed("abc")
-      :ok = WireframeStateServerV4.update_designed("abc", %{dom_tree: ...})
+      designed = WireframeStateServer.get_designed("abc")
+      :ok = WireframeStateServer.update_designed("abc", %{dom_tree: ...})
 
       # Preview coordination
-      :ok = WireframeStateServerV4.register_preview("abc", preview_pid)
-      {:ok, state} = WireframeStateServerV4.capture_state("abc")
-      {:ok, result} = WireframeStateServerV4.execute_interaction("abc", %{action: "click", ...})
-      :ok = WireframeStateServerV4.reload_preview("abc")
+      :ok = WireframeStateServer.register_preview("abc", preview_pid)
+      {:ok, state} = WireframeStateServer.capture_state("abc")
+      {:ok, result} = WireframeStateServer.execute_interaction("abc", %{action: "click", ...})
+      :ok = WireframeStateServer.reload_preview("abc")
   """
 
-  alias KoalemosWeb.Servers.WireframeStateServerV4.{StateStore, PreviewCoordinator}
+  alias KoalemosWeb.Servers.WireframeStateServer.{StateStore, PreviewCoordinator}
 
-  @supervisor KoalemosWeb.Supervisors.WireframeStateServerV4Supervisor
+  @supervisor KoalemosWeb.Supervisors.WireframeStateServerSupervisor
 
   # ============================================================================
   # Lifecycle

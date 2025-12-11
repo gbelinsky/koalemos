@@ -1,4 +1,4 @@
-defmodule Koalemos.Lenses.WireframeEditorV4 do
+defmodule Koalemos.Lenses.WireframeEditor do
   @moduledoc """
   Wireframe editor lens - V4 architecture.
 
@@ -10,8 +10,8 @@ defmodule Koalemos.Lenses.WireframeEditorV4 do
   Reuses EditorCore for pure business logic.
   """
 
-  alias Koalemos.Lenses.WireframeV3.EditorCore
-  alias KoalemosWeb.Servers.WireframeStateServerV4
+  alias Koalemos.Lenses.Wireframe.EditorCore
+  alias KoalemosWeb.Servers.WireframeStateServer
   alias Koalemos.ScreenshotRenderer
 
   require Logger
@@ -32,7 +32,7 @@ defmodule Koalemos.Lenses.WireframeEditorV4 do
     is_last_tool? = match?([_], context[:to_execute])
     timeout = config[:timeout] || @default_timeout
 
-    designed = WireframeStateServerV4.get_designed(routine_id)
+    designed = WireframeStateServer.get_designed(routine_id)
 
     case EditorCore.execute_tool(tool_name, params, designed) do
       {:ok, message, updates} ->
@@ -42,15 +42,15 @@ defmodule Koalemos.Lenses.WireframeEditorV4 do
           execute_interaction(routine_id, interaction_args, timeout)
         else
           # Persist updates
-          WireframeStateServerV4.update_designed(routine_id, updates)
+          WireframeStateServer.update_designed(routine_id, updates)
 
           # Reload preview - always for now, optimize later if needed
           if is_last_tool? do
             # Full reload
-            WireframeStateServerV4.reload_preview(routine_id)
+            WireframeStateServer.reload_preview(routine_id)
           else
             # Just trigger reload for intermediate tools
-            WireframeStateServerV4.reload_preview(routine_id)
+            WireframeStateServer.reload_preview(routine_id)
           end
         end
 
@@ -62,15 +62,15 @@ defmodule Koalemos.Lenses.WireframeEditorV4 do
   end
 
   defp execute_interaction(routine_id, args, timeout) do
-    Logger.info("[WireframeEditorV4] Executing interaction: #{inspect(args)}")
+    Logger.info("[WireframeEditor] Executing interaction: #{inspect(args)}")
 
-    case WireframeStateServerV4.execute_interaction(routine_id, args, timeout) do
+    case WireframeStateServer.execute_interaction(routine_id, args, timeout) do
       {:ok, result} ->
-        Logger.info("[WireframeEditorV4] Interaction complete: #{inspect(result)}")
+        Logger.info("[WireframeEditor] Interaction complete: #{inspect(result)}")
         result
 
       {:error, reason} ->
-        Logger.warning("[WireframeEditorV4] Interaction failed: #{inspect(reason)}")
+        Logger.warning("[WireframeEditor] Interaction failed: #{inspect(reason)}")
         %{"success" => false, "error" => inspect(reason)}
     end
   end
@@ -84,14 +84,14 @@ defmodule Koalemos.Lenses.WireframeEditorV4 do
     routine_id = get_in(state, [:context, :routine_id])
     timeout = config[:timeout] || @default_timeout
 
-    designed = WireframeStateServerV4.get_designed(routine_id)
+    designed = WireframeStateServer.get_designed(routine_id)
 
     # Capture running state from preview
-    case WireframeStateServerV4.capture_state(routine_id, timeout) do
+    case WireframeStateServer.capture_state(routine_id, timeout) do
       {:ok, running} ->
         # Capture screenshot via Puppeteer
         screenshot = capture_screenshot(routine_id, designed, running)
-        WireframeStateServerV4.update_screenshot(routine_id, screenshot)
+        WireframeStateServer.update_screenshot(routine_id, screenshot)
 
         # Also update ScreenshotCache so ChatPanel can display it in user input
         if screenshot do
@@ -102,7 +102,7 @@ defmodule Koalemos.Lenses.WireframeEditorV4 do
         context_blocks = EditorCore.build_context(designed, running, screenshot)
         block_types = Enum.map(context_blocks, & &1[:type])
         has_image = Enum.member?(block_types, "image")
-        Logger.info("[WireframeEditorV4] Context blocks: #{inspect(block_types)}, has_image: #{has_image}")
+        Logger.info("[WireframeEditor] Context blocks: #{inspect(block_types)}, has_image: #{has_image}")
 
         context_blocks
 
@@ -117,11 +117,11 @@ defmodule Koalemos.Lenses.WireframeEditorV4 do
 
     case ScreenshotRenderer.capture_from_lens_state(lens_state, use_live_dom: true, routine_id: routine_id) do
       {:ok, base64} ->
-        Logger.debug("[WireframeEditorV4] Screenshot captured")
+        Logger.debug("[WireframeEditor] Screenshot captured")
         base64
 
       {:error, reason} ->
-        Logger.warning("[WireframeEditorV4] Screenshot failed: #{inspect(reason)}")
+        Logger.warning("[WireframeEditor] Screenshot failed: #{inspect(reason)}")
         nil
     end
   end

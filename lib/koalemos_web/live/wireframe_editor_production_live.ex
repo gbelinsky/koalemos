@@ -1,10 +1,10 @@
-defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
+defmodule KoalemosWeb.WireframeEditorProductionLive do
   @moduledoc """
   V4 Production wireframe editor page.
 
   Clean V4 implementation with production features:
   - Config modal on mount (provider/model/sample selection)
-  - Uses WireframeDesignV4Routine
+  - Uses WireframeDesignRoutine
   - StateServer as single source of truth (no lens_state in LiveView)
   - Save/export wireframe as HTML
   - Resizable panels
@@ -16,10 +16,10 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
   require Logger
 
   alias Koalemos.{EngineManager, Engine}
-  alias Koalemos.Routines.WireframeDesignV4Routine
+  alias Koalemos.Routines.WireframeDesignRoutine
   alias KoalemosWeb.ChatPanel
   alias KoalemosWeb.WireframeConfigModal
-  alias KoalemosWeb.Servers.WireframeStateServerV4
+  alias KoalemosWeb.Servers.WireframeStateServer
 
   @impl true
   def mount(_params, _session, socket) do
@@ -85,7 +85,7 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
 
   @impl true
   def handle_event("save_wireframe", _params, socket) do
-    Logger.info("[WireframeEditorV4Production] Generating wireframe download")
+    Logger.info("[WireframeEditorProduction] Generating wireframe download")
 
     case socket.assigns[:routine_id] do
       nil ->
@@ -93,12 +93,12 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
 
       routine_id ->
         # Get the designed state from StateServer
-        designed = WireframeStateServerV4.get_designed(routine_id)
+        designed = WireframeStateServer.get_designed(routine_id)
 
         if designed do
           try do
             html = generate_wireframe_html(designed)
-            Logger.info("[WireframeEditorV4Production] Generated HTML, length: #{String.length(html)} chars")
+            Logger.info("[WireframeEditorProduction] Generated HTML, length: #{String.length(html)} chars")
             filename = "wireframe_#{routine_id}_#{DateTime.utc_now() |> DateTime.to_unix()}.html"
 
             # Use blob download
@@ -110,11 +110,11 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
              })}
           rescue
             e ->
-              Logger.error("[WireframeEditorV4Production] Failed to generate HTML: #{Exception.message(e)}")
+              Logger.error("[WireframeEditorProduction] Failed to generate HTML: #{Exception.message(e)}")
               {:noreply, socket}
           end
         else
-          Logger.warning("[WireframeEditorV4Production] No designed state for download")
+          Logger.warning("[WireframeEditorProduction] No designed state for download")
           {:noreply, socket}
         end
     end
@@ -131,7 +131,7 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
 
   @impl true
   def handle_info({:config_complete, config}, socket) do
-    Logger.info("[WireframeEditorV4Production] Config complete: #{inspect(config)}")
+    Logger.info("[WireframeEditorProduction] Config complete: #{inspect(config)}")
 
     provider = Map.get(config, :provider)
     model = Map.get(config, :model)
@@ -149,7 +149,7 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
       Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
     end
 
-    # Start WireframeDesignV4Routine
+    # Start WireframeDesignRoutine
     # The routine's setup will parse HTML and start StateServer
     user_context = %{
       routine_id: routine_id,
@@ -160,9 +160,9 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
       wireframe_html: html_content
     }
 
-    case EngineManager.start_routine(routine_id, WireframeDesignV4Routine, user_context) do
+    case EngineManager.start_routine(routine_id, WireframeDesignRoutine, user_context) do
       {:ok, _pid} ->
-        Logger.info("[WireframeEditorV4Production] Started routine #{routine_id}")
+        Logger.info("[WireframeEditorProduction] Started routine #{routine_id}")
 
         {:noreply,
          assign(socket,
@@ -178,7 +178,7 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
          )}
 
       {:error, reason} ->
-        Logger.error("[WireframeEditorV4Production] Failed to start routine: #{inspect(reason)}")
+        Logger.error("[WireframeEditorProduction] Failed to start routine: #{inspect(reason)}")
 
         {:noreply,
          assign(socket,
@@ -196,7 +196,7 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
 
   @impl true
   def handle_info({:user_input_submitted, %{text: text, images: images} = data}, socket) do
-    Logger.info("[WireframeEditorV4Production] User input: #{String.slice(text, 0, 50)}...")
+    Logger.info("[WireframeEditorProduction] User input: #{String.slice(text, 0, 50)}...")
     include_screenshot = Map.get(data, :include_screenshot, false)
 
     Engine.send_external_event(socket.assigns.routine_id, :user_input, %{
@@ -210,14 +210,14 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
 
   @impl true
   def handle_info({:new_messages, new_messages}, socket) do
-    Logger.debug("[WireframeEditorV4Production] Received #{length(new_messages)} new message(s)")
+    Logger.debug("[WireframeEditorProduction] Received #{length(new_messages)} new message(s)")
     updated_messages = socket.assigns.messages ++ new_messages
     {:noreply, assign(socket, messages: updated_messages)}
   end
 
   @impl true
   def handle_info({:routine_event, %{event_type: "routine_completed"} = event}, socket) do
-    Logger.info("[WireframeEditorV4Production] Routine completed")
+    Logger.info("[WireframeEditorProduction] Routine completed")
     error = get_in(event, [:metadata, :final_context, :error])
     status = if error, do: :error, else: :completed
     {:noreply, assign(socket, status: status, last_error: error, current_step: nil)}
@@ -226,7 +226,7 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
   @impl true
   def handle_info({:routine_event, %{event_type: "error_occurred"} = event}, socket) do
     error_msg = get_in(event, [:metadata, :reason]) || "Unknown error"
-    Logger.error("[WireframeEditorV4Production] Routine error: #{error_msg}")
+    Logger.error("[WireframeEditorProduction] Routine error: #{error_msg}")
     {:noreply, assign(socket, status: :error, current_step: nil)}
   end
 
@@ -254,7 +254,7 @@ defmodule KoalemosWeb.WireframeEditorV4ProductionLive do
 
   @impl true
   def handle_info(message, socket) do
-    Logger.debug("[WireframeEditorV4Production] Unhandled message: #{inspect(message)}")
+    Logger.debug("[WireframeEditorProduction] Unhandled message: #{inspect(message)}")
     {:noreply, socket}
   end
 

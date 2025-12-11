@@ -1,6 +1,6 @@
-defmodule KoalemosWeb.WireframeEditorV4Live do
+defmodule KoalemosWeb.WireframeEditorLive do
   @moduledoc """
-  LiveView page for WireframeEditorV4 with chat + preview layout + debug panels.
+  LiveView page for WireframeEditor with chat + preview layout + debug panels.
 
   V4 Architecture:
   - No PubSub for wireframe state updates
@@ -14,9 +14,9 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
   require Logger
 
   alias Koalemos.{EngineManager, Engine}
-  alias Koalemos.Routines.WireframeEditorV4Routine
+  alias Koalemos.Routines.WireframeEditorRoutine
   alias KoalemosWeb.ChatPanel
-  alias KoalemosWeb.Servers.WireframeStateServerV4
+  alias KoalemosWeb.Servers.WireframeStateServer
 
   @impl true
   def mount(_params, _session, socket) do
@@ -53,7 +53,7 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
       Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
       # Note: No wireframe_v4 PubSub subscription needed - StateServer handles coordination
 
-      Logger.info("[WireframeEditorV4Live] Starting routine #{routine_id}")
+      Logger.info("[WireframeEditorLive] Starting routine #{routine_id}")
 
       user_context = %{
         routine_id: routine_id,
@@ -63,9 +63,9 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
         temperature: 0.7
       }
 
-      case EngineManager.start_routine(routine_id, WireframeEditorV4Routine, user_context) do
+      case EngineManager.start_routine(routine_id, WireframeEditorRoutine, user_context) do
         {:ok, _pid} ->
-          Logger.info("[WireframeEditorV4Live] Routine started successfully")
+          Logger.info("[WireframeEditorLive] Routine started successfully")
           Process.send_after(self(), :fetch_initial_state, 500)
           {:noreply,
            assign(socket,
@@ -75,7 +75,7 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
            )}
 
         {:error, {:already_started, _pid}} ->
-          Logger.info("[WireframeEditorV4Live] Routine already running, connecting")
+          Logger.info("[WireframeEditorLive] Routine already running, connecting")
           Process.send_after(self(), :fetch_initial_state, 100)
           {:noreply,
            assign(socket,
@@ -85,7 +85,7 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
            )}
 
         {:error, reason} ->
-          Logger.error("[WireframeEditorV4Live] Failed to start routine: #{inspect(reason)}")
+          Logger.error("[WireframeEditorLive] Failed to start routine: #{inspect(reason)}")
           {:noreply, assign(socket, last_error: "Failed to start routine: #{inspect(reason)}")}
       end
     else
@@ -123,12 +123,12 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
   @impl true
   def handle_event("refresh_state", _params, socket) do
     routine_id = socket.assigns.routine_id
-    Logger.info("[WireframeEditorV4Live] Manual state refresh requested")
+    Logger.info("[WireframeEditorLive] Manual state refresh requested")
 
     # Fetch current state from StateServer
-    designed = WireframeStateServerV4.get_designed(routine_id)
-    running = WireframeStateServerV4.get_running(routine_id)
-    screenshot = WireframeStateServerV4.get_screenshot(routine_id)
+    designed = WireframeStateServer.get_designed(routine_id)
+    running = WireframeStateServer.get_running(routine_id)
+    screenshot = WireframeStateServer.get_screenshot(routine_id)
 
     {:noreply,
      assign(socket,
@@ -146,9 +146,9 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
   @impl true
   def handle_info(:fetch_initial_state, socket) do
     routine_id = socket.assigns.routine_id
-    designed = WireframeStateServerV4.get_designed(routine_id)
-    running = WireframeStateServerV4.get_running(routine_id)
-    screenshot = WireframeStateServerV4.get_screenshot(routine_id)
+    designed = WireframeStateServer.get_designed(routine_id)
+    running = WireframeStateServer.get_running(routine_id)
+    screenshot = WireframeStateServer.get_screenshot(routine_id)
 
     # Start auto-refresh timer for debug panel
     if socket.assigns.show_debug do
@@ -167,9 +167,9 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
   def handle_info(:refresh_debug_state, socket) do
     if socket.assigns.show_debug and socket.assigns.routine_id do
       routine_id = socket.assigns.routine_id
-      designed = WireframeStateServerV4.get_designed(routine_id)
-      running = WireframeStateServerV4.get_running(routine_id)
-      screenshot = WireframeStateServerV4.get_screenshot(routine_id)
+      designed = WireframeStateServer.get_designed(routine_id)
+      running = WireframeStateServer.get_running(routine_id)
+      screenshot = WireframeStateServer.get_screenshot(routine_id)
 
       # Schedule next refresh
       schedule_debug_refresh()
@@ -200,7 +200,7 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
 
   @impl true
   def handle_info({:user_input_submitted, %{text: text, images: images} = data}, socket) do
-    Logger.info("[WireframeEditorV4Live] User input: #{String.slice(text, 0, 50)}...")
+    Logger.info("[WireframeEditorLive] User input: #{String.slice(text, 0, 50)}...")
     include_screenshot = Map.get(data, :include_screenshot, false)
 
     Engine.send_external_event(socket.assigns.routine_id, :user_input, %{
@@ -214,14 +214,14 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
 
   @impl true
   def handle_info({:new_messages, new_messages}, socket) do
-    Logger.debug("[WireframeEditorV4Live] Received #{length(new_messages)} new message(s)")
+    Logger.debug("[WireframeEditorLive] Received #{length(new_messages)} new message(s)")
     updated_messages = socket.assigns.messages ++ new_messages
     {:noreply, assign(socket, messages: updated_messages)}
   end
 
   @impl true
   def handle_info({:routine_event, %{event_type: "routine_completed"} = event}, socket) do
-    Logger.info("[WireframeEditorV4Live] Routine completed")
+    Logger.info("[WireframeEditorLive] Routine completed")
     error = get_in(event, [:metadata, :final_context, :error])
     status = if error, do: :error, else: :completed
     {:noreply, assign(socket, status: status, last_error: error, current_step: nil)}
@@ -230,7 +230,7 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
   @impl true
   def handle_info({:routine_event, %{event_type: "error_occurred"} = event}, socket) do
     error_msg = get_in(event, [:metadata, :reason]) || "Unknown error"
-    Logger.error("[WireframeEditorV4Live] Routine error: #{error_msg}")
+    Logger.error("[WireframeEditorLive] Routine error: #{error_msg}")
     {:noreply, assign(socket, status: :error, last_error: error_msg, current_step: nil)}
   end
 
@@ -252,7 +252,7 @@ defmodule KoalemosWeb.WireframeEditorV4Live do
 
   @impl true
   def handle_info(message, socket) do
-    Logger.debug("[WireframeEditorV4Live] Unhandled message: #{inspect(message)}")
+    Logger.debug("[WireframeEditorLive] Unhandled message: #{inspect(message)}")
     {:noreply, socket}
   end
 

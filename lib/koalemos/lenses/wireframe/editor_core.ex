@@ -1,4 +1,4 @@
-defmodule Koalemos.Lenses.WireframeV3.EditorCore do
+defmodule Koalemos.Lenses.Wireframe.EditorCore do
   @moduledoc """
   Pure business logic for wireframe editing.
 

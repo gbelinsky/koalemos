@@ -1,9 +1,9 @@
-defmodule Koalemos.Routines.BuildWireframeV4Routine do
+defmodule Koalemos.Routines.BuildWireframeRoutine do
   @moduledoc """
   V4 multi-stage wireframe building routine with linear sequential flow.
 
   Clean V4 implementation using StateServer architecture:
-  - All stages use WireframeEditorV4 lens
+  - All stages use WireframeEditor lens
   - StateServer is single source of truth (inherited from parent)
   - No lens_state in context
 
@@ -42,7 +42,7 @@ defmodule Koalemos.Routines.BuildWireframeV4Routine do
           Just respond with your plan in plain text.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditorV4", %{readonly: true}],
+            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -74,7 +74,7 @@ defmodule Koalemos.Routines.BuildWireframeV4Routine do
           Focus on making the layout functional - no visual polish or behavior yet.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -101,7 +101,7 @@ defmodule Koalemos.Routines.BuildWireframeV4Routine do
           Make the wireframe interactive and functional.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -137,7 +137,7 @@ defmodule Koalemos.Routines.BuildWireframeV4Routine do
           Document what works, then MOVE ON to polish stage.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -167,7 +167,7 @@ defmodule Koalemos.Routines.BuildWireframeV4Routine do
           Trust your CSS choices and move on.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -182,7 +182,7 @@ defmodule Koalemos.Routines.BuildWireframeV4Routine do
     %{
       messages: [],
       lenses: [
-        # "Koalemos.Lenses.WireframeEditorV4",
+        # "Koalemos.Lenses.WireframeEditor",
         "Koalemos.Lenses.SequentialThinking"
       ]
     }

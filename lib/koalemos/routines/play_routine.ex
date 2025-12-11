@@ -1,9 +1,9 @@
-defmodule Koalemos.Routines.PlayV4Routine do
+defmodule Koalemos.Routines.PlayRoutine do
   @moduledoc """
   V4 tight interaction loop for playing with wireframe.
 
   Clean V4 implementation using StateServer architecture:
-  - Uses WireframeEditorV4 lens
+  - Uses WireframeEditor lens
   - StateServer is single source of truth (inherited from parent)
   - No lens_state in context
 
@@ -73,7 +73,7 @@ defmodule Koalemos.Routines.PlayV4Routine do
           You are in a LOOP - after responding, decide whether to continue or exit.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking",
             "Koalemos.Lenses.SemanticTransition"
           ]
@@ -98,7 +98,7 @@ defmodule Koalemos.Routines.PlayV4Routine do
     %{
       messages: [],
       lenses: [
-        "Koalemos.Lenses.WireframeEditorV4",
+        "Koalemos.Lenses.WireframeEditor",
         "Koalemos.Lenses.SequentialThinking"
       ]
     }

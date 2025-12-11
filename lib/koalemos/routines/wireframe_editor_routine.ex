@@ -1,4 +1,4 @@
-defmodule Koalemos.Routines.WireframeEditorV4Routine do
+defmodule Koalemos.Routines.WireframeEditorRoutine do
   @moduledoc """
   Wireframe editor routine using V4 architecture.
 
@@ -17,7 +17,7 @@ defmodule Koalemos.Routines.WireframeEditorV4Routine do
 
   alias Koalemos.Steps.User.ChatUserInput
   alias Koalemos.Steps.Agent.TemplatedSemanticAgent
-  alias KoalemosWeb.Servers.WireframeStateServerV4
+  alias KoalemosWeb.Servers.WireframeStateServer
   alias Koalemos.Integrations.ParsingIntegration
 
   require Logger
@@ -143,7 +143,7 @@ defmodule Koalemos.Routines.WireframeEditorV4Routine do
           When the user asks for changes, use the appropriate tool(s) to make the modification.
           After making changes, briefly confirm what you did.
           """,
-          lenses: ["Koalemos.Lenses.WireframeEditorV4"]
+          lenses: ["Koalemos.Lenses.WireframeEditor"]
         },
         transitions: [{:start, :always}]
       }
@@ -155,7 +155,7 @@ defmodule Koalemos.Routines.WireframeEditorV4Routine do
   def initial_context do
     %{
       messages: [],
-      lenses: ["Koalemos.Lenses.WireframeEditorV4"],
+      lenses: ["Koalemos.Lenses.WireframeEditor"],
       llm_provider: "anthropic",
       llm_model: "claude-sonnet-4-5-20250929",
       max_tokens: 64000,
@@ -173,21 +173,21 @@ defmodule Koalemos.Routines.WireframeEditorV4Routine do
     routine_id = state.context[:routine_id] || generate_routine_id()
     html = state.context[:wireframe_html] || @default_html
 
-    Logger.info("[WireframeEditorV4Routine] Setting up routine #{routine_id}")
+    Logger.info("[WireframeEditorRoutine] Setting up routine #{routine_id}")
 
     # Parse HTML in the routine (not in StateServer)
     case parse_html_to_designed(html) do
       {:ok, designed} ->
-        Logger.info("[WireframeEditorV4Routine] HTML parsed successfully")
+        Logger.info("[WireframeEditorRoutine] HTML parsed successfully")
 
         # Start StateServer with pre-parsed designed state
         # Note: start_link will crash on failure, so no error tuple to match
-        {:ok, _pid} = WireframeStateServerV4.start_link(routine_id: routine_id, designed: designed)
-        Logger.info("[WireframeEditorV4Routine] StateServer started")
+        {:ok, _pid} = WireframeStateServer.start_link(routine_id: routine_id, designed: designed)
+        Logger.info("[WireframeEditorRoutine] StateServer started")
         {:ok, [{:add_or_update, %{routine_id: routine_id}}]}
 
       {:error, reason} ->
-        Logger.error("[WireframeEditorV4Routine] Failed to parse HTML: #{inspect(reason)}")
+        Logger.error("[WireframeEditorRoutine] Failed to parse HTML: #{inspect(reason)}")
         {:ok, [{:add_or_update, %{routine_id: routine_id, setup_error: reason}}]}
     end
   end

@@ -1,4 +1,4 @@
-defmodule KoalemosWeb.Servers.WireframeStateServerV4.StateStore do
+defmodule KoalemosWeb.Servers.WireframeStateServer.StateStore do
   @moduledoc """
   Pure state GenServer for wireframe data storage.
 
@@ -14,7 +14,7 @@ defmodule KoalemosWeb.Servers.WireframeStateServerV4.StateStore do
   use GenServer
   require Logger
 
-  @registry Koalemos.WireframeV4Registry
+  @registry Koalemos.WireframeRegistry
 
   # ============================================================================
   # Client API

@@ -1,4 +1,4 @@
-defmodule KoalemosWeb.Servers.WireframeStateServerV4.PreviewCoordinator do
+defmodule KoalemosWeb.Servers.WireframeStateServer.PreviewCoordinator do
   @moduledoc """
   Preview lifecycle management and coordination.
 
@@ -28,9 +28,9 @@ defmodule KoalemosWeb.Servers.WireframeStateServerV4.PreviewCoordinator do
   use GenServer
   require Logger
 
-  alias KoalemosWeb.Servers.WireframeStateServerV4.StateStore
+  alias KoalemosWeb.Servers.WireframeStateServer.StateStore
 
-  @registry Koalemos.WireframeV4Registry
+  @registry Koalemos.WireframeRegistry
   @default_timeout 10_000
 
   # ============================================================================

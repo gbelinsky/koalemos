@@ -1,9 +1,9 @@
-defmodule Koalemos.Routines.WireframeDesignV4Routine do
+defmodule Koalemos.Routines.WireframeDesignRoutine do
   @moduledoc """
   V4 Wireframe Design Routine with semantic routing.
 
   Clean V4 implementation using StateServer architecture:
-  - All sub-routines use WireframeEditorV4 lens
+  - All sub-routines use WireframeEditor lens
   - StateServer is single source of truth
   - No lens_state in context - StateServer handles state
 
@@ -11,10 +11,10 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
 
   Agent analyzes user request and chooses the best sub-routine:
   - interact_wireframe: Explore and test the wireframe
-  - play: Interactive play mode (calls PlayV4Routine)
+  - play: Interactive play mode (calls PlayRoutine)
   - debug: Debug and fix issues
   - targeted_change: Make specific modifications
-  - build_from_scratch: Create new wireframe (calls BuildWireframeV4Routine)
+  - build_from_scratch: Create new wireframe (calls BuildWireframeRoutine)
   - modify_existing: Make broader changes
   - ask_clarification: Ask for more information
   - show_current_state: Explain current state
@@ -27,7 +27,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
   alias Koalemos.Steps.User.ChatUserInput
   alias Koalemos.Steps.Agent.TemplatedSemanticAgent
   alias Koalemos.Integrations.ParsingIntegration
-  alias KoalemosWeb.Servers.WireframeStateServerV4
+  alias KoalemosWeb.Servers.WireframeStateServer
 
   require Logger
 
@@ -63,7 +63,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
           you can answer directly here and transition to start for the next input.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditorV4", %{readonly: true}],
+            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SemanticTransition"
           ]
         },
@@ -96,16 +96,16 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
           Focus on interaction and exploration rather than major modifications.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
         transitions: [{:start, :always}]
       },
 
-      # Play mode - calls PlayV4Routine
+      # Play mode - calls PlayRoutine
       play: %{
-        type: Koalemos.Routines.PlayV4Routine,
+        type: Koalemos.Routines.PlayRoutine,
         config: %{},
         transitions: [{:show_result, :always}]
       },
@@ -128,7 +128,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
           Use sequential_thinking to explain your debugging process.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -146,16 +146,16 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
           When done, use sequential_thinking to explain what you changed and why.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
         transitions: [{:show_result, :always}]
       },
 
-      # Build from scratch - calls BuildWireframeV4Routine
+      # Build from scratch - calls BuildWireframeRoutine
       build_from_scratch: %{
-        type: Koalemos.Routines.BuildWireframeV4Routine,
+        type: Koalemos.Routines.BuildWireframeRoutine,
         config: %{},
         transitions: [{:show_result, :always}]
       },
@@ -171,7 +171,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
           your approach and explain your changes as you go.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditorV4",
+            "Koalemos.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -189,7 +189,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
           Be helpful and suggest options if appropriate.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditorV4", %{readonly: true}],
+            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -206,7 +206,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
           Explain what's currently implemented and what the user can do with it.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditorV4", %{readonly: true}],
+            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -224,7 +224,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
           Be concise and clear about what you accomplished.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditorV4", %{readonly: true}],
+            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -243,7 +243,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
     %{
       messages: [],
       lenses: [
-        "Koalemos.Lenses.WireframeEditorV4",
+        "Koalemos.Lenses.WireframeEditor",
         "Koalemos.Lenses.SequentialThinking"
       ],
       llm_provider: "anthropic",
@@ -264,24 +264,24 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
     routine_id = Map.get(context, :routine_id, "wireframe-v4-#{:erlang.unique_integer([:positive])}")
     html = Map.get(context, :wireframe_html)
 
-    Logger.info("[WireframeDesignV4Routine] Setting up routine #{routine_id}")
+    Logger.info("[WireframeDesignRoutine] Setting up routine #{routine_id}")
 
     case parse_html_to_designed(html, routine_id) do
       {:ok, designed} ->
-        Logger.info("[WireframeDesignV4Routine] HTML parsed successfully")
-        {:ok, _pid} = WireframeStateServerV4.start_link(routine_id: routine_id, designed: designed)
-        Logger.info("[WireframeDesignV4Routine] StateServer started")
+        Logger.info("[WireframeDesignRoutine] HTML parsed successfully")
+        {:ok, _pid} = WireframeStateServer.start_link(routine_id: routine_id, designed: designed)
+        Logger.info("[WireframeDesignRoutine] StateServer started")
         {:ok, [{:add_or_update, %{routine_id: routine_id}}]}
 
       {:error, reason} ->
-        Logger.error("[WireframeDesignV4Routine] Failed to parse HTML: #{inspect(reason)}")
+        Logger.error("[WireframeDesignRoutine] Failed to parse HTML: #{inspect(reason)}")
         {:ok, [{:add_or_update, %{routine_id: routine_id, setup_error: reason}}]}
 
       nil ->
         # No HTML provided - start with minimal root element
-        Logger.info("[WireframeDesignV4Routine] No HTML provided, starting with minimal root")
+        Logger.info("[WireframeDesignRoutine] No HTML provided, starting with minimal root")
         minimal_root = %{dom_tree: %{tag: "div", id: "root", children: []}}
-        {:ok, _pid} = WireframeStateServerV4.start_link(routine_id: routine_id, designed: minimal_root)
+        {:ok, _pid} = WireframeStateServer.start_link(routine_id: routine_id, designed: minimal_root)
         {:ok, [{:add_or_update, %{routine_id: routine_id}}]}
     end
   end
@@ -297,7 +297,7 @@ defmodule Koalemos.Routines.WireframeDesignV4Routine do
     case load_sample_html(sample) do
       {:ok, html} -> Map.put(context, :wireframe_html, html)
       {:error, reason} ->
-        Logger.warning("[WireframeDesignV4Routine] Failed to load sample '#{sample}': #{reason}")
+        Logger.warning("[WireframeDesignRoutine] Failed to load sample '#{sample}': #{reason}")
         context
     end
   end
