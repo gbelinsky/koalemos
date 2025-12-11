@@ -1,4 +1,4 @@
-defmodule Koalemos.Routines.BuildWireframeRoutine do
+defmodule KoalemosWeb.Routines.BuildWireframeRoutine do
   @moduledoc """
   V4 multi-stage wireframe building routine with linear sequential flow.
 
@@ -42,7 +42,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
           Just respond with your plan in plain text.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
+            ["KoalemosWeb.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -74,7 +74,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
           Focus on making the layout functional - no visual polish or behavior yet.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -101,7 +101,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
           Make the wireframe interactive and functional.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -137,7 +137,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
           Document what works, then MOVE ON to polish stage.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -167,7 +167,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
           Trust your CSS choices and move on.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -182,7 +182,7 @@ defmodule Koalemos.Routines.BuildWireframeRoutine do
     %{
       messages: [],
       lenses: [
-        # "Koalemos.Lenses.WireframeEditor",
+        # "KoalemosWeb.Lenses.WireframeEditor",
         "Koalemos.Lenses.SequentialThinking"
       ]
     }

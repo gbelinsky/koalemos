@@ -1,4 +1,4 @@
-defmodule Koalemos.Routines.PlayRoutine do
+defmodule KoalemosWeb.Routines.PlayRoutine do
   @moduledoc """
   V4 tight interaction loop for playing with wireframe.
 
@@ -73,7 +73,7 @@ defmodule Koalemos.Routines.PlayRoutine do
           You are in a LOOP - after responding, decide whether to continue or exit.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking",
             "Koalemos.Lenses.SemanticTransition"
           ]
@@ -98,7 +98,7 @@ defmodule Koalemos.Routines.PlayRoutine do
     %{
       messages: [],
       lenses: [
-        "Koalemos.Lenses.WireframeEditor",
+        "KoalemosWeb.Lenses.WireframeEditor",
         "Koalemos.Lenses.SequentialThinking"
       ]
     }

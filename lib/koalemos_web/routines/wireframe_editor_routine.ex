@@ -1,4 +1,4 @@
-defmodule Koalemos.Routines.WireframeEditorRoutine do
+defmodule KoalemosWeb.Routines.WireframeEditorRoutine do
   @moduledoc """
   Wireframe editor routine using V4 architecture.
 
@@ -143,7 +143,7 @@ defmodule Koalemos.Routines.WireframeEditorRoutine do
           When the user asks for changes, use the appropriate tool(s) to make the modification.
           After making changes, briefly confirm what you did.
           """,
-          lenses: ["Koalemos.Lenses.WireframeEditor"]
+          lenses: ["KoalemosWeb.Lenses.WireframeEditor"]
         },
         transitions: [{:start, :always}]
       }
@@ -155,7 +155,7 @@ defmodule Koalemos.Routines.WireframeEditorRoutine do
   def initial_context do
     %{
       messages: [],
-      lenses: ["Koalemos.Lenses.WireframeEditor"],
+      lenses: ["KoalemosWeb.Lenses.WireframeEditor"],
       llm_provider: "anthropic",
       llm_model: "claude-sonnet-4-5-20250929",
       max_tokens: 64000,

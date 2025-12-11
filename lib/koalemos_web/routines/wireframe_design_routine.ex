@@ -1,4 +1,4 @@
-defmodule Koalemos.Routines.WireframeDesignRoutine do
+defmodule KoalemosWeb.Routines.WireframeDesignRoutine do
   @moduledoc """
   V4 Wireframe Design Routine with semantic routing.
 
@@ -63,7 +63,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           you can answer directly here and transition to start for the next input.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
+            ["KoalemosWeb.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SemanticTransition"
           ]
         },
@@ -96,7 +96,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           Focus on interaction and exploration rather than major modifications.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -105,7 +105,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
 
       # Play mode - calls PlayRoutine
       play: %{
-        type: Koalemos.Routines.PlayRoutine,
+        type: KoalemosWeb.Routines.PlayRoutine,
         config: %{},
         transitions: [{:show_result, :always}]
       },
@@ -128,7 +128,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           Use sequential_thinking to explain your debugging process.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -146,7 +146,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           When done, use sequential_thinking to explain what you changed and why.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -155,7 +155,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
 
       # Build from scratch - calls BuildWireframeRoutine
       build_from_scratch: %{
-        type: Koalemos.Routines.BuildWireframeRoutine,
+        type: KoalemosWeb.Routines.BuildWireframeRoutine,
         config: %{},
         transitions: [{:show_result, :always}]
       },
@@ -171,7 +171,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           your approach and explain your changes as you go.
           """,
           lenses: [
-            "Koalemos.Lenses.WireframeEditor",
+            "KoalemosWeb.Lenses.WireframeEditor",
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -189,7 +189,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           Be helpful and suggest options if appropriate.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
+            ["KoalemosWeb.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -206,7 +206,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           Explain what's currently implemented and what the user can do with it.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
+            ["KoalemosWeb.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -224,7 +224,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
           Be concise and clear about what you accomplished.
           """,
           lenses: [
-            ["Koalemos.Lenses.WireframeEditor", %{readonly: true}],
+            ["KoalemosWeb.Lenses.WireframeEditor", %{readonly: true}],
             "Koalemos.Lenses.SequentialThinking"
           ]
         },
@@ -243,7 +243,7 @@ defmodule Koalemos.Routines.WireframeDesignRoutine do
     %{
       messages: [],
       lenses: [
-        "Koalemos.Lenses.WireframeEditor",
+        "KoalemosWeb.Lenses.WireframeEditor",
         "Koalemos.Lenses.SequentialThinking"
       ],
       llm_provider: "anthropic",

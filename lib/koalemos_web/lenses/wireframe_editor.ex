@@ -1,4 +1,4 @@
-defmodule Koalemos.Lenses.WireframeEditor do
+defmodule KoalemosWeb.Lenses.WireframeEditor do
   @moduledoc """
   Wireframe editor lens - V4 architecture.
 
@@ -10,7 +10,7 @@ defmodule Koalemos.Lenses.WireframeEditor do
   Reuses EditorCore for pure business logic.
   """
 
-  alias Koalemos.Lenses.Wireframe.EditorCore
+  alias KoalemosWeb.Lenses.Wireframe.EditorCore
   alias KoalemosWeb.Servers.WireframeStateServer
   alias Koalemos.ScreenshotRenderer
 

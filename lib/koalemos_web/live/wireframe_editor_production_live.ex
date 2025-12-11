@@ -16,7 +16,7 @@ defmodule KoalemosWeb.WireframeEditorProductionLive do
   require Logger
 
   alias Koalemos.{EngineManager, Engine}
-  alias Koalemos.Routines.WireframeDesignRoutine
+  alias KoalemosWeb.Routines.WireframeDesignRoutine
   alias KoalemosWeb.ChatPanel
   alias KoalemosWeb.WireframeConfigModal
   alias KoalemosWeb.Servers.WireframeStateServer
