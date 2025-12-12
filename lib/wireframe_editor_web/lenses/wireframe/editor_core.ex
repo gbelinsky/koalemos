@@ -674,8 +674,9 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
     logs
     |> Enum.take(-10)
     |> Enum.map_join("\n", fn log ->
-      level = Map.get(log, :level, "log")
-      message = Map.get(log, :message, "")
+      # Handle both atom and string keys (JS sends string keys)
+      level = Map.get(log, :level) || Map.get(log, "level", "log")
+      message = Map.get(log, :message) || Map.get(log, "message", "")
       "  [#{level}] #{truncate(message, 60)}"
     end)
   end

@@ -994,6 +994,9 @@ WireframeHooks.WireframePreview = {
         try { return JSON.stringify(arg) } catch(e) { return String(arg) }
       }).join(' ')
 
+      // Filter out Phoenix LiveView debug messages (phx-* element updates)
+      if (message.startsWith('phx-')) return
+
       this.consoleLogs.push({ level, message, timestamp: Date.now() })
     }
 
@@ -1059,12 +1062,21 @@ WireframeHooks.WireframePreview = {
 
       Object.entries(events).forEach(([eventName, handlerData]) => {
         try {
-          const code = typeof handlerData === 'string' ? handlerData : handlerData.body
-          const handlerFunc = new Function('event', code)
+          let code, params
+          if (typeof handlerData === 'string') {
+            code = handlerData
+            params = ['e']  // Default parameter name
+          } else {
+            code = handlerData.body
+            params = handlerData.params || ['e']
+          }
 
-          element.addEventListener(eventName, (event) => {
+          // Create function with the specified parameter names
+          const handlerFunc = new Function(...params, code)
+
+          element.addEventListener(eventName, (e) => {
             INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Handler: ${elementId}.${eventName}`)
-            handlerFunc.call(element, event)
+            handlerFunc.call(element, e)
           })
 
           INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Attached ${eventName} to ${elementId}`)
@@ -1096,7 +1108,7 @@ WireframeHooks.WireframePreview = {
           this.submitForm(command.element_id)
           break
         case "execute_js":
-          this.executeJavaScript(command.js_code || command.value)
+          this.executeJavaScript(command.javascript || command.js_code || command.value)
           break
         default:
           throw new Error(`Unknown interaction action: ${command.action}`)

@@ -32,10 +32,14 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
     is_last_tool? = match?([_], context[:to_execute])
     timeout = config[:timeout] || @default_timeout
 
+    # Log tool execution for debugging
+    Logger.info("[WireframeEditor] Tool: #{tool_name}, params: #{inspect(params, limit: 200)}")
+
     designed = WireframeStateServer.get_designed(routine_id)
 
     case EditorCore.execute_tool(tool_name, params, designed) do
       {:ok, message, updates} ->
+        Logger.debug("[WireframeEditor] Tool #{tool_name} success: #{String.slice(message, 0, 100)}")
         if tool_name == :trigger_interaction do
           # Trigger interaction doesn't persist - execute via StateServer
           interaction_args = Map.get(updates, :_interaction_request, params)
