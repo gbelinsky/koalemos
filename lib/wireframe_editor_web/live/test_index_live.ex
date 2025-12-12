@@ -261,7 +261,7 @@ defmodule WireframeEditorWeb.TestIndexLive do
 
     <!-- Wireframe Editor V4 (Simplified Architecture) -->
           <a
-            href={"/wireframe-editor-v4/v4-demo-#{:erlang.unique_integer([:positive])}"}
+            href={"/wireframe-editor/v4-demo-#{:erlang.unique_integer([:positive])}"}
             class="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 border-2 border-emerald-500"
           >
             <div class="flex items-start gap-4">

@@ -9,7 +9,7 @@ defmodule WireframeEditorWeb.WireframeEditorProductionLive do
   - Save/export wireframe as HTML
   - Resizable panels
 
-  Route: /wireframe-editor-v4-production (will become /wireframe-editor after testing)
+  Route: /wireframe-editor (will become /wireframe-editor after testing)
   """
 
   use WireframeEditorWeb, :live_view
@@ -364,9 +364,9 @@ defmodule WireframeEditorWeb.WireframeEditorProductionLive do
             </div>
             <div class="flex-1 overflow-hidden">
               <iframe
-                src={"/wireframe-preview-v4/#{@routine_id}"}
+                src={"/wireframe-preview/#{@routine_id}"}
                 class="w-full h-full border-0"
-                id="wireframe-preview-v4"
+                id="wireframe-preview"
                 sandbox="allow-scripts allow-same-origin allow-forms"
                 title="Wireframe Preview"
               >

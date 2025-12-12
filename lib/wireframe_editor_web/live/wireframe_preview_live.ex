@@ -35,13 +35,13 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
 
   @impl true
   def mount(%{"routine_id" => routine_id}, _session, socket) do
-    Logger.info("[WireframePreviewV4] Mounting for routine: #{routine_id}")
+    Logger.info("[WireframePreview] Mounting for routine: #{routine_id}")
 
     if WireframeStateServer.exists?(routine_id) do
       designed = WireframeStateServer.get_designed(routine_id)
 
       if is_nil(designed) do
-        Logger.warning("[WireframePreviewV4] No designed state for routine: #{routine_id}")
+        Logger.warning("[WireframePreview] No designed state for routine: #{routine_id}")
         {:ok, assign(socket, error: "No wireframe state initialized", routine_id: routine_id)}
       else
         socket =
@@ -54,7 +54,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
         {:ok, socket}
       end
     else
-      Logger.warning("[WireframePreviewV4] No state server for routine: #{routine_id}")
+      Logger.warning("[WireframePreview] No state server for routine: #{routine_id}")
       {:ok, assign(socket, error: "Wireframe state server not found", routine_id: routine_id)}
     end
   end
@@ -71,7 +71,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   @impl true
   def handle_event("preview_ready", _payload, socket) do
     routine_id = socket.assigns.routine_id
-    Logger.info("[WireframePreviewV4] Preview ready for #{routine_id}, registering with StateServer")
+    Logger.info("[WireframePreview] Preview ready for #{routine_id}, registering with StateServer")
 
     # Register with StateServer - this enables direct communication
     WireframeStateServer.register_preview(routine_id, self())
@@ -84,7 +84,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
     # Find the pending capture request and reply
     case socket.assigns[:pending_capture] do
       {coordinator_pid, from} ->
-        Logger.debug("[WireframePreviewV4] State captured, sending to coordinator")
+        Logger.debug("[WireframePreview] State captured, sending to coordinator")
 
         # Pass through payload with string keys converted to atoms
         # JS sends: dom_tree, variables, console_logs, viewport, scroll_position
@@ -97,7 +97,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
         {:noreply, assign(socket, pending_capture: nil)}
 
       nil ->
-        Logger.warning("[WireframePreviewV4] State captured but no pending request")
+        Logger.warning("[WireframePreview] State captured but no pending request")
         {:noreply, socket}
     end
   end
@@ -106,19 +106,19 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   def handle_event("interaction_complete", result, socket) do
     case socket.assigns[:pending_interaction] do
       {coordinator_pid, from} ->
-        Logger.debug("[WireframePreviewV4] Interaction complete, sending to coordinator")
+        Logger.debug("[WireframePreview] Interaction complete, sending to coordinator")
         send(coordinator_pid, {:interaction_complete, from, result})
         {:noreply, assign(socket, pending_interaction: nil)}
 
       nil ->
-        Logger.warning("[WireframePreviewV4] Interaction complete but no pending request")
+        Logger.warning("[WireframePreview] Interaction complete but no pending request")
         {:noreply, socket}
     end
   end
 
   @impl true
   def handle_event("console_log", %{"log" => log}, socket) do
-    Logger.debug("[WireframePreviewV4] Console: #{inspect(log)}")
+    Logger.debug("[WireframePreview] Console: #{inspect(log)}")
     {:noreply, socket}
   end
 
@@ -128,7 +128,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
 
   @impl true
   def handle_info({:capture_state, coordinator_pid, from}, socket) do
-    Logger.debug("[WireframePreviewV4] Capture state request received")
+    Logger.debug("[WireframePreview] Capture state request received")
 
     socket =
       socket
@@ -140,7 +140,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
 
   @impl true
   def handle_info({:execute_interaction, coordinator_pid, from, args}, socket) do
-    Logger.debug("[WireframePreviewV4] Execute interaction request: #{inspect(args)}")
+    Logger.debug("[WireframePreview] Execute interaction request: #{inspect(args)}")
 
     socket =
       socket
@@ -153,15 +153,15 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   @impl true
   def handle_info(:reload_preview, socket) do
     routine_id = socket.assigns.routine_id
-    Logger.info("[WireframePreviewV4] Reload request received for #{routine_id}")
+    Logger.info("[WireframePreview] Reload request received for #{routine_id}")
 
     # Full HTTP redirect forces complete remount
-    {:noreply, redirect(socket, to: "/wireframe-preview-v4/#{routine_id}")}
+    {:noreply, redirect(socket, to: "/wireframe-preview/#{routine_id}")}
   end
 
   @impl true
   def handle_info(msg, socket) do
-    Logger.debug("[WireframePreviewV4] Unhandled message: #{inspect(msg)}")
+    Logger.debug("[WireframePreview] Unhandled message: #{inspect(msg)}")
     {:noreply, socket}
   end
 
@@ -172,7 +172,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div phx-hook="WireframePreviewV4" id="wireframe-preview-v4" class="wireframe-preview-container">
+    <div phx-hook="WireframePreview" id="wireframe-preview" class="wireframe-preview-container">
       <%!-- Screenshot capture hook --%>
       <div phx-hook="ScreenshotCapture" id="screenshot-capture-v4" style="display: contents;"></div>
 
@@ -218,7 +218,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
           customVariables: <%= raw(Jason.encode!(get_in(assigns, [:designed, :custom_variables]) || %{})) %>,
           handlers: <%= raw(Jason.encode!(get_in(assigns, [:designed, :handlers]) || %{})) %>
         };
-        console.log('[WireframePreviewV4] Data loaded:', window.__wireframeDataV4);
+        console.log('[WireframePreview] Data loaded:', window.__wireframeDataV4);
       </script>
     </div>
     """

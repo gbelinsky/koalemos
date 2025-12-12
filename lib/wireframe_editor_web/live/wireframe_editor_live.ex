@@ -7,7 +7,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
   - StateServer handles all state coordination
   - Simpler than V3 - just renders iframe and chat panel
 
-  Route: /wireframe-editor-v4/:routine_id
+  Route: /wireframe-editor/:routine_id
   """
 
   use WireframeEditorWeb, :live_view
@@ -292,7 +292,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
               <%= if @show_debug, do: "Hide Debug", else: "Show Debug" %>
             </button>
             <a
-              href={"/wireframe-editor-v4/v4-#{:erlang.unique_integer([:positive])}"}
+              href={"/wireframe-editor/v4-#{:erlang.unique_integer([:positive])}"}
               class="px-2 py-1 bg-cyan-500 text-white text-xs rounded hover:bg-cyan-600"
             >
               New Session
@@ -347,9 +347,9 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
               </div>
               <div class="flex-1 overflow-hidden">
                 <iframe
-                  src={"/wireframe-preview-v4/#{@routine_id}"}
+                  src={"/wireframe-preview/#{@routine_id}"}
                   class="w-full h-full border-0"
-                  id="wireframe-preview-v4"
+                  id="wireframe-preview"
                   sandbox="allow-scripts allow-same-origin allow-forms"
                   title="V4 Wireframe Preview"
                 >

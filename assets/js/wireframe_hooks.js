@@ -902,7 +902,7 @@ WireframeHooks.ConfigStorage = {
 
 
 /**
- * WireframePreviewV4 Hook
+ * WireframePreview Hook
  *
  * V4 architecture: Direct process communication via Registry, no PubSub.
  *
@@ -917,24 +917,24 @@ WireframeHooks.ConfigStorage = {
  * - Screenshots are captured server-side via Puppeteer
  *
  * Usage:
- *   <div phx-hook="WireframePreviewV4" id="wireframe-preview-v4">
+ *   <div phx-hook="WireframePreview" id="wireframe-preview">
  */
-WireframeHooks.WireframePreviewV4 = {
+WireframeHooks.WireframePreview = {
   mounted() {
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Hook mounted")
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Hook mounted")
 
     // Set up console capture
     this.setupConsoleCapture()
 
     // Listen for capture_state requests from server
     this.handleEvent("capture_state", () => {
-      INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Capture state requested")
+      INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Capture state requested")
       this.captureAndSendState()
     })
 
     // Listen for interaction execution requests
     this.handleEvent("execute_interaction", (args) => {
-      INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Execute interaction requested:", args)
+      INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Execute interaction requested:", args)
       this.executeInteraction(args)
     })
 
@@ -956,7 +956,7 @@ WireframeHooks.WireframePreviewV4 = {
       if (name in window) variables[name] = window[name]
     })
 
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Sending captured state, variables:", variables)
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Sending captured state, variables:", variables)
 
     // Send state with keys matching Elixir running state structure
     this.pushEvent("state_captured", {
@@ -1003,39 +1003,39 @@ WireframeHooks.WireframePreviewV4 = {
   },
 
   executeInitScripts() {
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Executing init scripts")
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Executing init scripts")
 
     const wireframeData = window.__wireframeDataV4
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] wireframeData:", wireframeData)
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] wireframeData:", wireframeData)
 
     if (!wireframeData) {
-      INFRASTRUCTURE_CONSOLE.warn("[WireframePreviewV4] No wireframe data found")
+      INFRASTRUCTURE_CONSOLE.warn("[WireframePreview] No wireframe data found")
       this.sendPreviewReady()
       return
     }
 
     // Set up custom variables
     const customVariables = wireframeData.customVariables || {}
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] customVariables:", customVariables)
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] customVariables:", customVariables)
     Object.entries(customVariables).forEach(([name, value]) => {
       window[name] = value
-      INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Set variable: ${name}`)
+      INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Set variable: ${name}`)
     })
 
     // Execute init scripts
     const initScripts = wireframeData.initScripts || {}
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] initScripts:", initScripts)
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] initScripts:", initScripts)
     const scriptNames = Object.keys(initScripts).sort()
 
-    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Executing ${scriptNames.length} init scripts`)
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Executing ${scriptNames.length} init scripts`)
 
     scriptNames.forEach(name => {
       const code = initScripts[name]
       try {
-        INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Executing: ${name}`)
+        INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Executing: ${name}`)
         window.eval(code)
       } catch (error) {
-        INFRASTRUCTURE_CONSOLE.error(`[WireframePreviewV4] Script '${name}' failed:`, error)
+        INFRASTRUCTURE_CONSOLE.error(`[WireframePreview] Script '${name}' failed:`, error)
         console.error(`Init script '${name}' error: ${error.message}`)
       }
     })
@@ -1048,12 +1048,12 @@ WireframeHooks.WireframePreviewV4 = {
   },
 
   attachHandlers(handlers) {
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Attaching handlers:", Object.keys(handlers))
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Attaching handlers:", Object.keys(handlers))
 
     Object.entries(handlers).forEach(([elementId, events]) => {
       const element = document.getElementById(elementId)
       if (!element) {
-        INFRASTRUCTURE_CONSOLE.warn(`[WireframePreviewV4] Element not found: ${elementId}`)
+        INFRASTRUCTURE_CONSOLE.warn(`[WireframePreview] Element not found: ${elementId}`)
         return
       }
 
@@ -1063,13 +1063,13 @@ WireframeHooks.WireframePreviewV4 = {
           const handlerFunc = new Function('event', code)
 
           element.addEventListener(eventName, (event) => {
-            INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Handler: ${elementId}.${eventName}`)
+            INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Handler: ${elementId}.${eventName}`)
             handlerFunc.call(element, event)
           })
 
-          INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Attached ${eventName} to ${elementId}`)
+          INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Attached ${eventName} to ${elementId}`)
         } catch (error) {
-          INFRASTRUCTURE_CONSOLE.error(`[WireframePreviewV4] Handler attach failed:`, error)
+          INFRASTRUCTURE_CONSOLE.error(`[WireframePreview] Handler attach failed:`, error)
         }
       })
     })
@@ -1077,12 +1077,12 @@ WireframeHooks.WireframePreviewV4 = {
 
   sendPreviewReady() {
     // Signal that preview is ready - server will register us with StateServer
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Sending preview_ready")
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Sending preview_ready")
     this.pushEvent("preview_ready", {})
   },
 
   executeInteraction(command) {
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Executing interaction:", command)
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Executing interaction:", command)
 
     try {
       switch(command.action) {
@@ -1111,7 +1111,7 @@ WireframeHooks.WireframePreviewV4 = {
       }, 300)
 
     } catch (error) {
-      INFRASTRUCTURE_CONSOLE.error("[WireframePreviewV4] Interaction failed:", error)
+      INFRASTRUCTURE_CONSOLE.error("[WireframePreview] Interaction failed:", error)
       this.pushEvent("interaction_complete", {
         success: false,
         action: command.action,
@@ -1123,14 +1123,14 @@ WireframeHooks.WireframePreviewV4 = {
   triggerClick(elementId) {
     const el = document.getElementById(elementId)
     if (!el) throw new Error(`Element not found: ${elementId}`)
-    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Clicking: ${elementId}`)
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Clicking: ${elementId}`)
     el.click()
   },
 
   fillInput(elementId, value) {
     const el = document.getElementById(elementId)
     if (!el) throw new Error(`Element not found: ${elementId}`)
-    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Filling ${elementId} with: ${value}`)
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Filling ${elementId} with: ${value}`)
     el.value = value
     el.dispatchEvent(new Event('input', { bubbles: true }))
     el.dispatchEvent(new Event('change', { bubbles: true }))
@@ -1139,12 +1139,12 @@ WireframeHooks.WireframePreviewV4 = {
   submitForm(elementId) {
     const el = document.getElementById(elementId)
     if (!el) throw new Error(`Element not found: ${elementId}`)
-    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Submitting form: ${elementId}`)
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Submitting form: ${elementId}`)
     el.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
   },
 
   executeJavaScript(code) {
-    INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Executing JS: ${code?.substring(0, 50)}...`)
+    INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Executing JS: ${code?.substring(0, 50)}...`)
     const func = new Function(code)
     func()
   },
@@ -1167,9 +1167,9 @@ WireframeHooks.WireframePreviewV4 = {
         const dataURL = element.toDataURL('image/png')
         attributes['data-canvas-snapshot'] = dataURL
         const sizeKB = Math.round(dataURL.length / 1024)
-        INFRASTRUCTURE_CONSOLE.log(`[WireframePreviewV4] Captured canvas ${element.id || '(no id)'}: ${sizeKB}KB`)
+        INFRASTRUCTURE_CONSOLE.log(`[WireframePreview] Captured canvas ${element.id || '(no id)'}: ${sizeKB}KB`)
       } catch (error) {
-        INFRASTRUCTURE_CONSOLE.warn(`[WireframePreviewV4] Failed to capture canvas ${element.id || '(no id)'}:`, error.message)
+        INFRASTRUCTURE_CONSOLE.warn(`[WireframePreview] Failed to capture canvas ${element.id || '(no id)'}:`, error.message)
         attributes['data-canvas-error'] = error.message
       }
     }
@@ -1196,7 +1196,7 @@ WireframeHooks.WireframePreviewV4 = {
   },
 
   destroyed() {
-    INFRASTRUCTURE_CONSOLE.log("[WireframePreviewV4] Hook destroyed")
+    INFRASTRUCTURE_CONSOLE.log("[WireframePreview] Hook destroyed")
     if (window.__originalConsole) {
       console.log = window.__originalConsole.log
       console.warn = window.__originalConsole.warn
