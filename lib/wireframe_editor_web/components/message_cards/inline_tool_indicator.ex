@@ -56,7 +56,7 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
   defp generate_summary(_), do: "↦ Tool executed"
 
   # modify_elements: Added 3, removed 2, replaced 1
-  defp summarize_modify_elements(input) do
+  defp summarize_modify_elements(input) when is_map(input) do
     added = length(Map.get(input, "add_elements", []))
     removed = length(Map.get(input, "remove_elements", []))
     replaced = length(Map.get(input, "replace_elements", []))
@@ -75,8 +75,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  defp summarize_modify_elements(_), do: "↦ Modified elements (malformed input)"
+
   # modify_classes: Styled 5 elements
-  defp summarize_modify_classes(input) do
+  defp summarize_modify_classes(input) when is_map(input) do
     elements = Map.get(input, "elements", [])
     count = length(elements)
 
@@ -107,8 +109,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  defp summarize_modify_classes(_), do: "◐ Styled elements (malformed input)"
+
   # manage_attributes: Updated attributes on 4 elements
-  defp summarize_manage_attributes(input) do
+  defp summarize_manage_attributes(input) when is_map(input) do
     elements = Map.get(input, "elements", [])
     count = length(elements)
 
@@ -132,8 +136,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  defp summarize_manage_attributes(_), do: "⚬ Updated attributes (malformed input)"
+
   # manage_handlers: Managed 3 handlers (2 added, 1 removed)
-  defp summarize_manage_handlers(input) do
+  defp summarize_manage_handlers(input) when is_map(input) do
     elements = Map.get(input, "elements", [])
 
     total_added =
@@ -184,8 +190,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  defp summarize_manage_handlers(_), do: "⚡ Managed handlers (malformed input)"
+
   # manage_functions: Managed 4 functions (2 added, 2 updated)
-  defp summarize_manage_functions(input) do
+  defp summarize_manage_functions(input) when is_map(input) do
     added = map_size(Map.get(input, "add_functions", %{}))
     removed = length(Map.get(input, "remove_functions", []))
     replaced = map_size(Map.get(input, "replace_functions", %{}))
@@ -220,8 +228,11 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  # Fallback for malformed input (LLM sent string instead of map)
+  defp summarize_manage_functions(_input), do: "ƒ Manage functions (malformed input)"
+
   # manage_variables: Set 3 variables
-  defp summarize_manage_variables(input) do
+  defp summarize_manage_variables(input) when is_map(input) do
     set_count = map_size(Map.get(input, "set_variables", %{}))
     removed_count = length(Map.get(input, "remove_variables", []))
 
@@ -244,8 +255,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  defp summarize_manage_variables(_), do: "⊕ Managed variables (malformed input)"
+
   # manage_css: Managed 5 CSS rules (4 added, 1 removed)
-  defp summarize_manage_css(input) do
+  defp summarize_manage_css(input) when is_map(input) do
     # LLM sometimes sends JSON strings instead of maps - normalize them
     added = safe_map_size(Map.get(input, "add", %{}))
     removed = length(Map.get(input, "remove", []))
@@ -281,8 +294,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  defp summarize_manage_css(_), do: "⌘ Managed CSS (malformed input)"
+
   # manage_init_scripts: Managed 2 init scripts
-  defp summarize_manage_init_scripts(input) do
+  defp summarize_manage_init_scripts(input) when is_map(input) do
     # LLM sometimes sends JSON strings instead of maps - normalize them
     added = safe_map_size(Map.get(input, "add", %{}))
     removed = length(Map.get(input, "remove", []))
@@ -318,8 +333,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  defp summarize_manage_init_scripts(_), do: "⟳ Managed init scripts (malformed input)"
+
   # trigger_interaction: Tested: clicked btn-submit
-  defp summarize_trigger_interaction(input) do
+  defp summarize_trigger_interaction(input) when is_map(input) do
     action = Map.get(input, "action")
     element_id = Map.get(input, "element_id")
 
@@ -342,11 +359,15 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     end
   end
 
+  defp summarize_trigger_interaction(_), do: "⊙ Tested interaction (malformed input)"
+
   # choose_transition: → Transitioning to make_change
-  defp summarize_choose_transition(input) do
+  defp summarize_choose_transition(input) when is_map(input) do
     transition = Map.get(input, "transition", "next step")
     "→ Transitioning to #{transition}"
   end
+
+  defp summarize_choose_transition(_), do: "→ Transitioning (malformed input)"
 
   # Helper to pluralize words
   defp pluralize(word, 1), do: word

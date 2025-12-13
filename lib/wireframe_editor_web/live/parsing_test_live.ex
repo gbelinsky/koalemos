@@ -1,8 +1,6 @@
 defmodule WireframeEditorWeb.ParsingTestLive do
   use WireframeEditorWeb, :live_view
   alias Koalemos.Integrations.ParsingIntegration
-  alias Koalemos.Caches.DOMStateCache
-  alias Koalemos.Caches.VariableStateCache
 
   @impl true
   def mount(_params, _session, socket) do
@@ -63,17 +61,13 @@ defmodule WireframeEditorWeb.ParsingTestLive do
   def handle_event("parse", %{"html" => html_input}, socket) do
     case ParsingIntegration.parse_wireframe(html_input, socket.assigns.routine_id) do
       {:ok, wireframe} ->
-        # Get cache contents
-        dom_cache = DOMStateCache.get_dom_state(socket.assigns.routine_id)
-        var_cache = VariableStateCache.get_variable_state(socket.assigns.routine_id)
-        console_cache = Koalemos.Caches.ConsoleCache.get_messages(socket.assigns.routine_id)
-
+        # Display parsed data directly from wireframe result
         socket =
           socket
           |> assign(:wireframe, wireframe)
-          |> assign(:dom_cache, dom_cache)
-          |> assign(:var_cache, var_cache)
-          |> assign(:console_cache, console_cache)
+          |> assign(:dom_cache, wireframe.dom_tree)
+          |> assign(:var_cache, wireframe.javascript.variables)
+          |> assign(:console_cache, [])
           |> assign(:error, nil)
 
         {:noreply, socket}

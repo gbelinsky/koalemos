@@ -97,11 +97,6 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
         screenshot = capture_screenshot(routine_id, designed, running)
         WireframeStateServer.update_screenshot(routine_id, screenshot)
 
-        # Also update ScreenshotCache so ChatPanel can display it in user input
-        if screenshot do
-          Koalemos.Caches.ScreenshotCache.put(routine_id, screenshot)
-        end
-
         # DEBUG: Log context structure
         context_blocks = EditorCore.build_context(designed, running, screenshot)
         block_types = Enum.map(context_blocks, & &1[:type])

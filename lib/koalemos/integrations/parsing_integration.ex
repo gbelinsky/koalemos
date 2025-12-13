@@ -63,8 +63,6 @@ defmodule Koalemos.Integrations.ParsingIntegration do
   alias Koalemos.Parsers.HTMLParser
   alias Koalemos.Parsers.JavaScriptParser
   alias Koalemos.Parsers.CSSParser
-  alias Koalemos.Caches.DOMStateCache
-  alias Koalemos.Caches.VariableStateCache
 
   require Logger
 
@@ -144,9 +142,6 @@ defmodule Koalemos.Integrations.ParsingIntegration do
           errors: all_errors
         }
       }
-
-      # Store in caches for runtime tracking
-      store_in_caches(routine_id, wireframe_data)
 
       {:ok, wireframe_data}
     else
@@ -238,49 +233,5 @@ defmodule Koalemos.Integrations.ParsingIntegration do
         Map.merge(events1, events2)
       end)
     end)
-  end
-
-  # Store parsed data in appropriate caches
-  @spec store_in_caches(String.t(), map()) :: :ok
-  defp store_in_caches(routine_id, wireframe_data) do
-    # Store initial DOM structure (convert to JS format for consistency)
-    dom_for_cache = convert_dom_to_js_format(wireframe_data.dom_tree)
-
-    DOMStateCache.add_dom_state(routine_id, %{
-      "liveDOMTree" => dom_for_cache,
-      "timestamp" => System.system_time(:millisecond),
-      "changeType" => "initial_parse"
-    })
-
-    # Store initial variable values
-    VariableStateCache.add_variable_state(
-      routine_id,
-      wireframe_data.javascript.variables
-    )
-
-    :ok
-  end
-
-  # Convert DOM tree to JavaScript format (string keys)
-  # HTMLParser uses atom keys, convert to string keys for JS format
-  @spec convert_dom_to_js_format(map() | nil) :: map() | nil
-  defp convert_dom_to_js_format(nil), do: nil
-
-  defp convert_dom_to_js_format(node) when is_map(node) do
-    %{
-      "tag" => Map.get(node, :tag),
-      "id" => Map.get(node, :id),
-      "classes" => Map.get(node, :classes, []),
-      "attributes" => Map.get(node, :attributes, %{}),
-      "styles" => Map.get(node, :styles, %{}),
-      "content" => Map.get(node, :content),
-      "children" => convert_children_to_js_format(Map.get(node, :children, []))
-    }
-  end
-
-  # Convert list of child nodes recursively
-  @spec convert_children_to_js_format(list()) :: list()
-  defp convert_children_to_js_format(children) when is_list(children) do
-    Enum.map(children, &convert_dom_to_js_format/1)
   end
 end

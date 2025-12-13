@@ -20,17 +20,6 @@ defmodule Koalemos.Application do
       {DynamicSupervisor, strategy: :one_for_one, name: WireframeEditorWeb.Supervisors.WireframeStateServerSupervisor},
       # Observer - for recording routine events
       Koalemos.Engine.Observer,
-      # Cache GenServers - for storing wireframe runtime state
-      # Screenshot images
-      Koalemos.Caches.ScreenshotCache,
-      # Live DOM trees
-      Koalemos.Caches.DOMStateCache,
-      # Console messages with rate limiting
-      Koalemos.Caches.ConsoleCache,
-      # Runtime variable values
-      Koalemos.Caches.VariableStateCache,
-      # Lens state for wireframe preview
-      Koalemos.Caches.WireframeStateCache,
       # NodeJS Supervisor - for JavaScript parsing
       {NodeJS.Supervisor, [path: Path.join([:code.priv_dir(:koalemos), "nodejs"]), pool_size: 4]},
       # Credential manager

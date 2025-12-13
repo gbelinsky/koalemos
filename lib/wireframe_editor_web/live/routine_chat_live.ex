@@ -125,23 +125,14 @@ defmodule WireframeEditorWeb.RoutineChatLive do
       "[RoutineChatLive] Screenshot captured for #{routine_id}, #{byte_size(data)} bytes"
     )
 
-    # Store in ScreenshotCache
-    case Koalemos.Caches.ScreenshotCache.put(routine_id, data) do
-      :ok ->
-        Logger.info("[RoutineChatLive] Screenshot stored in cache")
+    # Broadcast ready notification via PubSub
+    Phoenix.PubSub.broadcast(
+      Koalemos.PubSub,
+      "screenshot:response:#{routine_id}",
+      {:screenshot_ready, routine_id}
+    )
 
-        # Broadcast ready notification via PubSub
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "screenshot:response:#{routine_id}",
-          {:screenshot_ready, routine_id}
-        )
-
-        Logger.debug("[RoutineChatLive] Broadcast screenshot_ready notification")
-
-      error ->
-        Logger.error("[RoutineChatLive] Failed to store screenshot: #{inspect(error)}")
-    end
+    Logger.debug("[RoutineChatLive] Broadcast screenshot_ready notification")
 
     {:noreply, socket}
   end

@@ -16,8 +16,7 @@ defmodule WireframeEditorWeb.ScreenshotTestLive do
   alias WireframeEditorWeb.ChatPanel
   alias Koalemos.{EngineManager, Engine}
   alias Koalemos.Routines.TestChatRoutine
-  alias Koalemos.Caches.ScreenshotCache
-
+  
   @impl true
   def mount(_params, _session, socket) do
     routine_id = "screenshot-test-#{:erlang.unique_integer([:positive])}"
@@ -73,34 +72,25 @@ defmodule WireframeEditorWeb.ScreenshotTestLive do
       "[ScreenshotTestLive] Screenshot captured: #{width}x#{height}, #{byte_size(data)} bytes"
     )
 
-    case ScreenshotCache.put(routine_id, data) do
-      :ok ->
-        Logger.info("[ScreenshotTestLive] Screenshot stored in cache")
+    # Broadcast ready notification via PubSub
+    Phoenix.PubSub.broadcast(
+      Koalemos.PubSub,
+      "screenshot:response:#{routine_id}",
+      {:screenshot_ready, routine_id}
+    )
 
-        # Broadcast ready notification via PubSub
-        Phoenix.PubSub.broadcast(
-          Koalemos.PubSub,
-          "screenshot:response:#{routine_id}",
-          {:screenshot_ready, routine_id}
-        )
+    Logger.debug("[ScreenshotTestLive] Broadcast screenshot_ready notification")
 
-        Logger.debug("[ScreenshotTestLive] Broadcast screenshot_ready notification")
-
-        {:noreply,
-         assign(socket,
-           capture_count: socket.assigns.capture_count + 1,
-           last_screenshot: %{
-             width: width,
-             height: height,
-             size_kb: round(byte_size(data) / 1024),
-             captured_at: DateTime.utc_now()
-           }
-         )}
-
-      error ->
-        Logger.error("[ScreenshotTestLive] Failed to store screenshot: #{inspect(error)}")
-        {:noreply, socket}
-    end
+    {:noreply,
+     assign(socket,
+       capture_count: socket.assigns.capture_count + 1,
+       last_screenshot: %{
+         width: width,
+         height: height,
+         size_kb: round(byte_size(data) / 1024),
+         captured_at: DateTime.utc_now()
+       }
+     )}
   end
 
   @impl true

@@ -1,14 +1,8 @@
 defmodule Koalemos.Integrations.ParsingIntegrationTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Koalemos.Integrations.ParsingIntegration
-  alias Koalemos.Caches.DOMStateCache
-  alias Koalemos.Caches.VariableStateCache
 
   setup do
-    # Clear all caches before each test
-    DOMStateCache.clear_all()
-    VariableStateCache.clear_all()
-
     # Use unique routine IDs per test to avoid conflicts
     routine_id = "test-routine-#{:erlang.unique_integer([:positive])}"
     {:ok, routine_id: routine_id}
@@ -128,79 +122,6 @@ defmodule Koalemos.Integrations.ParsingIntegrationTest do
       assert wireframe.parse_results.scripts_parsed == 2
     end
 
-    test "stores initial DOM in DOMStateCache", %{routine_id: routine_id} do
-      html = """
-      <div id="root" class="container">
-        <h1 id="title">Hello</h1>
-      </div>
-      """
-
-      {:ok, _wireframe} = ParsingIntegration.parse_wireframe(html, routine_id)
-
-      # Check DOM cached
-      cached_dom = DOMStateCache.get_dom_state(routine_id)
-      assert cached_dom != nil
-      assert cached_dom.change_type == "initial_parse"
-
-      # Check DOM structure (DOMStateCache converts to atom keys internally)
-      live_dom = cached_dom.live_dom_tree
-      assert live_dom.tag == "div"
-      assert live_dom.id == "root"
-      assert live_dom.classes == ["container"]
-      assert length(live_dom.children) == 1
-
-      # Check nested child
-      h1 = hd(live_dom.children)
-      assert h1.tag == "h1"
-      assert h1.id == "title"
-    end
-
-    test "stores initial variables in VariableStateCache", %{routine_id: routine_id} do
-      html = """
-      <div>
-        <script>
-          window.x = 42;
-          window.y = "test";
-        </script>
-      </div>
-      """
-
-      {:ok, _wireframe} = ParsingIntegration.parse_wireframe(html, routine_id)
-
-      # Check variables cached
-      cached_vars = VariableStateCache.get_variable_state(routine_id)
-      assert cached_vars == %{"x" => 42, "y" => "test"}
-    end
-
-    test "converts DOM format to JS format for cache storage", %{
-      routine_id: routine_id
-    } do
-      html = """
-      <div id="parent" class="wrapper">
-        <span id="child">Content</span>
-      </div>
-      """
-
-      {:ok, wireframe} = ParsingIntegration.parse_wireframe(html, routine_id)
-
-      # Wireframe has atom keys from HTMLParser
-      assert is_binary(wireframe.dom_tree.tag)
-      assert wireframe.dom_tree.tag == "div"
-
-      # Cache converts to atom keys internally
-      cached_dom = DOMStateCache.get_dom_state(routine_id)
-      live_dom = cached_dom.live_dom_tree
-      assert is_binary(live_dom.tag)
-      assert live_dom.tag == "div"
-      assert live_dom.id == "parent"
-      assert live_dom.classes == ["wrapper"]
-
-      # Check child converted too
-      child = hd(live_dom.children)
-      assert child.tag == "span"
-      assert child.id == "child"
-    end
-
     test "handles HTML with no inline scripts", %{routine_id: routine_id} do
       html = """
       <div id="static">
@@ -285,36 +206,6 @@ defmodule Koalemos.Integrations.ParsingIntegrationTest do
     end
   end
 
-  describe "cache isolation" do
-    test "multiple routines store data independently" do
-      routine_1 = "routine-1-#{:erlang.unique_integer([:positive])}"
-      routine_2 = "routine-2-#{:erlang.unique_integer([:positive])}"
-
-      html_1 = """
-      <div id="one"><script>window.x = 1;</script></div>
-      """
-
-      html_2 = """
-      <div id="two"><script>window.x = 2;</script></div>
-      """
-
-      {:ok, _wireframe1} = ParsingIntegration.parse_wireframe(html_1, routine_1)
-      {:ok, _wireframe2} = ParsingIntegration.parse_wireframe(html_2, routine_2)
-
-      # Check routine 1 cache
-      vars_1 = VariableStateCache.get_variable_state(routine_1)
-      dom_1 = DOMStateCache.get_dom_state(routine_1)
-      assert vars_1["x"] == 1
-      assert dom_1.live_dom_tree.id == "one"
-
-      # Check routine 2 cache
-      vars_2 = VariableStateCache.get_variable_state(routine_2)
-      dom_2 = DOMStateCache.get_dom_state(routine_2)
-      assert vars_2["x"] == 2
-      assert dom_2.live_dom_tree.id == "two"
-    end
-  end
-
   describe "integration - counter app" do
     test "parses complete counter wireframe with all features", %{routine_id: routine_id} do
       html = """
@@ -396,15 +287,6 @@ defmodule Koalemos.Integrations.ParsingIntegrationTest do
       assert wireframe.parse_results.scripts_parsed == 2
       assert wireframe.parse_results.scripts_failed == 0
       assert wireframe.parse_results.errors == []
-
-      # Verify cached in DOMStateCache
-      cached_dom = DOMStateCache.get_dom_state(routine_id)
-      assert cached_dom != nil
-      assert cached_dom.live_dom_tree.tag == "div"
-
-      # Verify cached in VariableStateCache
-      cached_vars = VariableStateCache.get_variable_state(routine_id)
-      assert cached_vars["count"] == 0
     end
   end
 end

@@ -74,9 +74,12 @@ defmodule WireframeEditorWeb.ChatPanel do
           nil
 
         routine_id ->
-          case Koalemos.Caches.ScreenshotCache.get(routine_id) do
-            {:ok, data} -> data
-            {:error, _} -> nil
+          # Read from StateServer instead of legacy ScreenshotCache
+          alias WireframeEditorWeb.Servers.WireframeStateServer
+          if WireframeStateServer.exists?(routine_id) do
+            WireframeStateServer.get_screenshot(routine_id)
+          else
+            nil
           end
       end
 
