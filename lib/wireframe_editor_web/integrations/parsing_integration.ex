@@ -1,13 +1,12 @@
-defmodule Koalemos.Integrations.ParsingIntegration do
+defmodule WireframeEditorWeb.Integrations.ParsingIntegration do
   @moduledoc """
-  Integration layer connecting HTML and JavaScript parsers to cache storage.
+  Integration layer connecting HTML and JavaScript parsers.
 
   This module orchestrates the complete parsing pipeline:
   1. Parse HTML to extract DOM structure and inline scripts
   2. Parse each inline JavaScript snippet
   3. Merge results from multiple scripts
-  4. Store appropriate data in caches
-  5. Return complete wireframe structure for editor use
+  4. Return complete wireframe structure for editor use
 
   ## Design-Time vs Runtime Data
 
@@ -16,22 +15,21 @@ defmodule Koalemos.Integrations.ParsingIntegration do
   - JavaScript handlers, functions, init scripts
   - Styles and metadata
 
-  **Runtime Data** (stored in caches for execution tracking):
-  - Initial DOM structure → DOMStateCache
-  - Initial variable values → VariableStateCache
-  - Console output (during execution) → ConsoleCache
+  **Runtime Data** (managed by StateServer):
+  - Initial DOM structure
+  - Initial variable values
+  - Console output (during execution)
 
   ## Handler Storage
 
-  Event handlers are **NOT** stored in caches. They are design-time data
-  extracted during parsing and returned in the wireframe structure for
-  immediate use by the wireframe editor.
+  Event handlers are design-time data extracted during parsing and returned
+  in the wireframe structure for immediate use by the wireframe editor.
 
   Handlers format: `%{"element-id" => %{"event-type" => %{params: [...], body: "..."}}}`
 
   ## Usage
 
-      alias Koalemos.Integrations.ParsingIntegration
+      alias WireframeEditorWeb.Integrations.ParsingIntegration
 
       html = \"\"\"
       <div id="counter">
@@ -54,15 +52,11 @@ defmodule Koalemos.Integrations.ParsingIntegration do
       wireframe.javascript.handlers     # %{"btn" => %{"click" => %{...}}}
       wireframe.javascript.functions    # %{}
       wireframe.javascript.init_scripts # [...remaining code...]
-
-      # Data is also cached for runtime tracking
-      Koalemos.Caches.DOMStateCache.get_dom_state("routine-123")
-      Koalemos.Caches.VariableStateCache.get_variable_state("routine-123")
   """
 
-  alias Koalemos.Parsers.HTMLParser
-  alias Koalemos.Parsers.JavaScriptParser
-  alias Koalemos.Parsers.CSSParser
+  alias WireframeEditorWeb.Parsers.HTMLParser
+  alias WireframeEditorWeb.Parsers.JavaScriptParser
+  alias WireframeEditorWeb.Parsers.CSSParser
 
   require Logger
 
@@ -70,12 +64,12 @@ defmodule Koalemos.Integrations.ParsingIntegration do
   Parse HTML wireframe and extract all design-time data.
 
   Parses HTML structure, extracts and parses inline JavaScript, merges results
-  from multiple scripts, and stores initial state in appropriate caches.
+  from multiple scripts.
 
   ## Parameters
 
   - `html_string` - The HTML content to parse
-  - `routine_id` - The routine identifier for cache storage
+  - `routine_id` - The routine identifier (for logging/context)
 
   ## Returns
 

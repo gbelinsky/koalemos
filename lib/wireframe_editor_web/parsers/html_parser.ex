@@ -1,4 +1,4 @@
-defmodule Koalemos.Parsers.HTMLParser do
+defmodule WireframeEditorWeb.Parsers.HTMLParser do
   @moduledoc """
   HTML parser for wireframe editor.
 

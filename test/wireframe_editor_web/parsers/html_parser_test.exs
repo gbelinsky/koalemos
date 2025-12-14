@@ -1,7 +1,7 @@
-defmodule Koalemos.Parsers.HTMLParserTest do
+defmodule WireframeEditorWeb.Parsers.HTMLParserTest do
   use ExUnit.Case, async: true
 
-  alias Koalemos.Parsers.HTMLParser
+  alias WireframeEditorWeb.Parsers.HTMLParser
 
   describe "parse_html/1" do
     test "parses simple HTML with single element" do

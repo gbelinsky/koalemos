@@ -1,7 +1,7 @@
-defmodule Koalemos.Parsers.JavaScriptParserTest do
+defmodule WireframeEditorWeb.Parsers.JavaScriptParserTest do
   use ExUnit.Case, async: true
 
-  alias Koalemos.Parsers.JavaScriptParser
+  alias WireframeEditorWeb.Parsers.JavaScriptParser
 
   describe "parse/1 - variables" do
     test "extracts simple number variable" do

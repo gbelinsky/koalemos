@@ -1,6 +1,6 @@
-defmodule Koalemos.Integrations.ParsingIntegrationTest do
+defmodule WireframeEditorWeb.Integrations.ParsingIntegrationTest do
   use ExUnit.Case, async: true
-  alias Koalemos.Integrations.ParsingIntegration
+  alias WireframeEditorWeb.Integrations.ParsingIntegration
 
   setup do
     # Use unique routine IDs per test to avoid conflicts

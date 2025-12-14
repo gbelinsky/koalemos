@@ -12,7 +12,7 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
 
   alias WireframeEditorWeb.Lenses.Wireframe.EditorCore
   alias WireframeEditorWeb.Servers.WireframeStateServer
-  alias Koalemos.ScreenshotRenderer
+  alias WireframeEditorWeb.Services.ScreenshotRenderer
 
   require Logger
 

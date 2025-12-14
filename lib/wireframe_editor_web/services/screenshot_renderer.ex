@@ -1,4 +1,4 @@
-defmodule Koalemos.ScreenshotRenderer do
+defmodule WireframeEditorWeb.Services.ScreenshotRenderer do
   @moduledoc """
   Server-side screenshot rendering using Puppeteer.
 

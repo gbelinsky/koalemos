@@ -1,6 +1,6 @@
-defmodule Koalemos.Parsers.CSSParserTest do
+defmodule WireframeEditorWeb.Parsers.CSSParserTest do
   use ExUnit.Case, async: true
-  alias Koalemos.Parsers.CSSParser
+  alias WireframeEditorWeb.Parsers.CSSParser
 
   describe "parse/1" do
     test "parses simple CSS rule" do

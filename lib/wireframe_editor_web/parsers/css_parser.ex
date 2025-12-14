@@ -1,4 +1,4 @@
-defmodule Koalemos.Parsers.CSSParser do
+defmodule WireframeEditorWeb.Parsers.CSSParser do
   @moduledoc """
   CSS parser for wireframe editor.
 

@@ -1,6 +1,6 @@
 defmodule WireframeEditorWeb.ParsingTestLive do
   use WireframeEditorWeb, :live_view
-  alias Koalemos.Integrations.ParsingIntegration
+  alias WireframeEditorWeb.Integrations.ParsingIntegration
 
   @impl true
   def mount(_params, _session, socket) do

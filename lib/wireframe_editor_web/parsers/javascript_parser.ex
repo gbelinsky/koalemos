@@ -1,4 +1,4 @@
-defmodule Koalemos.Parsers.JavaScriptParser do
+defmodule WireframeEditorWeb.Parsers.JavaScriptParser do
   @moduledoc """
   JavaScript parser using AST analysis via Node.js.
 

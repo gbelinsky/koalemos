@@ -18,7 +18,7 @@ defmodule WireframeEditorWeb.Routines.WireframeEditorRoutine do
   alias Koalemos.Steps.User.ChatUserInput
   alias Koalemos.Steps.Agent.TemplatedSemanticAgent
   alias WireframeEditorWeb.Servers.WireframeStateServer
-  alias Koalemos.Integrations.ParsingIntegration
+  alias WireframeEditorWeb.Integrations.ParsingIntegration
 
   require Logger
 
