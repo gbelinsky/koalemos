@@ -15,6 +15,7 @@ config :koalemos, WireframeEditorWeb.Endpoint,
   secret_key_base: "TSVU2CTMxNSqfZ+4idU0J0qHIa2pOhIrDMHqFBdqDjHqnXeTXMHp7YEJWGXZiY5F",
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:koalemos, ~w(--sourcemap=inline --watch)]},
+    esbuild_preview: {Esbuild, :install_and_run, [:preview, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:koalemos, ~w(--watch)]}
   ]
 

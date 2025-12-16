@@ -46,8 +46,6 @@ defmodule WireframeEditorWeb.RoutineChatLive do
       if connected?(socket) && socket.assigns.routine_id == nil do
         Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
         Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
-        # M3 Sprint 3: Subscribe to screenshot requests
-        Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:request:#{routine_id}")
 
         # Try to start the routine (will return existing pid if already running)
         # Engine auto-calls initial_context/0 and merges with user context
@@ -113,37 +111,6 @@ defmodule WireframeEditorWeb.RoutineChatLive do
   @impl true
   def handle_event("open_modal", _params, socket) do
     {:noreply, assign(socket, show_modal: true)}
-  end
-
-  @impl true
-  def handle_event("screenshot_captured", screenshot_data, socket) do
-    # M3 Sprint 3: Handle screenshot data from JavaScript hook
-    routine_id = socket.assigns.routine_id
-    data = screenshot_data["data"]
-
-    Logger.info(
-      "[RoutineChatLive] Screenshot captured for #{routine_id}, #{byte_size(data)} bytes"
-    )
-
-    # Broadcast ready notification via PubSub
-    Phoenix.PubSub.broadcast(
-      Koalemos.PubSub,
-      "screenshot:response:#{routine_id}",
-      {:screenshot_ready, routine_id}
-    )
-
-    Logger.debug("[RoutineChatLive] Broadcast screenshot_ready notification")
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_event("screenshot_failed", error_data, socket) do
-    # M3 Sprint 3: Handle screenshot capture failure
-    error_msg = error_data["error"] || "Unknown error"
-    Logger.error("[RoutineChatLive] Screenshot capture failed: #{error_msg}")
-
-    {:noreply, socket}
   end
 
   @impl true
@@ -247,23 +214,6 @@ defmodule WireframeEditorWeb.RoutineChatLive do
     socket = add_event(socket, "step_completed", %{step: step})
 
     {:noreply, socket}
-  end
-
-  @impl true
-  def handle_info({:screenshot_request, %{routine_id: requested_id}}, socket) do
-    # M3 Sprint 3: Handle screenshot capture request from TestLens
-    Logger.info("[RoutineChatLive] Screenshot request received for #{requested_id}")
-
-    if socket.assigns.routine_id == requested_id do
-      # Trigger screenshot capture via JavaScript hook
-      {:noreply, push_event(socket, "trigger_screenshot_capture", %{})}
-    else
-      Logger.warning(
-        "[RoutineChatLive] Screenshot request for wrong routine: #{requested_id} (current: #{socket.assigns.routine_id})"
-      )
-
-      {:noreply, socket}
-    end
   end
 
   @impl true
@@ -381,12 +331,7 @@ defmodule WireframeEditorWeb.RoutineChatLive do
       <% end %>
       
     <!-- Chat Panel (fills remaining space) -->
-      <!-- M3 Sprint 3: ScreenshotCapture hook wraps chat panel -->
-      <div
-        id="chat-screenshot-target"
-        phx-hook="ScreenshotCapture"
-        class="flex-1 overflow-hidden"
-      >
+      <div class="flex-1 overflow-hidden">
         <div class="max-w-6xl mx-auto h-full">
           <!-- Error Display -->
           <%= if @last_error do %>

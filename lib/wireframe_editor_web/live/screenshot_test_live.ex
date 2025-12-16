@@ -1,324 +1,339 @@
 defmodule WireframeEditorWeb.ScreenshotTestLive do
   @moduledoc """
-  Interactive screenshot test page (M3 Sprint 3).
+  Screenshot test page demonstrating server-side Puppeteer screenshot capture.
 
-  Provides a complete manual testing environment for the screenshot system:
-  - Full chat interface with AI (TestLens)
-  - Iframe with sample HTML content
-  - Screenshot capture triggered by saying "screenshot"
-  - Real end-to-end test with JavaScript execution
+  Features:
+  - Load sample wireframes from priv/wireframes/
+  - Parse HTML into lens_state format
+  - Capture screenshots via ScreenshotRenderer (Puppeteer)
+  - Display captured screenshots with metadata
 
   Route: /test/screenshot
   """
   use WireframeEditorWeb, :live_view
   require Logger
 
-  alias WireframeEditorWeb.ChatPanel
-  alias Koalemos.{EngineManager, Engine}
-  alias Koalemos.Routines.TestChatRoutine
-  
+  alias WireframeEditorWeb.Parsers.HTMLParser
+  alias WireframeEditorWeb.Services.ScreenshotRenderer
+
   @impl true
   def mount(_params, _session, socket) do
-    routine_id = "screenshot-test-#{:erlang.unique_integer([:positive])}"
-
-    socket =
-      if connected?(socket) do
-        # Subscribe to routine events
-        Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
-        Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
-        Phoenix.PubSub.subscribe(Koalemos.PubSub, "screenshot:request:#{routine_id}")
-
-        # Start routine with TestLens
-        # Engine auto-calls initial_context/0 and merges with user context
-        user_context = %{
-          llm_provider: "anthropic",
-          llm_model: "claude-haiku-4-5"
-        }
-
-        case EngineManager.start_routine(routine_id, TestChatRoutine, user_context) do
-          {:ok, _pid} ->
-            Logger.info("[ScreenshotTestLive] Started test routine #{routine_id}")
-
-          {:error, reason} ->
-            Logger.error(
-              "[ScreenshotTestLive] Failed to start routine #{routine_id}: #{inspect(reason)}"
-            )
-        end
-
-        socket
-      else
-        socket
-      end
+    wireframes = list_wireframes()
 
     {:ok,
      assign(socket,
        page_title: "Screenshot Test",
-       routine_id: routine_id,
-       status: :running,
-       capture_count: 0,
-       last_screenshot: nil,
-       messages: []
+       wireframes: wireframes,
+       selected_wireframe: nil,
+       lens_state: nil,
+       screenshot: nil,
+       screenshot_meta: nil,
+       loading: false,
+       error: nil
      )}
   end
 
   @impl true
-  def handle_event("screenshot_captured", screenshot_data, socket) do
-    routine_id = socket.assigns.routine_id
-    data = screenshot_data["data"]
-    width = screenshot_data["width"]
-    height = screenshot_data["height"]
+  def handle_event("select_wireframe", %{"wireframe" => filename}, socket) do
+    socket = assign(socket, loading: true, error: nil)
 
-    Logger.info(
-      "[ScreenshotTestLive] Screenshot captured: #{width}x#{height}, #{byte_size(data)} bytes"
-    )
+    case load_wireframe(filename) do
+      {:ok, lens_state} ->
+        {:noreply,
+         assign(socket,
+           selected_wireframe: filename,
+           lens_state: lens_state,
+           screenshot: nil,
+           screenshot_meta: nil,
+           loading: false
+         )}
 
-    # Broadcast ready notification via PubSub
-    Phoenix.PubSub.broadcast(
-      Koalemos.PubSub,
-      "screenshot:response:#{routine_id}",
-      {:screenshot_ready, routine_id}
-    )
-
-    Logger.debug("[ScreenshotTestLive] Broadcast screenshot_ready notification")
-
-    {:noreply,
-     assign(socket,
-       capture_count: socket.assigns.capture_count + 1,
-       last_screenshot: %{
-         width: width,
-         height: height,
-         size_kb: round(byte_size(data) / 1024),
-         captured_at: DateTime.utc_now()
-       }
-     )}
-  end
-
-  @impl true
-  def handle_event("screenshot_failed", error_data, socket) do
-    error_msg = error_data["error"] || "Unknown error"
-    Logger.error("[ScreenshotTestLive] Screenshot capture failed: #{error_msg}")
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_info(:check_uploads, socket) do
-    # Forward to nested UserInputComponent
-    alias WireframeEditorWeb.UserInputComponent
-    send_update(UserInputComponent, id: "chat-panel-input", check_uploads: true)
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_info({:clear_sent_feedback, component_id}, socket) do
-    # Forward to nested UserInputComponent
-    alias WireframeEditorWeb.UserInputComponent
-    send_update(UserInputComponent, id: component_id, clear_sent_feedback: true)
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_info(
-        {:user_input_submitted,
-         %{text: text, images: images, include_screenshot: include_screenshot}},
-        socket
-      ) do
-    Logger.info(
-      "[ScreenshotTestLive] User input submitted: text=#{text}, images=#{length(images)}, screenshot=#{include_screenshot}"
-    )
-
-    # Send user input to routine
-    data = %{text: text, images: images, include_screenshot: include_screenshot}
-    Engine.send_external_event(socket.assigns.routine_id, :user_input, data)
-
-    {:noreply, socket}
-  end
-
-  @impl true
-  def handle_info({:new_messages, new_messages}, socket) do
-    Logger.debug("[ScreenshotTestLive] Received #{length(new_messages)} new message(s)")
-
-    updated_messages = socket.assigns.messages ++ new_messages
-    {:noreply, assign(socket, messages: updated_messages)}
-  end
-
-  @impl true
-  def handle_info({:screenshot_request, %{routine_id: requested_id}}, socket) do
-    Logger.info("[ScreenshotTestLive] Screenshot request received for #{requested_id}")
-
-    if socket.assigns.routine_id == requested_id do
-      # Trigger screenshot capture via JavaScript hook on iframe
-      {:noreply, push_event(socket, "trigger_screenshot_capture", %{})}
-    else
-      Logger.warning(
-        "[ScreenshotTestLive] Screenshot request for wrong routine: #{requested_id} (current: #{socket.assigns.routine_id})"
-      )
-
-      {:noreply, socket}
+      {:error, reason} ->
+        {:noreply,
+         assign(socket,
+           error: "Failed to load wireframe: #{inspect(reason)}",
+           loading: false
+         )}
     end
   end
 
   @impl true
-  def handle_info({:routine_event, _event}, socket) do
-    # Ignore other routine events
-    {:noreply, socket}
+  def handle_event("capture_screenshot", _params, socket) do
+    lens_state = socket.assigns.lens_state
+
+    if is_nil(lens_state) do
+      {:noreply, assign(socket, error: "No wireframe loaded")}
+    else
+      socket = assign(socket, loading: true, error: nil)
+
+      case ScreenshotRenderer.capture_from_lens_state(lens_state, routine_id: "screenshot-test") do
+        {:ok, base64_png} ->
+          # Calculate size
+          size_kb = round(byte_size(base64_png) / 1024)
+
+          {:noreply,
+           assign(socket,
+             screenshot: base64_png,
+             screenshot_meta: %{
+               size_kb: size_kb,
+               captured_at: DateTime.utc_now()
+             },
+             loading: false
+           )}
+
+        {:error, reason} ->
+          {:noreply,
+           assign(socket,
+             error: "Screenshot capture failed: #{inspect(reason)}",
+             loading: false
+           )}
+      end
+    end
+  end
+
+  @impl true
+  def handle_event("clear_screenshot", _params, socket) do
+    {:noreply, assign(socket, screenshot: nil, screenshot_meta: nil)}
+  end
+
+  # List available wireframe files
+  defp list_wireframes do
+    path = Path.join(:code.priv_dir(:koalemos), "wireframes")
+
+    case File.ls(path) do
+      {:ok, files} ->
+        files
+        |> Enum.filter(&String.ends_with?(&1, ".html"))
+        |> Enum.sort()
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  # Load and parse wireframe file into lens_state format
+  defp load_wireframe(filename) do
+    path = Path.join([:code.priv_dir(:koalemos), "wireframes", filename])
+
+    case HTMLParser.parse_file(path) do
+      {:ok, parsed} ->
+        # Convert parsed HTML to lens_state format
+        # Extract inline CSS from style elements
+        custom_css = extract_custom_css(parsed.style_elements)
+
+        lens_state = %{
+          designed: %{
+            dom_tree: parsed.dom_tree,
+            custom_css: custom_css
+          }
+        }
+
+        {:ok, lens_state}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # Convert style_elements to custom_css map format
+  # For simplicity, we'll use a single "body" selector with all inline styles
+  defp extract_custom_css(style_elements) do
+    inline_css =
+      style_elements
+      |> Enum.filter(&(&1.type == :inline))
+      |> Enum.map(& &1.content)
+      |> Enum.join("\n")
+
+    if inline_css != "" do
+      # Parse the CSS into selector => rules format
+      # This is a simplified parser - just extract rule blocks
+      parse_css_to_map(inline_css)
+    else
+      %{}
+    end
+  end
+
+  # Simple CSS parser to extract selector => rules
+  defp parse_css_to_map(css_string) do
+    # Match CSS rule blocks: selector { rules }
+    ~r/([^{]+)\{([^}]+)\}/
+    |> Regex.scan(css_string)
+    |> Enum.map(fn [_full, selector, rules] ->
+      {String.trim(selector), String.trim(rules)}
+    end)
+    |> Enum.into(%{})
   end
 
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="h-screen flex flex-col bg-gray-100">
-      <!-- Header -->
-      <div class="bg-white border-b border-slate-200 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 class="text-xl font-semibold text-slate-800">Screenshot Integration Test</h1>
-            <p class="text-sm text-slate-600 mt-1">
-              M3 Sprint 3: Full end-to-end screenshot testing with chat
-            </p>
-          </div>
-          <div class="flex items-center gap-4">
-            <div class="text-sm text-slate-600">
-              <span class="font-medium text-slate-700">Captures:</span>
-              <span class="font-mono">{@capture_count}</span>
+    <div class="min-h-screen bg-gray-100 p-6">
+      <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="mb-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold text-slate-800">Screenshot Test</h1>
+              <p class="text-slate-600 mt-1">
+                Server-side screenshot capture via Puppeteer
+              </p>
             </div>
-            <%= if @last_screenshot do %>
-              <div class="text-sm text-green-600">
-                <span class="font-medium">Last:</span>
-                <span class="font-mono">
-                  {@last_screenshot.width}x{@last_screenshot.height} ({@last_screenshot.size_kb} KB)
-                </span>
-              </div>
-            <% end %>
             <a
               href="/test"
-              class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              class="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
               ← Test Pages
             </a>
           </div>
         </div>
-      </div>
-      <!-- Instructions -->
-      <div class="bg-blue-50 border-b border-blue-200">
-        <div class="max-w-7xl mx-auto px-4 py-2">
-          <p class="text-sm text-blue-800">
-            <strong>How to test:</strong>
-            Check the "screenshot" checkbox in the input panel, then send your message. The AI will capture the content on the right and include it in the conversation.
-          </p>
-        </div>
-      </div>
-      <!-- Main Content: Chat + Iframe -->
-      <div class="flex-1 overflow-hidden flex">
-        <!-- Chat Panel (left side) -->
-        <div class="w-1/2 border-r border-slate-300 bg-white flex flex-col">
-          <div class="flex-1 overflow-hidden">
-            <.live_component
-              module={ChatPanel}
-              id="chat-panel"
-              routine_id={@routine_id}
-              messages={@messages}
-              mock_responses={false}
-              current_step={nil}
-              show_screenshot_checkbox={true}
-            />
+
+        <!-- Error Display -->
+        <%= if @error do %>
+          <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <%= @error %>
           </div>
-        </div>
-        <!-- Iframe Target (right side) -->
-        <div class="w-1/2 bg-slate-50 flex flex-col">
-          <div class="bg-slate-700 px-4 py-2 border-b border-slate-600">
-            <h2 class="text-sm font-medium text-white">Screenshot Target (Iframe)</h2>
-          </div>
-          <div class="flex-1 p-4 overflow-auto">
-            <!-- ScreenshotCapture hook wraps the iframe content -->
-            <div
-              id="screenshot-target"
-              phx-hook="ScreenshotCapture"
-              class="h-full bg-white rounded-lg shadow-lg p-8 overflow-auto"
-            >
-              <div class="space-y-6">
-                <!-- Sample Content -->
-                <div>
-                  <h1 class="text-4xl font-bold text-slate-900 mb-2">Sample Wireframe</h1>
-                  <p class="text-lg text-slate-600">
-                    This is the content that will be captured in screenshots
-                  </p>
-                </div>
-                <!-- Feature Cards -->
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                    <div class="text-blue-600 text-2xl mb-2">🎨</div>
-                    <h3 class="font-semibold text-blue-900 mb-1">Design</h3>
-                    <p class="text-sm text-blue-700">Beautiful user interfaces</p>
-                  </div>
-                  <div class="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                    <div class="text-green-600 text-2xl mb-2">⚡</div>
-                    <h3 class="font-semibold text-green-900 mb-1">Performance</h3>
-                    <p class="text-sm text-green-700">Lightning fast responses</p>
-                  </div>
-                  <div class="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
-                    <div class="text-purple-600 text-2xl mb-2">🔒</div>
-                    <h3 class="font-semibold text-purple-900 mb-1">Security</h3>
-                    <p class="text-sm text-purple-700">Enterprise-grade protection</p>
-                  </div>
-                  <div class="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
-                    <div class="text-orange-600 text-2xl mb-2">📱</div>
-                    <h3 class="font-semibold text-orange-900 mb-1">Responsive</h3>
-                    <p class="text-sm text-orange-700">Works on any device</p>
-                  </div>
-                </div>
-                <!-- Sample Form -->
-                <div class="bg-slate-50 border border-slate-200 rounded-lg p-6">
-                  <h2 class="text-xl font-semibold text-slate-800 mb-4">Contact Form</h2>
-                  <div class="space-y-3">
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                      <input
-                        type="text"
-                        placeholder="Enter your name"
-                        class="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        placeholder="you@example.com"
-                        class="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 mb-1">Message</label>
-                      <textarea
-                        placeholder="Your message..."
-                        rows="3"
-                        class="w-full px-3 py-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                      >
-                      </textarea>
-                    </div>
-                    <button class="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors">
-                      Send Message
-                    </button>
-                  </div>
-                </div>
-                <!-- Sample Buttons -->
-                <div class="flex gap-3 flex-wrap">
-                  <button class="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900">
-                    Primary Action
+        <% end %>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-2 gap-6">
+          <!-- Left: Wireframe Selection & Preview -->
+          <div class="space-y-4">
+            <!-- Wireframe Selector -->
+            <div class="bg-white rounded-lg shadow p-4">
+              <h2 class="text-lg font-semibold text-slate-800 mb-3">Select Wireframe</h2>
+              <div class="flex flex-wrap gap-2">
+                <%= for wireframe <- @wireframes do %>
+                  <button
+                    phx-click="select_wireframe"
+                    phx-value-wireframe={wireframe}
+                    class={[
+                      "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      if(@selected_wireframe == wireframe,
+                        do: "bg-blue-600 text-white",
+                        else: "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      )
+                    ]}
+                  >
+                    <%= wireframe %>
                   </button>
-                  <button class="px-6 py-2 bg-white border-2 border-slate-800 text-slate-800 rounded-lg hover:bg-slate-50">
-                    Secondary Action
-                  </button>
-                  <button class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                    Delete
-                  </button>
-                </div>
+                <% end %>
               </div>
             </div>
+
+            <!-- DOM Tree Preview -->
+            <div class="bg-white rounded-lg shadow p-4">
+              <h2 class="text-lg font-semibold text-slate-800 mb-3">Parsed DOM Tree</h2>
+              <%= if @lens_state do %>
+                <div class="bg-slate-50 rounded p-3 max-h-96 overflow-auto">
+                  <pre class="text-xs text-slate-600 font-mono whitespace-pre-wrap"><%= inspect(@lens_state.designed.dom_tree, pretty: true, limit: :infinity) %></pre>
+                </div>
+              <% else %>
+                <p class="text-slate-500 italic">Select a wireframe to see parsed DOM</p>
+              <% end %>
+            </div>
+
+            <!-- CSS Preview -->
+            <%= if @lens_state && map_size(@lens_state.designed.custom_css) > 0 do %>
+              <div class="bg-white rounded-lg shadow p-4">
+                <h2 class="text-lg font-semibold text-slate-800 mb-3">
+                  Custom CSS (<%= map_size(@lens_state.designed.custom_css) %> rules)
+                </h2>
+                <div class="bg-slate-50 rounded p-3 max-h-48 overflow-auto">
+                  <pre class="text-xs text-slate-600 font-mono whitespace-pre-wrap"><%= format_css(@lens_state.designed.custom_css) %></pre>
+                </div>
+              </div>
+            <% end %>
           </div>
+
+          <!-- Right: Screenshot Capture -->
+          <div class="space-y-4">
+            <!-- Capture Controls -->
+            <div class="bg-white rounded-lg shadow p-4">
+              <h2 class="text-lg font-semibold text-slate-800 mb-3">Screenshot Capture</h2>
+              <div class="flex items-center gap-3">
+                <button
+                  phx-click="capture_screenshot"
+                  disabled={is_nil(@lens_state) || @loading}
+                  class={[
+                    "px-6 py-2 rounded-lg font-medium transition-colors",
+                    if(is_nil(@lens_state) || @loading,
+                      do: "bg-slate-300 text-slate-500 cursor-not-allowed",
+                      else: "bg-green-600 text-white hover:bg-green-700"
+                    )
+                  ]}
+                >
+                  <%= if @loading do %>
+                    Capturing...
+                  <% else %>
+                    Capture Screenshot
+                  <% end %>
+                </button>
+
+                <%= if @screenshot do %>
+                  <button
+                    phx-click="clear_screenshot"
+                    class="px-4 py-2 rounded-lg font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  >
+                    Clear
+                  </button>
+                <% end %>
+              </div>
+
+              <%= if @screenshot_meta do %>
+                <div class="mt-3 text-sm text-slate-600">
+                  <span class="font-medium">Size:</span> <%= @screenshot_meta.size_kb %> KB |
+                  <span class="font-medium">Captured:</span>
+                  <%= Calendar.strftime(@screenshot_meta.captured_at, "%H:%M:%S") %>
+                </div>
+              <% end %>
+            </div>
+
+            <!-- Screenshot Display -->
+            <div class="bg-white rounded-lg shadow p-4">
+              <h2 class="text-lg font-semibold text-slate-800 mb-3">Screenshot Result</h2>
+              <%= if @screenshot do %>
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                  <img
+                    src={"data:image/png;base64,#{@screenshot}"}
+                    alt="Captured screenshot"
+                    class="w-full h-auto"
+                  />
+                </div>
+              <% else %>
+                <div class="h-64 bg-slate-50 rounded-lg flex items-center justify-center">
+                  <p class="text-slate-400 italic">
+                    <%= if @lens_state do %>
+                      Click "Capture Screenshot" to generate
+                    <% else %>
+                      Select a wireframe first
+                    <% end %>
+                  </p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 class="font-semibold text-blue-800 mb-2">How it works</h3>
+          <ol class="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+            <li>Select a wireframe from <code class="bg-blue-100 px-1 rounded">priv/wireframes/</code></li>
+            <li>HTML is parsed into a DOM tree structure via <code class="bg-blue-100 px-1 rounded">HTMLParser</code></li>
+            <li>DOM tree is converted to lens_state format</li>
+            <li><code class="bg-blue-100 px-1 rounded">ScreenshotRenderer</code> converts lens_state to standalone HTML</li>
+            <li>Puppeteer (headless Chrome) captures the rendered page as PNG</li>
+            <li>Base64-encoded screenshot is displayed</li>
+          </ol>
         </div>
       </div>
     </div>
     """
+  end
+
+  defp format_css(css_map) do
+    css_map
+    |> Enum.map(fn {selector, rules} -> "#{selector} {\n  #{rules}\n}" end)
+    |> Enum.join("\n\n")
   end
 end

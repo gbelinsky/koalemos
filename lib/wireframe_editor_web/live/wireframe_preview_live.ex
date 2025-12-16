@@ -173,9 +173,6 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   def render(assigns) do
     ~H"""
     <div phx-hook="WireframePreview" id="wireframe-preview" class="wireframe-preview-container">
-      <%!-- Screenshot capture hook --%>
-      <div phx-hook="ScreenshotCapture" id="screenshot-capture-v4" style="display: contents;"></div>
-
       <!-- Custom CSS -->
       <%= if assigns[:designed] && assigns.designed[:custom_css] && map_size(assigns.designed.custom_css) > 0 do %>
         <style>
