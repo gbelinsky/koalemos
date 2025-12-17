@@ -57,9 +57,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
 
   # modify_elements: Added 3, removed 2, replaced 1
   defp summarize_modify_elements(input) when is_map(input) do
-    added = length(Map.get(input, "add_elements", []))
-    removed = length(Map.get(input, "remove_elements", []))
-    replaced = length(Map.get(input, "replace_elements", []))
+    # LLM sometimes sends JSON strings instead of lists - safely handle both
+    added = safe_list_length(Map.get(input, "add_elements", []))
+    removed = safe_list_length(Map.get(input, "remove_elements", []))
+    replaced = safe_list_length(Map.get(input, "replace_elements", []))
 
     total = added + removed + replaced
     parts = []
@@ -79,14 +80,14 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
 
   # modify_classes: Styled 5 elements
   defp summarize_modify_classes(input) when is_map(input) do
-    elements = Map.get(input, "elements", [])
+    elements = safe_to_list(Map.get(input, "elements", []))
     count = length(elements)
 
     if count == 1 do
       element = List.first(elements)
       element_id = Map.get(element, "element_id", "element")
-      added = length(Map.get(element, "add_classes", []))
-      removed = length(Map.get(element, "remove_classes", []))
+      added = safe_list_length(Map.get(element, "add_classes", []))
+      removed = safe_list_length(Map.get(element, "remove_classes", []))
 
       details =
         cond do
@@ -113,14 +114,14 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
 
   # manage_attributes: Updated attributes on 4 elements
   defp summarize_manage_attributes(input) when is_map(input) do
-    elements = Map.get(input, "elements", [])
+    elements = safe_to_list(Map.get(input, "elements", []))
     count = length(elements)
 
     if count == 1 do
       element = List.first(elements)
       element_id = Map.get(element, "element_id", "element")
-      set_count = map_size(Map.get(element, "set", %{}))
-      remove_count = length(Map.get(element, "remove", []))
+      set_count = safe_map_size(Map.get(element, "set", %{}))
+      remove_count = safe_list_length(Map.get(element, "remove", []))
 
       action =
         cond do
@@ -140,21 +141,21 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
 
   # manage_handlers: Managed 3 handlers (2 added, 1 removed)
   defp summarize_manage_handlers(input) when is_map(input) do
-    elements = Map.get(input, "elements", [])
+    elements = safe_to_list(Map.get(input, "elements", []))
 
     total_added =
       Enum.reduce(elements, 0, fn el, acc ->
-        acc + map_size(Map.get(el, "add", %{}))
+        acc + safe_map_size(Map.get(el, "add", %{}))
       end)
 
     total_removed =
       Enum.reduce(elements, 0, fn el, acc ->
-        acc + length(Map.get(el, "remove", []))
+        acc + safe_list_length(Map.get(el, "remove", []))
       end)
 
     total_replaced =
       Enum.reduce(elements, 0, fn el, acc ->
-        acc + map_size(Map.get(el, "replace", %{}))
+        acc + safe_map_size(Map.get(el, "replace", %{}))
       end)
 
     total = total_added + total_removed + total_replaced
@@ -194,9 +195,9 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
 
   # manage_functions: Managed 4 functions (2 added, 2 updated)
   defp summarize_manage_functions(input) when is_map(input) do
-    added = map_size(Map.get(input, "add_functions", %{}))
-    removed = length(Map.get(input, "remove_functions", []))
-    replaced = map_size(Map.get(input, "replace_functions", %{}))
+    added = safe_map_size(Map.get(input, "add_functions", %{}))
+    removed = safe_list_length(Map.get(input, "remove_functions", []))
+    replaced = safe_map_size(Map.get(input, "replace_functions", %{}))
 
     total = added + removed + replaced
 
@@ -233,8 +234,8 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
 
   # manage_variables: Set 3 variables
   defp summarize_manage_variables(input) when is_map(input) do
-    set_count = map_size(Map.get(input, "set_variables", %{}))
-    removed_count = length(Map.get(input, "remove_variables", []))
+    set_count = safe_map_size(Map.get(input, "set_variables", %{}))
+    removed_count = safe_list_length(Map.get(input, "remove_variables", []))
 
     total = set_count + removed_count
 
@@ -261,7 +262,7 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
   defp summarize_manage_css(input) when is_map(input) do
     # LLM sometimes sends JSON strings instead of maps - normalize them
     added = safe_map_size(Map.get(input, "add", %{}))
-    removed = length(Map.get(input, "remove", []))
+    removed = safe_list_length(Map.get(input, "remove", []))
     replaced = safe_map_size(Map.get(input, "replace", %{}))
 
     total = added + removed + replaced
@@ -300,7 +301,7 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
   defp summarize_manage_init_scripts(input) when is_map(input) do
     # LLM sometimes sends JSON strings instead of maps - normalize them
     added = safe_map_size(Map.get(input, "add", %{}))
-    removed = length(Map.get(input, "remove", []))
+    removed = safe_list_length(Map.get(input, "remove", []))
     replaced = safe_map_size(Map.get(input, "replace", %{}))
 
     total = added + removed + replaced
@@ -372,6 +373,30 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
   # Helper to pluralize words
   defp pluralize(word, 1), do: word
   defp pluralize(word, _), do: "#{word}s"
+
+  # Safe list length that handles JSON strings from LLM
+  defp safe_list_length(value) when is_list(value), do: length(value)
+
+  defp safe_list_length(value) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, list} when is_list(list) -> length(list)
+      _ -> 0
+    end
+  end
+
+  defp safe_list_length(_), do: 0
+
+  # Safe conversion to list that handles JSON strings from LLM
+  defp safe_to_list(value) when is_list(value), do: value
+
+  defp safe_to_list(value) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, list} when is_list(list) -> list
+      _ -> []
+    end
+  end
+
+  defp safe_to_list(_), do: []
 
   # Safe map_size that handles JSON strings from LLM
   defp safe_map_size(value) when is_map(value), do: map_size(value)

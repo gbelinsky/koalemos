@@ -81,11 +81,11 @@ defmodule Koalemos.MixProject do
     [
       setup: ["deps.get", "assets.setup", "assets.build"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["tailwind koalemos", "esbuild koalemos", "esbuild preview"],
+      "assets.build": ["tailwind ui_wireframe_editor", "esbuild ui_wireframe_editor", "esbuild ui_wireframe_editor_preview"],
       "assets.deploy": [
-        "tailwind koalemos --minify",
-        "esbuild koalemos --minify",
-        "esbuild preview --minify",
+        "tailwind ui_wireframe_editor --minify",
+        "esbuild ui_wireframe_editor --minify",
+        "esbuild ui_wireframe_editor_preview --minify",
         "phx.digest"
       ]
     ]
