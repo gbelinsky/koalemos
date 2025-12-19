@@ -102,7 +102,7 @@ defmodule WireframeEditorWeb.SamplesLive do
       },
       %{
         content:
-          "I can format responses with **numbered lists**, _emphasis_, and `code snippets`. Here's code: ```elixir\ndefmodule Example do\n  def hello, do: :world\nend\n```",
+          "I can format responses with **numbered lists**, _emphasis_, and `code snippets`.\n\nHere's code:\n\n```elixir\ndefmodule Example do\n  def hello, do: :world\nend\n```",
         metadata: %{timestamp: 1_730_000_005}
       },
       %{
@@ -175,6 +175,7 @@ defmodule WireframeEditorWeb.SamplesLive do
   @impl true
   def render(assigns) do
     ~H"""
+    <style>html, body { background-color: rgb(243 244 246); }</style>
     <div class="min-h-screen bg-gray-100 p-8">
       <div class="max-w-4xl mx-auto">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">Component Samples</h1>
@@ -186,14 +187,14 @@ defmodule WireframeEditorWeb.SamplesLive do
           <h2 class="text-xl font-semibold text-gray-800 mb-4">Chat Panel (Sprint 4)</h2>
           <p class="text-gray-600 mb-4 text-sm">
             Complete integrated chat experience combining MessageFeed + UserInputComponent.
-            Try typing messages with or without images! Mock AI responses enabled.
+            Shows a sample conversation with user and assistant messages.
           </p>
           <div class="bg-white rounded-xl shadow-lg overflow-hidden" style="height: 600px;">
             <.live_component
               module={ChatPanel}
               id="sample-chat-panel"
               routine_id="demo-routine-123"
-              mock_responses={true}
+              initial_messages={@conversation_messages}
             />
           </div>
         </section>

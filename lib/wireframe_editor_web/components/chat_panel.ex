@@ -6,7 +6,6 @@ defmodule WireframeEditorWeb.ChatPanel do
   - Displays conversation history
   - Handles user text and image input
   - Manages message list state
-  - Optional mock AI responses for testing
   - Ready for backend integration (routine_id prop)
 
   ## Usage
@@ -16,14 +15,13 @@ defmodule WireframeEditorWeb.ChatPanel do
     module={WireframeEditorWeb.ChatPanel}
     id="chat-panel"
     routine_id="test-123"
-    mock_responses={true}
+    initial_messages={@messages}
   />
   ```
 
   ## Props
 
-  - `routine_id` (string, required): Identifier for the chat session (unused in Sprint 4, ready for Sprint 6)
-  - `mock_responses` (boolean, optional): If true, adds mock AI responses after user messages (default: false)
+  - `routine_id` (string, required): Identifier for the chat session
   - `initial_messages` (list, optional): Pre-populate with messages (default: [])
   - `tool_display` (atom, optional): Tool display mode - `:full` (purple cards), `:inline` (subtle indicators), `:hidden` (default: `:full`)
   - `show_system_messages` (boolean, optional): Whether to show system messages in conversation (default: `true`)
@@ -59,7 +57,6 @@ defmodule WireframeEditorWeb.ChatPanel do
     {:ok,
      socket
      |> assign(:messages, [])
-     |> assign(:mock_responses, false)
      |> assign(:show_screenshot_checkbox, false)
      |> assign(:active_tab, "conversation")}
   end
@@ -88,7 +85,6 @@ defmodule WireframeEditorWeb.ChatPanel do
       |> assign(assigns)
       |> assign(:screenshot_data, screenshot_data)
       |> assign_new(:messages, fn -> Map.get(assigns, :initial_messages, []) end)
-      |> assign_new(:mock_responses, fn -> Map.get(assigns, :mock_responses, false) end)
       |> assign_new(:current_step, fn -> nil end)
       |> assign_new(:routine_module, fn -> nil end)
       |> assign_new(:execution_stack, fn -> [] end)
@@ -236,35 +232,7 @@ defmodule WireframeEditorWeb.ChatPanel do
 
     # Add to messages
     new_messages = socket.assigns.messages ++ [user_message]
-    socket = assign(socket, :messages, new_messages)
 
-    # If mock responses enabled, schedule a mock AI response
-    socket =
-      if socket.assigns.mock_responses do
-        Process.send_after(self(), {:mock_ai_response, user_message}, 2000)
-        socket
-      else
-        socket
-      end
-
-    {:noreply, socket}
-  end
-
-  def handle_info({:mock_ai_response, _user_message}, socket) do
-    # Create mock AI response
-    mock_response = %{
-      role: "assistant",
-      content:
-        "this is a mock response. in sprint 6, i'll connect to real AI! (but honestly, this is pretty good for a placeholder, right?)",
-      metadata: %{
-        id: "msg-#{System.unique_integer([:positive])}",
-        timestamp: System.system_time(:second),
-        source: :agent
-      }
-    }
-
-    # Add to messages
-    new_messages = socket.assigns.messages ++ [mock_response]
     {:noreply, assign(socket, :messages, new_messages)}
   end
 

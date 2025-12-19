@@ -3,3 +3,9 @@
 @import "tailwindcss/utilities";
 
 /* This file is for your main application CSS */
+
+/* Remove decorative backticks from inline code in prose */
+.prose code.inline::before,
+.prose code.inline::after {
+  content: none;
+}

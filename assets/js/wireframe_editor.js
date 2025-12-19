@@ -28,9 +28,17 @@ const Hooks = {}
 // Auto-scroll messages to bottom when new messages arrive
 Hooks.ScrollToBottom = {
   mounted() {
-    // Always scroll to bottom on initial load
-    this.scrollToBottom()
+    // Only scroll to bottom if container is visible in viewport
+    // This prevents page jump when component is below the fold
+    const container = this.el.closest('.overflow-y-auto')
+    if (container && this.isInViewport(container)) {
+      this.scrollToBottom()
+    }
     this.setupScrollButton()
+  },
+  isInViewport(el) {
+    const rect = el.getBoundingClientRect()
+    return rect.top < window.innerHeight && rect.bottom > 0
   },
   updated() {
     const container = this.el.closest('.overflow-y-auto')
@@ -105,7 +113,8 @@ Hooks.ScrollToBottom = {
 Hooks.AutoFocus = {
   mounted() {
     // Focus the element after a brief delay to ensure LiveView is ready
-    setTimeout(() => this.el.focus(), 100)
+    // Use preventScroll to avoid jumping the page
+    setTimeout(() => this.el.focus({ preventScroll: true }), 100)
 
     this.handleKeyDown = (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
