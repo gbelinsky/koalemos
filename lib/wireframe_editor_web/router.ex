@@ -42,7 +42,7 @@ defmodule WireframeEditorWeb.Router do
 
     # Wireframe editor
     live "/wireframe-editor/:routine_id", WireframeEditorLive
-    live "/wireframe-editor", WireframeEditorProductionLive
+    live "/wireframe-editor", WireframeEditorRedirectLive
   end
 
   # Wireframe preview uses minimal layout (no Tailwind)

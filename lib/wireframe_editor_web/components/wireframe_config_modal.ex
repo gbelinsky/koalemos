@@ -57,7 +57,8 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
     has_oauth = check_oauth_available()
 
     {:ok,
-     assign(socket,
+     socket
+     |> assign(
        provider: provider,
        model: model,
        anthropic_model: anthropic_model,
@@ -71,7 +72,14 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
        ollama_models: [],
        is_ephemeral: is_ephemeral,
        selected_sample: "blank",
-       show_upload: false
+       uploaded_html: nil,
+       uploaded_filename: nil
+     )
+     |> allow_upload(:html_file,
+       accept: ~w(.html .htm),
+       max_entries: 1,
+       max_file_size: 1_000_000,
+       auto_upload: true
      )}
   end
 
@@ -95,12 +103,21 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
       |> assign_new(:ollama_models, fn -> [] end)
       |> assign_new(:is_ephemeral, fn -> ConfigStore.is_ephemeral_storage?() end)
       |> assign_new(:selected_sample, fn -> "blank" end)
-      |> assign_new(:show_upload, fn -> false end)
+      |> assign_new(:uploaded_html, fn -> nil end)
+      |> assign_new(:uploaded_filename, fn -> nil end)
 
     # Check Ollama connection if provider is ollama and not already checked
     socket =
       if socket.assigns.provider == "ollama" && socket.assigns.ollama_status == :not_checked do
         check_ollama_connection(socket)
+      else
+        socket
+      end
+
+    # Process completed uploads if check_uploads flag is set
+    socket =
+      if Map.get(assigns, :check_uploads) do
+        process_completed_uploads(socket)
       else
         socket
       end
@@ -330,31 +347,56 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
               <label class="block text-sm font-medium text-slate-700 mb-2">
                 Starting Wireframe
               </label>
-              <form phx-change="update_sample" phx-target={@myself}>
-                <select
-                  name="sample"
-                  class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="blank" selected={@selected_sample == "blank"}>
-                    Blank Page (Start from scratch)
-                  </option>
-                  <option value="login" selected={@selected_sample == "login"}>
-                    Login Form Example
-                  </option>
-                  <option value="dashboard" selected={@selected_sample == "dashboard"}>
-                    Dashboard Layout Example
-                  </option>
-                  <option value="upload" selected={@selected_sample == "upload"}>
-                    Upload HTML File...
-                  </option>
-                </select>
-              </form>
-              <%= if @selected_sample == "upload" do %>
-                <div class="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p class="text-sm text-blue-700">
-                    File upload will be available in the next phase. For now, please select a sample or start with a blank page.
-                  </p>
+              <%= if @uploaded_html && @uploaded_filename do %>
+                <!-- Show loaded file with option to change -->
+                <div class="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                  <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
+                  </svg>
+                  <span class="flex-1 text-sm text-green-800 font-medium truncate">{@uploaded_filename}</span>
+                  <span class="text-xs text-green-600">{format_size(String.length(@uploaded_html))}</span>
+                  <button
+                    type="button"
+                    phx-click="clear_upload"
+                    phx-target={@myself}
+                    class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                    title="Remove file"
+                  >
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
+              <% else %>
+                <!-- Standard dropdown with hook to auto-open file picker -->
+                <form phx-change="update_sample" phx-target={@myself}>
+                  <select
+                    name="sample"
+                    id="sample-select"
+                    phx-hook="SampleSelectFilePicker"
+                    class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="blank" selected={@selected_sample == "blank"}>
+                      Blank Page (Start from scratch)
+                    </option>
+                    <option value="login" selected={@selected_sample == "login"}>
+                      Login Form Example
+                    </option>
+                    <option value="dashboard" selected={@selected_sample == "dashboard"}>
+                      Dashboard Layout Example
+                    </option>
+                    <option value="upload" selected={@selected_sample == "upload"}>
+                      Load HTML File...
+                    </option>
+                  </select>
+                </form>
+              <% end %>
+              <!-- Hidden file input -->
+              <form phx-change="validate_upload" phx-target={@myself} class="hidden">
+                <.live_file_input upload={@uploads.html_file} />
+              </form>
+              <%= for err <- upload_errors(@uploads.html_file) do %>
+                <p class="mt-2 text-sm text-red-600">{error_to_string(err)}</p>
               <% end %>
             </div>
             <!-- Action Buttons -->
@@ -446,7 +488,27 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
 
   @impl true
   def handle_event("update_sample", %{"sample" => sample}, socket) do
+    # Clear uploaded HTML if switching away from upload
+    socket =
+      if sample != "upload" do
+        assign(socket, uploaded_html: nil, uploaded_filename: nil)
+      else
+        socket
+      end
+
     {:noreply, assign(socket, selected_sample: sample)}
+  end
+
+  @impl true
+  def handle_event("validate_upload", _params, socket) do
+    # Schedule a check for completed uploads
+    send_update_after(__MODULE__, [id: socket.assigns.id, check_uploads: true], 500)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("clear_upload", _params, socket) do
+    {:noreply, assign(socket, uploaded_html: nil, uploaded_filename: nil, selected_sample: "blank")}
   end
 
   @impl true
@@ -454,16 +516,22 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
     # Save config (credentials and non-sensitive config)
     save_config(socket)
 
-    # Send config_complete event to parent with selected configuration
-    send(self(), {
-      :config_complete,
-      %{
-        provider: socket.assigns.provider,
-        model: socket.assigns.model,
-        wireframe_sample: socket.assigns.selected_sample
-      }
-    })
+    # Build config with optional uploaded HTML
+    config = %{
+      provider: socket.assigns.provider,
+      model: socket.assigns.model,
+      wireframe_sample: socket.assigns.selected_sample
+    }
 
+    # Add uploaded HTML if available
+    config =
+      if socket.assigns.uploaded_html do
+        Map.put(config, :uploaded_html, socket.assigns.uploaded_html)
+      else
+        config
+      end
+
+    send(self(), {:config_complete, config})
     send(self(), {:close_modal})
     {:noreply, socket}
   end
@@ -541,18 +609,73 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
     end
   end
 
+  # Process completed file uploads
+  defp process_completed_uploads(socket) do
+    entries = socket.assigns.uploads.html_file.entries
+    completed = Enum.filter(entries, & &1.done?)
+    in_progress = Enum.filter(entries, &(!&1.done?))
+
+    socket =
+      if length(completed) > 0 && length(in_progress) == 0 do
+        # All uploads done, consume them
+        result =
+          consume_uploaded_entries(socket, :html_file, fn %{path: path}, entry ->
+            {:ok, {File.read!(path), entry.client_name}}
+          end)
+          |> List.first()
+
+        case result do
+          {html, filename} ->
+            assign(socket, uploaded_html: html, uploaded_filename: filename, selected_sample: "upload")
+
+          nil ->
+            socket
+        end
+      else
+        socket
+      end
+
+    # If still in progress, schedule another check
+    if length(in_progress) > 0 do
+      send_update_after(__MODULE__, [id: socket.assigns.id, check_uploads: true], 500)
+    end
+
+    socket
+  end
+
   # Validation helper - check if user can start the editor
   # For Anthropic: Allow if API key entered OR OAuth available
   # For OpenAI: Require API key
   # For Ollama: Require server connection
+  # For upload sample: Require uploaded HTML
   defp can_start?(assigns) do
-    case assigns.provider do
-      "anthropic" -> assigns.anthropic_api_key != "" || assigns.has_oauth
-      "openai" -> assigns.openai_api_key != ""
-      "ollama" -> assigns.ollama_status == :connected && assigns.model != ""
-      _ -> false
-    end
+    provider_ready =
+      case assigns.provider do
+        "anthropic" -> assigns.anthropic_api_key != "" || assigns.has_oauth
+        "openai" -> assigns.openai_api_key != ""
+        "ollama" -> assigns.ollama_status == :connected && assigns.model != ""
+        _ -> false
+      end
+
+    sample_ready =
+      case assigns.selected_sample do
+        "upload" -> assigns.uploaded_html != nil
+        _ -> true
+      end
+
+    provider_ready && sample_ready
   end
+
+  # Error message helpers for file uploads
+  defp error_to_string(:too_large), do: "File is too large (max 1MB)"
+  defp error_to_string(:not_accepted), do: "Only HTML files (.html, .htm) are accepted"
+  defp error_to_string(:too_many_files), do: "Only one file allowed"
+  defp error_to_string(err), do: "Error: #{inspect(err)}"
+
+  # Format file size for display
+  defp format_size(bytes) when bytes < 1024, do: "#{bytes} B"
+  defp format_size(bytes) when bytes < 1024 * 1024, do: "#{Float.round(bytes / 1024, 1)} KB"
+  defp format_size(bytes), do: "#{Float.round(bytes / (1024 * 1024), 1)} MB"
 
   # Check if OAuth credentials are available
   defp check_oauth_available do

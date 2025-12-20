@@ -117,4 +117,34 @@ WireframeHooks.ConfigStorage = {
   }
 }
 
+/**
+ * SampleSelectFilePicker Hook
+ *
+ * Attached to the sample select dropdown. When "upload" is selected,
+ * automatically opens the file picker.
+ *
+ * Usage:
+ *   <select phx-hook="SampleSelectFilePicker" data-file-input-id="my-file-input">
+ *     <option value="upload">Load HTML File...</option>
+ *   </select>
+ */
+WireframeHooks.SampleSelectFilePicker = {
+  mounted() {
+    this.el.addEventListener("change", (e) => {
+      if (e.target.value === "upload") {
+        // Use requestAnimationFrame to ensure we're after LiveView's DOM patch
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // live_file_input generates input with data-phx-upload-ref attribute
+            const fileInput = document.querySelector('input[type="file"][data-phx-upload-ref]')
+            if (fileInput) {
+              fileInput.click()
+            }
+          })
+        })
+      }
+    })
+  }
+}
+
 export default WireframeHooks

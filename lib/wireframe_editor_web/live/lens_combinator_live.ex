@@ -8,8 +8,8 @@ defmodule WireframeEditorWeb.LensCombinatorLive do
   - Start routine with chosen lens combination
   - Validate that lenses work together without conflicts
 
-  Uses WireframeTestRoutine (full tool execution support) to ensure all lenses
-  can use their tools if they provide any.
+  Uses TestChatRoutine for lens testing. Note: WireframeEditor lens tools
+  won't execute without ToolExecution steps - use dedicated wireframe pages for that.
 
   Route: /test/lens-combinator
   """
@@ -248,7 +248,7 @@ defmodule WireframeEditorWeb.LensCombinatorLive do
 
     case EngineManager.start_routine(
            routine_id,
-           Koalemos.Routines.WireframeTestRoutine,
+           Koalemos.Routines.TestChatRoutine,
            routine_config
          ) do
       {:ok, _pid} ->
@@ -381,8 +381,8 @@ defmodule WireframeEditorWeb.LensCombinatorLive do
           <option value="complex" selected={@config.wireframe_sample == :complex}>Complex</option>
         </select>
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Note: WireframeEditor requires WireframePreview infrastructure.
-          For multi-lens testing, focus on context/tool integration.
+          Note: WireframeEditor tools won't execute here (context only).
+          Use dedicated wireframe pages for full tool execution.
         </p>
       </div>
     </div>

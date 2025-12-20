@@ -239,7 +239,7 @@ defmodule WireframeEditorWeb.ParsingTestLive do
                   <li>
                     🔗 External Stylesheets: {Enum.count(@wireframe.styles, &(&1.type == :external))}
                   </li>
-                  <li>📐 CSS Rules: {length(@wireframe.css_rules)}</li>
+                  <li>📐 CSS Rules: {map_size(@wireframe.css_rules)}</li>
                   <%= if @wireframe.parse_results.styles_failed > 0 do %>
                     <li class="text-red-600">
                       ❌ Parse Errors: {@wireframe.parse_results.styles_failed}
@@ -344,15 +344,15 @@ defmodule WireframeEditorWeb.ParsingTestLive do
     <!-- CSS Rules -->
             <div class="border rounded p-4">
               <h3 class="font-semibold text-lg mb-3">CSS Rules</h3>
-              <%= if length(@wireframe.css_rules) > 0 do %>
+              <%= if map_size(@wireframe.css_rules) > 0 do %>
                 <div class="space-y-2 overflow-auto max-h-96">
-                  <%= for rule <- @wireframe.css_rules do %>
+                  <%= for {selector, declarations} <- @wireframe.css_rules do %>
                     <div class="bg-gray-50 p-2 rounded">
                       <div class="text-sm font-semibold text-blue-700 mb-1">
-                        {rule.selector}
+                        {selector}
                       </div>
                       <div class="ml-4 text-xs space-y-1">
-                        <%= for {property, value} <- rule.declarations do %>
+                        <%= for {property, value} <- declarations do %>
                           <div class="bg-white p-1 rounded font-mono">
                             <span class="text-purple-600"><%= property %></span>: <span class="text-gray-700"><%= value %></span>;
                           </div>
@@ -477,23 +477,23 @@ defmodule WireframeEditorWeb.ParsingTestLive do
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <!-- DOMStateCache -->
               <div class="border rounded p-4 bg-purple-50">
-                <h3 class="font-semibold text-lg mb-3">DOMStateCache</h3>
+                <h3 class="font-semibold text-lg mb-3">DOM Tree</h3>
                 <p class="text-xs text-gray-600 mb-3">
-                  Stores live DOM structure for runtime tracking
+                  Parsed DOM structure
                 </p>
                 <%= if @dom_cache do %>
                   <div class="text-sm space-y-2">
                     <div>
-                      <span class="font-semibold">Change Type:</span>
-                      <span class="ml-2">{@dom_cache.change_type}</span>
-                    </div>
-                    <div>
-                      <span class="font-semibold">Cached At:</span>
-                      <span class="ml-2">{@dom_cache.cached_at}</span>
-                    </div>
-                    <div>
                       <span class="font-semibold">Root Tag:</span>
-                      <span class="ml-2 font-mono">{@dom_cache.live_dom_tree.tag}</span>
+                      <span class="ml-2 font-mono">{@dom_cache.tag}</span>
+                    </div>
+                    <div>
+                      <span class="font-semibold">Root ID:</span>
+                      <span class="ml-2 font-mono">{@dom_cache.id}</span>
+                    </div>
+                    <div>
+                      <span class="font-semibold">Children:</span>
+                      <span class="ml-2">{length(@dom_cache.children || [])}</span>
                     </div>
                   </div>
                 <% else %>
