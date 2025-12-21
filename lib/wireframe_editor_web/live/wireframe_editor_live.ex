@@ -263,6 +263,25 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
     running = WireframeStateServer.get_running(routine_id)
     screenshot = WireframeStateServer.get_screenshot(routine_id)
 
+    # Get messages, status, and step info from routine state
+    {messages, status, current_step, routine_module, execution_stack, step_module} =
+      case EngineManager.get_routine_state(routine_id) do
+        {:ok, state} ->
+          msgs = get_in(state, [:context, :messages]) || []
+          step = Map.get(state, :current_step)
+          routine_status = Map.get(state, :routine_status, :running)
+          routine_mod = Map.get(state, :current_routine_module)
+          exec_stack = Map.get(state, :execution_stack, [])
+
+          # Derive step_module from routine_definitions
+          step_mod = get_step_module_from_state(state)
+
+          {msgs, routine_status, step, routine_mod, exec_stack, step_mod}
+
+        {:error, _} ->
+          {[], :idle, nil, nil, [], nil}
+      end
+
     # Start auto-refresh timer for debug panel
     if socket.assigns.mode == :debug do
       schedule_debug_refresh()
@@ -272,7 +291,13 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
      assign(socket,
        designed_state: designed,
        running_state: running,
-       screenshot: screenshot
+       screenshot: screenshot,
+       messages: messages,
+       status: status,
+       current_step: current_step,
+       routine_module: routine_module,
+       execution_stack: execution_stack,
+       step_module: step_module
      )}
   end
 
@@ -375,6 +400,20 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   defp schedule_debug_refresh do
     Process.send_after(self(), :refresh_debug_state, 2000)
+  end
+
+  # Extracts step_module from Engine state by looking up current step in routine_definitions
+  defp get_step_module_from_state(state) do
+    current_routine_module = Map.get(state, :current_routine_module)
+    current_step = Map.get(state, :current_step)
+    routine_definitions = Map.get(state, :routine_definitions, %{})
+
+    with routine_def when is_map(routine_def) <- Map.get(routine_definitions, current_routine_module),
+         step_config when is_map(step_config) <- Map.get(routine_def, current_step) do
+      Map.get(step_config, :type)
+    else
+      _ -> nil
+    end
   end
 
   # ============================================================================
