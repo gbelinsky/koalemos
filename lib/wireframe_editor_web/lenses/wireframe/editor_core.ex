@@ -500,19 +500,19 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   end
 
   defp update_children(children, target_id, update_fn) do
-    {updated, found} =
+    {updated_reversed, found} =
       Enum.reduce(children, {[], false}, fn child, {acc, found} ->
         if found do
-          {acc ++ [child], found}
+          {[child | acc], found}
         else
           case find_and_update_element(child, target_id, update_fn) do
-            {:ok, updated_child} -> {acc ++ [updated_child], true}
-            {:error, :not_found} -> {acc ++ [child], false}
+            {:ok, updated_child} -> {[updated_child | acc], true}
+            {:error, :not_found} -> {[child | acc], false}
           end
         end
       end)
 
-    if found, do: {:ok, updated}, else: {:error, :not_found}
+    if found, do: {:ok, Enum.reverse(updated_reversed)}, else: {:error, :not_found}
   end
 
   # ============================================================================
@@ -962,24 +962,24 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   end
 
   defp remove_from_children(children, target_id) do
-    {updated, found} =
+    {updated_reversed, found} =
       Enum.reduce(children, {[], false}, fn child, {acc, found} ->
         cond do
           found ->
-            {acc ++ [child], found}
+            {[child | acc], found}
 
           child.id == target_id ->
             {acc, true}
 
           true ->
             case remove_element(child, target_id) do
-              {:ok, updated_child} -> {acc ++ [updated_child], true}
-              {:error, :not_found} -> {acc ++ [child], false}
+              {:ok, updated_child} -> {[updated_child | acc], true}
+              {:error, :not_found} -> {[child | acc], false}
             end
         end
       end)
 
-    if found, do: {:ok, updated}, else: {:error, :not_found}
+    if found, do: {:ok, Enum.reverse(updated_reversed)}, else: {:error, :not_found}
   end
 
   defp replace_element(%{id: id}, target_id, _new_element) when id == target_id do
@@ -998,24 +998,24 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   end
 
   defp replace_in_children(children, target_id, new_element) do
-    {updated, found} =
+    {updated_reversed, found} =
       Enum.reduce(children, {[], false}, fn child, {acc, found} ->
         cond do
           found ->
-            {acc ++ [child], found}
+            {[child | acc], found}
 
           child.id == target_id ->
-            {acc ++ [new_element], true}
+            {[new_element | acc], true}
 
           true ->
             case replace_element(child, target_id, new_element) do
-              {:ok, updated_child} -> {acc ++ [updated_child], true}
-              {:error, :not_found} -> {acc ++ [child], false}
+              {:ok, updated_child} -> {[updated_child | acc], true}
+              {:error, :not_found} -> {[child | acc], false}
             end
         end
       end)
 
-    if found, do: {:ok, updated}, else: {:error, :not_found}
+    if found, do: {:ok, Enum.reverse(updated_reversed)}, else: {:error, :not_found}
   end
 
   defp add_element(%{id: id, children: children} = element, parent_id, new_element, position, reference_id)
@@ -1042,20 +1042,20 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   end
 
   defp add_to_children(children, parent_id, new_element, position, reference_id) do
-    {updated, found} =
+    {updated_reversed, found} =
       Enum.reduce(children, {[], false}, fn child, {acc, found} ->
         if found do
-          {acc ++ [child], found}
+          {[child | acc], found}
         else
           case add_element(child, parent_id, new_element, position, reference_id) do
-            {:ok, updated_child} -> {acc ++ [updated_child], true}
-            {:error, :parent_not_found} -> {acc ++ [child], false}
+            {:ok, updated_child} -> {[updated_child | acc], true}
+            {:error, :parent_not_found} -> {[child | acc], false}
             error -> throw(error)
           end
         end
       end)
 
-    if found, do: {:ok, updated}, else: {:error, :parent_not_found}
+    if found, do: {:ok, Enum.reverse(updated_reversed)}, else: {:error, :parent_not_found}
   catch
     error -> error
   end

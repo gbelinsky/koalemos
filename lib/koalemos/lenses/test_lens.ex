@@ -8,7 +8,7 @@ defmodule Koalemos.Lenses.TestLens do
   Provides simple context about the Koalemos system.
   Returns a list of text context blocks.
   """
-  def provide_context(_state) do
+  def provide_context(_state, _config \\ %{}) do
     [
       """
       [TestLens Context]

@@ -83,6 +83,13 @@ defmodule Koalemos.Lenses.SequentialThinking do
           "#{prefix}#{thought.thought_number}. #{thought.thought}"
         end)
 
+      status_text =
+        case List.last(current_chain) do
+          nil -> "[No thoughts yet]"
+          %{next_thought_needed: true} -> "[Thinking continues...]"
+          _ -> "[Thinking complete]"
+        end
+
       [
         %{
           type: "text",
@@ -91,7 +98,7 @@ defmodule Koalemos.Lenses.SequentialThinking do
 
           #{chain_text}
 
-          #{if List.last(current_chain).next_thought_needed, do: "[Thinking continues...]", else: "[Thinking complete]"}
+          #{status_text}
           """
         }
       ]
