@@ -161,7 +161,8 @@ defmodule Koalemos.Engine.Orchestrator do
             get_in(state_after_setup, [:context, :config, state_after_setup.current_step]) || %{}
         }
 
-        Task.start(fn ->
+        # Execute step in supervised task (start_child for fire-and-forget with supervision)
+        Task.Supervisor.start_child(Koalemos.StepTaskSupervisor, fn ->
           result =
             try do
               apply(step_module, :execute, [

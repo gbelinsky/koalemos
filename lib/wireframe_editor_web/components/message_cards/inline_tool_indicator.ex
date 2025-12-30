@@ -166,9 +166,9 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
 
       event_type =
         cond do
-          total_added > 0 -> Map.keys(Map.get(element, "add", %{})) |> List.first()
-          total_replaced > 0 -> Map.keys(Map.get(element, "replace", %{})) |> List.first()
-          total_removed > 0 -> List.first(Map.get(element, "remove", []))
+          total_added > 0 -> safe_map_keys(Map.get(element, "add", %{})) |> List.first()
+          total_replaced > 0 -> safe_map_keys(Map.get(element, "replace", %{})) |> List.first()
+          total_removed > 0 -> safe_list_first(Map.get(element, "remove", []))
           true -> "handler"
         end
 
@@ -204,9 +204,9 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
     if total == 1 do
       name =
         cond do
-          added > 0 -> Map.keys(Map.get(input, "add_functions", %{})) |> List.first()
-          replaced > 0 -> Map.keys(Map.get(input, "replace_functions", %{})) |> List.first()
-          removed > 0 -> List.first(Map.get(input, "remove_functions", []))
+          added > 0 -> safe_map_keys(Map.get(input, "add_functions", %{})) |> List.first()
+          replaced > 0 -> safe_map_keys(Map.get(input, "replace_functions", %{})) |> List.first()
+          removed > 0 -> safe_list_first(Map.get(input, "remove_functions", []))
           true -> "function"
         end
 
@@ -241,10 +241,10 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
 
     if total == 1 do
       if set_count > 0 do
-        name = Map.keys(Map.get(input, "set_variables", %{})) |> List.first()
+        name = safe_map_keys(Map.get(input, "set_variables", %{})) |> List.first()
         "⊕ Set variable #{name}"
       else
-        name = List.first(Map.get(input, "remove_variables", []))
+        name = safe_list_first(Map.get(input, "remove_variables", []))
         "⊕ Removed variable #{name}"
       end
     else
@@ -272,7 +272,7 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
         cond do
           added > 0 -> safe_map_keys(Map.get(input, "add", %{})) |> List.first()
           replaced > 0 -> safe_map_keys(Map.get(input, "replace", %{})) |> List.first()
-          removed > 0 -> List.first(Map.get(input, "remove", []))
+          removed > 0 -> safe_list_first(Map.get(input, "remove", []))
           true -> "rule"
         end
 
@@ -311,7 +311,7 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
         cond do
           added > 0 -> safe_map_keys(Map.get(input, "add", %{})) |> List.first()
           replaced > 0 -> safe_map_keys(Map.get(input, "replace", %{})) |> List.first()
-          removed > 0 -> List.first(Map.get(input, "remove", []))
+          removed > 0 -> safe_list_first(Map.get(input, "remove", []))
           true -> "script"
         end
 
@@ -421,6 +421,19 @@ defmodule WireframeEditorWeb.MessageCards.InlineToolIndicator do
   end
 
   defp safe_map_keys(_), do: []
+
+  # Safe List.first that handles JSON strings from LLM
+  defp safe_list_first(value, default \\ nil)
+  defp safe_list_first(value, default) when is_list(value), do: List.first(value, default)
+
+  defp safe_list_first(value, default) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, list} when is_list(list) -> List.first(list, default)
+      _ -> default
+    end
+  end
+
+  defp safe_list_first(_, default), do: default
 
   # Format tool input as pretty JSON
   defp format_input(input) when is_map(input) do

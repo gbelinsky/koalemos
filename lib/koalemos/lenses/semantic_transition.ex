@@ -144,15 +144,26 @@ defmodule Koalemos.Lenses.SemanticTransition do
   Engine will pop the stack and apply transition at parent level.
   """
   def execute(:choose_transition, %{"transition" => choice, "reason" => reason}, _context) do
-    transition_atom = String.to_atom(choice)
+    # Use to_existing_atom since transitions are predefined in routines
+    case safe_to_atom(choice) do
+      {:ok, transition_atom} ->
+        Logger.info("[SemanticTransition] Transition chosen: #{choice} (#{reason})")
+        result_message = "Transitioning to: #{choice}"
+        {result_message, [workflow_transition: {transition_atom, reason}]}
 
-    Logger.info("[SemanticTransition] Transition chosen: #{choice} (#{reason})")
-
-    result_message = "Transitioning to: #{choice}"
-
-    # Return workflow_transition for Engine to handle
-    {result_message, [workflow_transition: {transition_atom, reason}]}
+      {:error, _} ->
+        Logger.warning("[SemanticTransition] Invalid transition: #{choice}")
+        {"Invalid transition: #{choice}. Please choose from the available options.", []}
+    end
   end
+
+  defp safe_to_atom(string) when is_binary(string) do
+    {:ok, String.to_existing_atom(string)}
+  rescue
+    ArgumentError -> {:error, :not_found}
+  end
+
+  defp safe_to_atom(atom) when is_atom(atom), do: {:ok, atom}
 
   # Private Helpers
 

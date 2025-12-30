@@ -13,6 +13,8 @@ defmodule Koalemos.Supervisor do
     [
       # Routine Registry - for looking up Engine processes by routine_id
       {Registry, keys: :unique, name: Koalemos.RoutineRegistry},
+      # Task Supervisor - for supervised step execution
+      {Task.Supervisor, name: Koalemos.StepTaskSupervisor},
       # Observer - for recording routine events
       Koalemos.Engine.Observer,
       # Credential manager

@@ -253,7 +253,8 @@ defmodule Koalemos.Engine.EventHandler do
 
       ms when is_integer(ms) and ms > 0 ->
         # Wait for specified time
-        timer_ref = :timer.send_after(ms, self(), {:external_event, :timeout, event_types})
+        # Note: :timer.send_after returns {:ok, TRef}, extract the ref
+        {:ok, timer_ref} = :timer.send_after(ms, self(), {:external_event, :timeout, event_types})
 
         waiting_state = %{
           state

@@ -44,8 +44,8 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
       {final_tree, results} =
         Enum.reduce(elements, {dom_tree, []}, fn elem, {current_tree, acc_results} ->
           element_id = Map.get(elem, "element_id")
-          add_classes = Map.get(elem, "add_classes", [])
-          remove_classes = Map.get(elem, "remove_classes", [])
+          add_classes = ensure_list(Map.get(elem, "add_classes", []))
+          remove_classes = ensure_list(Map.get(elem, "remove_classes", []))
 
           case modify_element_classes(current_tree, element_id, add_classes, remove_classes) do
             {:ok, updated_tree} ->
@@ -84,13 +84,13 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
       {:error, "No wireframe loaded. Load a wireframe first."}
     else
       # Process in order: remove, replace, add
-      remove_ids = Map.get(args, "remove_elements", [])
+      remove_ids = ensure_list(Map.get(args, "remove_elements", []))
       {tree_after_remove, remove_results} = process_removals(dom_tree, remove_ids)
 
-      replacements = Map.get(args, "replace_elements", [])
+      replacements = ensure_list(Map.get(args, "replace_elements", []))
       {tree_after_replace, replace_results} = process_replacements(tree_after_remove, replacements)
 
-      additions = Map.get(args, "add_elements", [])
+      additions = ensure_list(Map.get(args, "add_elements", []))
       {final_tree, add_results} = process_additions(tree_after_replace, additions)
 
       all_results = remove_results ++ replace_results ++ add_results
@@ -138,7 +138,7 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
     else
       # Validate no 'class' attribute
       has_class_attr = Enum.any?(elements, fn elem ->
-        set_attrs = Map.get(elem, "set", %{})
+        set_attrs = ensure_map(Map.get(elem, "set", %{}))
         Map.has_key?(set_attrs, "class")
       end)
 
@@ -148,8 +148,8 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
         {final_tree, results} =
           Enum.reduce(elements, {dom_tree, []}, fn elem, {current_tree, acc_results} ->
             element_id = Map.get(elem, "element_id")
-            set_attrs = Map.get(elem, "set", %{})
-            remove_attrs = Map.get(elem, "remove", [])
+            set_attrs = ensure_map(Map.get(elem, "set", %{}))
+            remove_attrs = ensure_list(Map.get(elem, "remove", []))
 
             case modify_element_attributes(current_tree, element_id, set_attrs, remove_attrs) do
               {:ok, updated_tree} ->
@@ -191,9 +191,9 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
       {final_handlers, results} =
         Enum.reduce(elements, {current_handlers, []}, fn elem, {handlers_map, acc_results} ->
           element_id = Map.get(elem, "element_id")
-          add_handlers = Map.get(elem, "add", %{})
-          replace_handlers = Map.get(elem, "replace", %{})
-          remove_events = Map.get(elem, "remove", [])
+          add_handlers = ensure_map(Map.get(elem, "add", %{}))
+          replace_handlers = ensure_map(Map.get(elem, "replace", %{}))
+          remove_events = ensure_list(Map.get(elem, "remove", []))
 
           # First validate element exists
           case validate_element_exists(dom_tree, element_id) do
@@ -233,9 +233,9 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   def execute_tool(:manage_functions, args, designed) when is_map(args) do
     current_functions = Map.get(designed, :custom_functions, %{})
 
-    add_functions = Map.get(args, "add_functions", %{})
-    replace_functions = Map.get(args, "replace_functions", %{})
-    remove_functions = Map.get(args, "remove_functions", [])
+    add_functions = ensure_map(Map.get(args, "add_functions", %{}))
+    replace_functions = ensure_map(Map.get(args, "replace_functions", %{}))
+    remove_functions = ensure_list(Map.get(args, "remove_functions", []))
 
     updated_functions =
       current_functions
@@ -259,8 +259,8 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   def execute_tool(:manage_variables, args, designed) when is_map(args) do
     current_variables = Map.get(designed, :custom_variables, %{})
 
-    set_variables = Map.get(args, "set_variables", %{})
-    remove_variables = Map.get(args, "remove_variables", [])
+    set_variables = ensure_map(Map.get(args, "set_variables", %{}))
+    remove_variables = ensure_list(Map.get(args, "remove_variables", []))
 
     updated_variables =
       current_variables
@@ -286,7 +286,7 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
 
     add_css = Map.get(args, "add", %{}) |> normalize_css_rules()
     replace_css = Map.get(args, "replace", %{}) |> normalize_css_rules()
-    remove_selectors = Map.get(args, "remove", [])
+    remove_selectors = ensure_list(Map.get(args, "remove", []))
 
     updated_css =
       current_css
@@ -310,9 +310,9 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   def execute_tool(:manage_init_scripts, args, designed) when is_map(args) do
     current_scripts = Map.get(designed, :init_scripts, %{})
 
-    add_scripts = Map.get(args, "add", %{})
-    replace_scripts = Map.get(args, "replace", %{})
-    remove_scripts = Map.get(args, "remove", [])
+    add_scripts = ensure_map(Map.get(args, "add", %{}))
+    replace_scripts = ensure_map(Map.get(args, "replace", %{}))
+    remove_scripts = ensure_list(Map.get(args, "remove", []))
 
     updated_scripts =
       current_scripts
@@ -403,6 +403,35 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   end
 
   defp normalize_declarations(_), do: %{}
+
+  # ============================================================================
+  # LLM Input Normalization Helpers
+  # ============================================================================
+
+  # LLM sometimes sends JSON-encoded strings instead of actual lists/maps.
+  # These helpers safely decode them.
+
+  defp ensure_list(value) when is_list(value), do: value
+
+  defp ensure_list(value) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, list} when is_list(list) -> list
+      _ -> []
+    end
+  end
+
+  defp ensure_list(_), do: []
+
+  defp ensure_map(value) when is_map(value), do: value
+
+  defp ensure_map(value) when is_binary(value) do
+    case Jason.decode(value) do
+      {:ok, map} when is_map(map) -> map
+      _ -> %{}
+    end
+  end
+
+  defp ensure_map(_), do: %{}
 
   # ============================================================================
   # Context Building
@@ -812,16 +841,20 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
 
   defp extract_handlers_from_tree(_), do: %{}
 
+  # Normalize handler keys to strings (LLM sends JSON = always strings)
   defp normalize_handler_keys(handlers) when is_map(handlers) do
     Enum.reduce(handlers, %{}, fn {event, handler_info}, acc ->
+      string_event = to_string(event)
+
       normalized_info =
         case handler_info do
-          %{"params" => params, "body" => body} -> %{params: params, body: body}
-          %{params: _params, body: _body} = already_normalized -> already_normalized
-          _ -> handler_info
+          %{"params" => params, "body" => body} -> %{"params" => params, "body" => body}
+          %{params: params, body: body} -> %{"params" => params, "body" => body}
+          %{} = map -> Map.new(map, fn {k, v} -> {to_string(k), v} end)
+          other -> other
         end
 
-      Map.put(acc, event, normalized_info)
+      Map.put(acc, string_event, normalized_info)
     end)
   end
 
@@ -862,19 +895,17 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   defp update_handlers_in_map(handlers_map, element_id, add_handlers, replace_handlers, remove_events) do
     current_element_handlers = Map.get(handlers_map, element_id, %{})
 
-    # Convert incoming handler keys to atoms for consistency
-    add_handlers_atom = atomize_handler_keys(add_handlers)
-    replace_handlers_atom = atomize_handler_keys(replace_handlers)
+    # Normalize handler keys to strings for consistency (LLM sends JSON = strings)
+    add_handlers_normalized = normalize_handler_keys(add_handlers)
+    replace_handlers_normalized = normalize_handler_keys(replace_handlers)
+    current_normalized = normalize_handler_keys(current_element_handlers)
 
-    remove_events_atom =
-      Enum.map(remove_events, fn
-        event when is_binary(event) -> String.to_atom(event)
-        event -> event
-      end)
+    # Keep remove_events as strings
+    remove_events_normalized = Enum.map(remove_events, &to_string/1)
 
     # Check add conflicts
     add_conflicts =
-      Enum.filter(Map.keys(add_handlers_atom), &Map.has_key?(current_element_handlers, &1))
+      Enum.filter(Map.keys(add_handlers_normalized), &Map.has_key?(current_normalized, &1))
 
     if length(add_conflicts) > 0 do
       {:error,
@@ -883,20 +914,20 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
       # Check replace requirements
       replace_missing =
         Enum.filter(
-          Map.keys(replace_handlers_atom),
-          &(!Map.has_key?(current_element_handlers, &1))
+          Map.keys(replace_handlers_normalized),
+          &(!Map.has_key?(current_normalized, &1))
         )
 
       if length(replace_missing) > 0 do
         {:error,
          "No existing handler to replace for events: #{Enum.join(replace_missing, ", ")} on element '#{element_id}'"}
       else
-        # Update element's handlers
+        # Update element's handlers (all string keys now)
         updated_element_handlers =
-          current_element_handlers
-          |> Map.merge(add_handlers_atom)
-          |> Map.merge(replace_handlers_atom)
-          |> Map.drop(remove_events_atom)
+          current_normalized
+          |> Map.merge(add_handlers_normalized)
+          |> Map.merge(replace_handlers_normalized)
+          |> Map.drop(remove_events_normalized)
 
         # Update the map (remove element key if no handlers left)
         updated_map =
@@ -910,25 +941,6 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
       end
     end
   end
-
-  defp atomize_handler_keys(handlers) when is_map(handlers) do
-    handlers
-    |> Enum.map(fn {key, value} ->
-      atom_key = if is_binary(key), do: String.to_atom(key), else: key
-
-      atom_value =
-        case value do
-          %{"params" => params, "body" => body} -> %{params: params, body: body}
-          %{} = map when is_map(map) -> Map.new(map, fn {k, v} -> {String.to_atom(k), v} end)
-          other -> other
-        end
-
-      {atom_key, atom_value}
-    end)
-    |> Map.new()
-  end
-
-  defp atomize_handler_keys(_), do: %{}
 
   # ============================================================================
   # Private: DOM Tree Operations

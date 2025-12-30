@@ -26,6 +26,28 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   Sends to PreviewCoordinator:
   - {:state_captured, from, payload}
   - {:interaction_complete, from, result}
+
+  ## Security Note: raw() HTML Rendering
+
+  This module uses `raw()` to render user-designed HTML, CSS, and JavaScript.
+  This is intentional - the purpose is to render a working wireframe page.
+
+  **Current deployment model (single-user demo):** Safe. The user designs their
+  own wireframes which execute in their own browser.
+
+  **Multi-user deployment considerations:** If this becomes a shared service where
+  users can view each other's wireframes, additional sandboxing would be needed:
+
+  1. Render wireframes in a sandboxed iframe with `sandbox="allow-scripts"` only
+     (remove `allow-same-origin` to prevent access to parent document)
+  2. Serve wireframe preview from a different origin/subdomain
+  3. Implement Content Security Policy (CSP) headers
+  4. Consider server-side HTML sanitization for stored wireframes
+
+  The iframe in wireframe_editor_live.ex currently uses:
+  `sandbox="allow-scripts allow-same-origin allow-forms"`
+
+  For multi-user: change to separate origin + `sandbox="allow-scripts allow-forms"`
   """
 
   use WireframeEditorWeb, :live_view

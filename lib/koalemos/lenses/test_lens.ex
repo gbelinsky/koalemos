@@ -11,6 +11,7 @@ defmodule Koalemos.Lenses.TestLens do
   def provide_context(_state) do
     [
       """
+      [TestLens Context]
       You are a helpful AI assistant in the Koalemos chat system.
       Koalemos is a conversational AI platform that uses routines and lenses.
       Be friendly, helpful, and concise in your responses.
