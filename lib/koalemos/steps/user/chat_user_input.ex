@@ -178,6 +178,10 @@ defmodule Koalemos.Steps.User.ChatUserInput do
   end
 
   # Normalize content block keys from strings to atoms
+  # NOTE: String.to_existing_atom can crash on unknown keys. This is low risk because:
+  # 1. Only affects pre-formatted messages (edge case)
+  # 2. Known content block keys (type, text, source, etc.) already exist as atoms
+  # 3. If this becomes a problem, add a whitelist of known keys or use try/rescue
   defp normalize_content_block(%{"type" => _type} = block) do
     # Convert string keys to atom keys
     Enum.reduce(block, %{}, fn {key, value}, acc ->

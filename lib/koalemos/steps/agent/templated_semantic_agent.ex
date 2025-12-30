@@ -123,22 +123,22 @@ defmodule Koalemos.Steps.Agent.TemplatedSemanticAgent do
   def check_condition(:always, _context), do: true
 
   def check_condition(:when_has_tool_calls, context) do
-    tool_calls = Map.get(context, :tool_calls, [])
+    tool_calls = Map.get(context, :tool_calls) || []
     length(tool_calls) > 0
   end
 
   def check_condition(:when_no_tool_calls, context) do
-    tool_calls = Map.get(context, :tool_calls, [])
+    tool_calls = Map.get(context, :tool_calls) || []
     length(tool_calls) == 0
   end
 
   def check_condition(:when_has_more_tools, context) do
-    to_execute = Map.get(context, :to_execute, [])
+    to_execute = Map.get(context, :to_execute) || []
     length(to_execute) > 0
   end
 
   def check_condition(:when_tools_complete, context) do
-    to_execute = Map.get(context, :to_execute, [])
+    to_execute = Map.get(context, :to_execute) || []
     length(to_execute) == 0
   end
 

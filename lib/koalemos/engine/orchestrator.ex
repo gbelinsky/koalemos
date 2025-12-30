@@ -171,9 +171,12 @@ defmodule Koalemos.Engine.Orchestrator do
               ])
             rescue
               error ->
+                stacktrace = __STACKTRACE__
+                Logger.error("[Orchestrator] Step execution failed: #{Exception.message(error)}\n#{Exception.format_stacktrace(stacktrace)}")
                 {:error, "Step execution failed: #{Exception.message(error)}"}
             catch
               :exit, reason ->
+                Logger.error("[Orchestrator] Step execution process exited: #{inspect(reason)}")
                 {:error, "Step execution process exited: #{inspect(reason)}"}
             end
 
@@ -404,6 +407,9 @@ defmodule Koalemos.Engine.Orchestrator do
       try do
         apply(state.current_routine_module, :check_condition, [condition, state.context])
       rescue
+        # Intentional: String conditions (for semantic transitions) fail here
+        # and return false, falling through to :always. This allows mixing
+        # code conditions and LLM-display-only string conditions.
         _error -> false
       end
     end)

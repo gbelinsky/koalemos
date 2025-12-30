@@ -215,6 +215,10 @@ defmodule Koalemos.Engine.EventHandler do
         # This timeout matches our current wait - handle it
         step_config = Orchestrator.get_current_step_config(state)
 
+        if is_nil(step_config) do
+          raise "Step :#{state.current_step} not found in routine #{inspect(state.current_routine_module)}"
+        end
+
         final_state =
           StepUtils.call_step_function_if_exists(
             step_config.type,
@@ -290,6 +294,10 @@ defmodule Koalemos.Engine.EventHandler do
       {:found, event_type, data, _timestamp, new_buffer} ->
         updated_state = %{state | event_buffer: new_buffer}
         step_config = Orchestrator.get_current_step_config(state)
+
+        if is_nil(step_config) do
+          raise "Step :#{state.current_step} not found in routine #{inspect(state.current_routine_module)}"
+        end
 
         # Call handle_event and capture both the updated state AND the diff
         {final_state, diff} =

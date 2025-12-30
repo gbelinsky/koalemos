@@ -48,6 +48,18 @@ defmodule Koalemos.LLMProviders.Anthropic do
 
   @impl true
   def call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
+    # Validate credentials early to provide clear error message
+    case validate_credentials(credentials) do
+      :ok ->
+        do_call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id)
+
+      {:error, reason} ->
+        Logger.error("[Anthropic] #{reason}")
+        {:error, reason}
+    end
+  end
+
+  defp do_call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
     Logger.info("[Anthropic] Making request for routine #{routine_id}")
 
     # Extract text and image contexts
@@ -207,6 +219,19 @@ defmodule Koalemos.LLMProviders.Anthropic do
     Logger.error("[Anthropic] Maximum retry attempts (#{attempt - 1}) exceeded")
     {:error, "Maximum retry attempts (#{attempt - 1}) exceeded"}
   end
+
+  # Validate that required credentials are present
+  defp validate_credentials(nil), do: {:error, "Missing credentials - configure API key in settings"}
+
+  defp validate_credentials(credentials) when is_map(credentials) do
+    case Map.get(credentials, :api_key) do
+      nil -> {:error, "Missing api_key in credentials - configure API key in settings"}
+      "" -> {:error, "Empty api_key in credentials - configure API key in settings"}
+      _key -> :ok
+    end
+  end
+
+  defp validate_credentials(_), do: {:error, "Invalid credentials format"}
 
   # Build HTTP headers based on authentication type
   defp build_headers(credentials) do
