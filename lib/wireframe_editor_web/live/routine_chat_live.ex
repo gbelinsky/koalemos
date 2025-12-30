@@ -37,6 +37,10 @@ defmodule WireframeEditorWeb.RoutineChatLive do
 
   @impl true
   def handle_params(%{"routine_id" => routine_id} = params, _uri, socket) do
+    # DEMO ONLY: No authorization check on routine_id.
+    # In production, verify the current user owns/has access to this routine_id.
+    # Anyone who knows the routine_id can access this chat session.
+
     # Get provider and model from URL query params (defaults if not provided)
     provider = Map.get(params, "provider", "anthropic")
     model = Map.get(params, "model", "claude-haiku-4-5")
@@ -219,6 +223,13 @@ defmodule WireframeEditorWeb.RoutineChatLive do
   @impl true
   def handle_info({:routine_event, _event}, socket) do
     # Ignore other routine events
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:ollama_check_complete, component_id, result}, socket) do
+    # Forward async Ollama check result to the modal component
+    send_update(WireframeEditorWeb.StartSessionModal, id: component_id, ollama_result: result)
     {:noreply, socket}
   end
 

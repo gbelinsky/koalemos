@@ -35,6 +35,13 @@ defmodule WireframeEditorWeb.HomeLive do
   end
 
   @impl true
+  def handle_info({:ollama_check_complete, component_id, result}, socket) do
+    # Forward async Ollama check result to the modal component
+    send_update(StartSessionModal, id: component_id, ollama_result: result)
+    {:noreply, socket}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">

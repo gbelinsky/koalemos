@@ -54,6 +54,9 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
        # Debug panel state (only used in debug mode)
        designed_state: nil,
        running_state: nil,
+       # DEMO ONLY: Screenshots stored as base64 in socket assigns.
+       # In production, this can be 10-18MB+ per connection for high-res images.
+       # Consider: external storage (S3/file), compression, or on-demand loading.
        screenshot: nil,
        sync_status: nil
      ), layout: false}
@@ -61,6 +64,10 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   @impl true
   def handle_params(%{"routine_id" => routine_id} = params, _uri, socket) do
+    # DEMO ONLY: No authorization check on routine_id.
+    # In production, verify the current user owns/has access to this routine_id.
+    # Anyone who knows the routine_id can access this wireframe session.
+
     if connected?(socket) && socket.assigns.routine_id == nil do
       # Parse query params for mode and routine type
       mode = if params["mode"] == "debug", do: :debug, else: :production
@@ -389,6 +396,13 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   @impl true
   def handle_info({:save_config_to_localstorage, _config}, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:ollama_check_complete, component_id, result}, socket) do
+    # Forward async Ollama check result to the config modal component
+    send_update(WireframeConfigModal, id: component_id, ollama_result: result)
     {:noreply, socket}
   end
 

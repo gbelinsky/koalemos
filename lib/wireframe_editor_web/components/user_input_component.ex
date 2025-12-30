@@ -376,7 +376,8 @@ defmodule WireframeEditorWeb.UserInputComponent do
         accept: ~w(.jpg .jpeg .png .gif .webp),
         max_entries: 5,
         max_file_size: 3_750_000,
-        auto_upload: true
+        auto_upload: true,
+        progress: &handle_upload_progress/3
       )
 
     {:ok, socket}
@@ -388,24 +389,6 @@ defmodule WireframeEditorWeb.UserInputComponent do
       socket
       |> assign(assigns)
       |> assign_new(:disabled, fn -> false end)
-
-    # If this update includes check_uploads, process any completed uploads
-    socket =
-      if Map.get(assigns, :check_uploads) do
-        processed_socket = auto_process_new_images(socket)
-
-        # If there are still uploads in progress, schedule another check
-        entries = processed_socket.assigns.uploads.image_files.entries
-        in_progress = Enum.filter(entries, &(!&1.done?))
-
-        if length(in_progress) > 0 do
-          send_update_after(__MODULE__, [id: socket.assigns.id, check_uploads: true], 500)
-        end
-
-        processed_socket
-      else
-        socket
-      end
 
     # If this update includes clear_sent_feedback, clear the flag
     socket =
@@ -430,10 +413,8 @@ defmodule WireframeEditorWeb.UserInputComponent do
       end
 
     # Open the drawer when files are selected
+    # Actual processing happens in handle_upload_progress/3 callback
     socket = assign(socket, :images_drawer_open, true)
-
-    # Schedule self-update to check upload completion
-    send_update_after(__MODULE__, [id: socket.assigns.id, check_uploads: true], 500)
 
     {:noreply, socket}
   end
@@ -471,25 +452,6 @@ defmodule WireframeEditorWeb.UserInputComponent do
     {:noreply, assign(socket, :include_screenshot, !socket.assigns.include_screenshot)}
   end
 
-  def handle_event("auto-upload", params, socket) do
-    # This gets triggered when auto-upload completes
-    require Logger
-    Logger.debug("auto-upload event triggered, params: #{inspect(params)}")
-    Logger.debug("Upload entries: #{length(socket.assigns.uploads.image_files.entries)}")
-    socket = auto_process_new_images(socket)
-    {:noreply, socket}
-  end
-
-  def handle_event("progress", params, socket) do
-    require Logger
-    Logger.debug("progress event triggered, params: #{inspect(params)}")
-    Logger.debug("Upload entries: #{length(socket.assigns.uploads.image_files.entries)}")
-
-    # Check if any uploads are done and process them
-    socket = auto_process_new_images(socket)
-    {:noreply, socket}
-  end
-
   def handle_event("send_input", _params, socket) do
     send_input_event(socket)
   end
@@ -497,6 +459,47 @@ defmodule WireframeEditorWeb.UserInputComponent do
   # Update text input
   def handle_event("update_input", %{"user_input" => input}, socket) do
     {:noreply, assign(socket, :current_input, input)}
+  end
+
+  # Progress callback for file uploads - called by LiveView when each upload progresses
+  # This is the proper pattern per https://hexdocs.pm/phoenix_live_view/uploads.html
+  defp handle_upload_progress(:image_files, entry, socket) do
+    if entry.done? do
+      # File upload complete - consume and process it
+      result =
+        consume_uploaded_entry(socket, entry, fn %{path: path} ->
+          case File.read(path) do
+            {:ok, binary} ->
+              base64_data = Base.encode64(binary)
+              media_type = get_image_media_type(entry.client_type || "image/jpeg")
+
+              {:ok,
+               %{
+                 base64: base64_data,
+                 media_type: media_type,
+                 filename: entry.client_name,
+                 size: entry.client_size
+               }}
+
+            {:error, reason} ->
+              require Logger
+              Logger.error("Failed to read uploaded file: #{inspect(reason)}")
+              {:ok, nil}
+          end
+        end)
+
+      case result do
+        %{} = image_data ->
+          new_images = socket.assigns.uploaded_images ++ [image_data]
+          {:noreply, assign(socket, :uploaded_images, new_images)}
+
+        _ ->
+          {:noreply, socket}
+      end
+    else
+      # Upload still in progress
+      {:noreply, socket}
+    end
   end
 
   defp send_input_event(socket) do
@@ -527,54 +530,6 @@ defmodule WireframeEditorWeb.UserInputComponent do
       {:noreply, socket}
     else
       {:noreply, socket}
-    end
-  end
-
-  defp auto_process_new_images(socket) do
-    # Check if there are any entries to process
-    entries = socket.assigns.uploads.image_files.entries
-    completed_entries = Enum.filter(entries, & &1.done?)
-    in_progress_entries = Enum.filter(entries, &(!&1.done?))
-
-    # Only process if ALL entries are done (no entries in progress)
-    if length(completed_entries) > 0 and length(in_progress_entries) == 0 do
-      require Logger
-      Logger.debug("Processing #{length(completed_entries)} completed uploads")
-
-      try do
-        uploaded_images =
-          consume_uploaded_entries(socket, :image_files, fn %{path: path}, entry ->
-            case File.read(path) do
-              {:ok, binary} ->
-                base64_data = Base.encode64(binary)
-                media_type = get_image_media_type(entry.client_type || "image/jpeg")
-
-                {:ok,
-                 %{
-                   base64: base64_data,
-                   media_type: media_type,
-                   filename: entry.client_name,
-                   size: entry.client_size
-                 }}
-
-              {:error, reason} ->
-                Logger.error("Failed to read uploaded file: #{inspect(reason)}")
-                {:ok, nil}
-            end
-          end)
-          |> Enum.filter(&is_map/1)
-
-        new_images = socket.assigns.uploaded_images ++ uploaded_images
-        Logger.debug("Added #{length(uploaded_images)} images. Total: #{length(new_images)}")
-
-        assign(socket, :uploaded_images, new_images)
-      rescue
-        e ->
-          Logger.error("Error processing uploads: #{inspect(e)}")
-          socket
-      end
-    else
-      socket
     end
   end
 

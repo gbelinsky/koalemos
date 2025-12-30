@@ -64,8 +64,7 @@ defmodule WireframeEditorWeb.StartSessionModal do
         _ -> "claude-haiku-4-5"
       end
 
-    # Check if OAuth credentials are available for Anthropic
-    has_oauth = check_oauth_available()
+    # OAuth check deferred to update/2 for faster initial render
 
     {:ok,
      assign(socket,
@@ -73,7 +72,8 @@ defmodule WireframeEditorWeb.StartSessionModal do
        model: model,
        anthropic_api_key: Map.get(anthropic_config, "api_key", ""),
        openai_api_key: Map.get(openai_config, "api_key", ""),
-       has_oauth: has_oauth,
+       has_oauth: false,
+       oauth_checked: false,
        ollama_status: :not_checked,
        ollama_error: nil,
        ollama_models: []
@@ -91,15 +91,34 @@ defmodule WireframeEditorWeb.StartSessionModal do
       |> assign_new(:model, fn -> "claude-haiku-4-5" end)
       |> assign_new(:anthropic_api_key, fn -> "" end)
       |> assign_new(:openai_api_key, fn -> "" end)
-      |> assign_new(:has_oauth, fn -> check_oauth_available() end)
+      |> assign_new(:has_oauth, fn -> false end)
+      |> assign_new(:oauth_checked, fn -> false end)
       |> assign_new(:ollama_status, fn -> :not_checked end)
       |> assign_new(:ollama_error, fn -> nil end)
       |> assign_new(:ollama_models, fn -> [] end)
 
-    # Check Ollama connection if provider is ollama and not already checked
+    # Deferred OAuth check - only check once when socket is connected
+    # Skip if has_oauth was explicitly passed in assigns (e.g., in tests)
+    socket =
+      if !socket.assigns.oauth_checked && !Map.has_key?(assigns, :has_oauth) do
+        has_oauth = check_oauth_available()
+        assign(socket, has_oauth: has_oauth, oauth_checked: true)
+      else
+        assign(socket, oauth_checked: true)
+      end
+
+    # Handle async Ollama connection result
+    socket =
+      if Map.has_key?(assigns, :ollama_result) do
+        apply_ollama_result(socket, assigns.ollama_result)
+      else
+        socket
+      end
+
+    # Start async Ollama check if provider is ollama and not already checked/checking
     socket =
       if socket.assigns.provider == "ollama" && socket.assigns.ollama_status == :not_checked do
-        check_ollama_connection(socket)
+        start_async_ollama_check(socket)
       else
         socket
       end
@@ -224,6 +243,15 @@ defmodule WireframeEditorWeb.StartSessionModal do
               <%= if @provider == "ollama" do %>
                 <!-- Ollama Status -->
                 <div class="mb-4">
+                  <%= if @ollama_status == :checking do %>
+                    <div class="flex items-center gap-2 text-sm text-blue-600 mb-3">
+                      <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Checking Ollama connection...</span>
+                    </div>
+                  <% end %>
                   <%= if @ollama_status == :connected && length(@ollama_models) > 0 do %>
                     <div class="flex items-center gap-2 text-sm text-green-600 mb-3">
                       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -273,10 +301,13 @@ defmodule WireframeEditorWeb.StartSessionModal do
                     </select>
                   </form>
                   <p class="mt-1 text-xs text-slate-500">
-                    <%= if @ollama_status == :connected && length(@ollama_models) > 0 do %>
-                      {length(@ollama_models)} model(s) available
-                    <% else %>
-                      Waiting for Ollama connection...
+                    <%= cond do %>
+                      <% @ollama_status == :checking -> %>
+                        Checking connection...
+                      <% @ollama_status == :connected && length(@ollama_models) > 0 -> %>
+                        {length(@ollama_models)} model(s) available
+                      <% true -> %>
+                        Waiting for Ollama connection...
                     <% end %>
                   </p>
                 </div>
@@ -324,7 +355,7 @@ defmodule WireframeEditorWeb.StartSessionModal do
   def handle_event("update_config", %{"provider" => provider} = params, socket) do
     model = Map.get(params, "model", socket.assigns.model)
 
-    # If provider changed, update to default model and check Ollama if needed
+    # If provider changed, update to default model and start async Ollama check if needed
     socket =
       if provider != socket.assigns.provider do
         default_model =
@@ -336,10 +367,10 @@ defmodule WireframeEditorWeb.StartSessionModal do
           end
 
         socket
-        |> assign(provider: provider, model: default_model)
+        |> assign(provider: provider, model: default_model, ollama_status: :not_checked)
         |> then(fn s ->
           if provider == "ollama" do
-            check_ollama_connection(s)
+            start_async_ollama_check(s)
           else
             s
           end
@@ -412,42 +443,66 @@ defmodule WireframeEditorWeb.StartSessionModal do
     end
   end
 
-  # Helper functions for Ollama connection check
-  defp check_ollama_connection(socket) do
+  # Async Ollama connection check - starts task and returns immediately
+  defp start_async_ollama_check(socket) do
+    component_id = socket.assigns.id
+    parent_pid = self()
+
+    # Start async task to check Ollama connection
+    Task.start(fn ->
+      result = do_ollama_check()
+      # Send result back to parent LiveView which forwards to component
+      send(parent_pid, {:ollama_check_complete, component_id, result})
+    end)
+
+    # Mark as checking so we don't start multiple tasks
+    assign(socket, ollama_status: :checking)
+  end
+
+  # Perform the actual Ollama check (called in Task)
+  defp do_ollama_check do
     case OllamaClient.check_connection() do
       {:ok, :connected} ->
-        # Connection successful, fetch available models
         case OllamaClient.list_models() do
           {:ok, [_ | _] = models} ->
-            # Set first model as default if current model not in list
-            default_model =
-              if socket.assigns.model in models do
-                socket.assigns.model
-              else
-                hd(models)
-              end
-
-            assign(socket,
-              ollama_status: :connected,
-              ollama_error: nil,
-              ollama_models: models,
-              model: default_model
-            )
+            {:connected, models}
 
           {:ok, []} ->
-            assign(socket,
-              ollama_status: :connected,
-              ollama_error: "No models found. Pull a model using: ollama pull llama3.2",
-              ollama_models: []
-            )
+            {:connected_no_models, "No models found. Pull a model using: ollama pull llama3.2"}
 
           {:error, reason} ->
-            assign(socket,
-              ollama_status: :error,
-              ollama_error: reason,
-              ollama_models: []
-            )
+            {:error, reason}
         end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # Apply Ollama check result to socket (called from update when result arrives)
+  defp apply_ollama_result(socket, result) do
+    case result do
+      {:connected, models} ->
+        default_model =
+          if socket.assigns.model in models do
+            socket.assigns.model
+          else
+            hd(models)
+          end
+
+        assign(socket,
+          ollama_status: :connected,
+          ollama_error: nil,
+          ollama_models: models,
+          model: default_model
+        )
+
+      {:connected_no_models, message} ->
+        assign(socket,
+          ollama_status: :connected,
+          ollama_error: message,
+          ollama_models: []
+        )
 
       {:error, reason} ->
         assign(socket,

@@ -586,29 +586,6 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
     end
   end
 
-  defp build_tools_guide do
-    """
-    === AVAILABLE TOOLS ===
-
-    Structure Tools (modify DOM):
-    - modify_classes: Add/remove CSS classes
-    - modify_elements: Add/remove/replace elements
-    - manage_attributes: Set/remove HTML attributes
-
-    Behavior Tools (modify JavaScript):
-    - manage_handlers: Add/remove event handlers
-    - manage_functions: Add/remove custom functions
-    - manage_variables: Set/remove global variables
-    - manage_css: Add/remove CSS rules
-    - manage_init_scripts: Add/remove initialization scripts
-
-    Testing Tool:
-    - trigger_interaction: Test interactions (ephemeral, doesn't persist)
-
-    All changes except trigger_interaction are PERMANENT.
-    """
-  end
-
   defp build_screenshot_block(screenshot) do
     %{
       type: "image",
