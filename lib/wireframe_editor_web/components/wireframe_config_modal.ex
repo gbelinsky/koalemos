@@ -39,8 +39,10 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
 
     provider = Map.get(config, "provider", "ollama")
 
-    # Load API keys from DemoCredentialStore
+    # Check if API keys exist (don't load actual values - write-only pattern)
     api_keys = DemoCredentialStore.get_all_api_keys()
+    has_anthropic_key = Map.get(api_keys, "anthropic", "") != ""
+    has_openai_key = Map.get(api_keys, "openai", "") != ""
 
     # Get models for each provider
     anthropic_model = ConfigStore.get_model_for_provider("anthropic")
@@ -64,8 +66,12 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
        anthropic_model: anthropic_model,
        openai_model: openai_model,
        ollama_model: ollama_model,
-       anthropic_api_key: Map.get(api_keys, "anthropic", ""),
-       openai_api_key: Map.get(api_keys, "openai", ""),
+       # Write-only: track if keys exist, but don't send values to browser
+       has_anthropic_key: has_anthropic_key,
+       has_openai_key: has_openai_key,
+       # Session-only: keys entered this session (start empty, never pre-filled)
+       anthropic_api_key: "",
+       openai_api_key: "",
        has_oauth: false,
        oauth_checked: false,
        ollama_status: :not_checked,
@@ -212,8 +218,7 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
                     <input
                       type="password"
                       name="api_key"
-                      value={@anthropic_api_key}
-                      placeholder="sk-ant-..."
+                      placeholder={if @has_anthropic_key, do: "Key saved (enter new to replace)", else: "sk-ant-..."}
                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                     />
                   </form>
@@ -257,8 +262,7 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
                     <input
                       type="password"
                       name="api_key"
-                      value={@openai_api_key}
-                      placeholder="sk-..."
+                      placeholder={if @has_openai_key, do: "Key saved (enter new to replace)", else: "sk-..."}
                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                     />
                   </form>
@@ -592,13 +596,24 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
   defp save_config(socket) do
     provider = socket.assigns.provider
 
-    # Save API keys to DemoCredentialStore (credentials.json)
-    api_keys = %{
-      "anthropic" => socket.assigns.anthropic_api_key,
-      "openai" => socket.assigns.openai_api_key
-    }
+    # Only save API keys that were entered this session (non-empty)
+    # This preserves existing saved keys if user didn't enter new ones
+    api_keys =
+      %{}
+      |> then(fn keys ->
+        if socket.assigns.anthropic_api_key != "",
+          do: Map.put(keys, "anthropic", socket.assigns.anthropic_api_key),
+          else: keys
+      end)
+      |> then(fn keys ->
+        if socket.assigns.openai_api_key != "",
+          do: Map.put(keys, "openai", socket.assigns.openai_api_key),
+          else: keys
+      end)
 
-    DemoCredentialStore.update_api_keys(api_keys)
+    if map_size(api_keys) > 0 do
+      DemoCredentialStore.update_api_keys(api_keys)
+    end
 
     # Save non-sensitive config to ConfigStore (.config.json)
     config = %{
@@ -693,8 +708,9 @@ defmodule WireframeEditorWeb.WireframeConfigModal do
   defp can_start?(assigns) do
     provider_ready =
       case assigns.provider do
-        "anthropic" -> assigns.anthropic_api_key != "" || assigns.has_oauth
-        "openai" -> assigns.openai_api_key != ""
+        # Has saved key, newly entered key, or OAuth
+        "anthropic" -> assigns.has_anthropic_key || assigns.anthropic_api_key != "" || assigns.has_oauth
+        "openai" -> assigns.has_openai_key || assigns.openai_api_key != ""
         "ollama" -> assigns.ollama_status == :connected && assigns.model != ""
         _ -> false
       end
