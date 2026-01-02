@@ -19,6 +19,8 @@ defmodule WireframeEditorWeb.Services.ScreenshotRenderer do
   """
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Capture a screenshot from a lens_state structure.
@@ -44,16 +46,12 @@ defmodule WireframeEditorWeb.Services.ScreenshotRenderer do
     use_live_dom = Keyword.get(opts, :use_live_dom, false)
     dom_type = if use_live_dom, do: "LIVE", else: "DESIGNED"
 
-    Logger.info(
-      "[ScreenshotRenderer] 🎨 SERVER-SIDE SCREENSHOT REQUESTED for routine #{routine_id} using Puppeteer (#{dom_type} DOM)"
-    )
+    Log.debug(:wireframe, "[ScreenshotRenderer] Capturing for routine #{routine_id} (#{dom_type} DOM)")
 
     # Convert lens_state to standalone HTML (using live or designed DOM)
     html = render_html_from_state(lens_state, use_live_dom)
 
-    Logger.debug(
-      "[ScreenshotRenderer] Generated HTML from #{dom_type} DOM - length: #{String.length(html)} characters"
-    )
+    Log.debug(:wireframe, "[ScreenshotRenderer] Generated HTML - #{String.length(html)} chars")
 
     # Get viewport and scroll position from running state (captured from preview), or fall back to opts/defaults
     # Normalize keys since JS sends string keys but Puppeteer expects atom keys
@@ -80,15 +78,11 @@ defmodule WireframeEditorWeb.Services.ScreenshotRenderer do
     }
 
     # Call Puppeteer service via NodeJS bridge
-    Logger.info(
-      "[ScreenshotRenderer] 🚀 Calling Puppeteer with viewport #{inspect(viewport)}, scroll: #{inspect(scroll_position)}"
-    )
+    Log.debug(:wireframe, "[ScreenshotRenderer] Calling Puppeteer #{inspect(viewport)}")
 
     case call_puppeteer(html, puppeteer_opts) do
       {:ok, %{"base64" => base64, "width" => width, "height" => height}} ->
-        Logger.info(
-          "[ScreenshotRenderer] ✅ SERVER-SIDE screenshot captured successfully (#{width}x#{height}) for routine #{routine_id}"
-        )
+        Log.debug(:wireframe, "[ScreenshotRenderer] Captured #{width}x#{height}")
 
         {:ok, base64}
 
@@ -127,7 +121,7 @@ defmodule WireframeEditorWeb.Services.ScreenshotRenderer do
       get_in(lens_state, [:designed, :custom_css]) ||
       %{}
 
-    Logger.debug("[ScreenshotRenderer] Rendering from #{source} - has DOM: #{dom_tree != nil}, CSS rules: #{map_size(custom_css)}")
+    Log.debug(:wireframe, "[ScreenshotRenderer] Rendering from #{source} - DOM: #{dom_tree != nil}, CSS: #{map_size(custom_css)}")
 
     # Render DOM tree to HTML string
     body_html = render_dom_tree(dom_tree)

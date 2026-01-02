@@ -72,6 +72,8 @@ defmodule Koalemos.Lenses.SemanticTransition do
   """
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Provides context showing available semantic transitions.
@@ -85,7 +87,7 @@ defmodule Koalemos.Lenses.SemanticTransition do
         format_transitions_context(transitions)
 
       {:error, reason} ->
-        Logger.warning("[SemanticTransition] Failed to get parent transitions: #{reason}")
+        Log.debug(:engine, "[SemanticTransition] Failed to get parent transitions: #{reason}")
         []
     end
   end
@@ -120,7 +122,7 @@ defmodule Koalemos.Lenses.SemanticTransition do
         build_transition_tool_info(transitions)
 
       {:error, reason} ->
-        Logger.warning("[SemanticTransition] Failed to build tool schema: #{reason}")
+        Log.debug(:engine, "[SemanticTransition] Failed to build tool schema: #{reason}")
         # Return minimal schema as fallback
         %{
           name: "choose_transition",
@@ -147,12 +149,12 @@ defmodule Koalemos.Lenses.SemanticTransition do
     # Use to_existing_atom since transitions are predefined in routines
     case safe_to_atom(choice) do
       {:ok, transition_atom} ->
-        Logger.info("[SemanticTransition] Transition chosen: #{choice} (#{reason})")
+        Log.info(:engine, "[SemanticTransition] Transition chosen: #{choice} (#{reason})")
         result_message = "Transitioning to: #{choice}"
         {result_message, [workflow_transition: {transition_atom, reason}]}
 
       {:error, _} ->
-        Logger.warning("[SemanticTransition] Invalid transition: #{choice}")
+        Log.warning(:engine, "[SemanticTransition] Invalid transition: #{choice}")
         {"Invalid transition: #{choice}. Please choose from the available options.", []}
     end
   end

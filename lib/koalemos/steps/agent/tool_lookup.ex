@@ -30,6 +30,8 @@ defmodule Koalemos.Steps.Agent.ToolLookup do
 
   alias Koalemos.Utils.MessageBuilder
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Resolves tool calls to executable format.
@@ -63,7 +65,7 @@ defmodule Koalemos.Steps.Agent.ToolLookup do
             Enum.each(error_results, fn msg ->
               msg_id = get_in(msg, [:metadata, :id])
               source = get_in(msg, [:metadata, :source])
-              Logger.info("[ToolLookup] Appending error message id=#{msg_id}, source=#{source}")
+              Log.debug(:engine, "[ToolLookup] Appending error message id=#{msg_id}, source=#{source}")
             end)
 
             base_diff ++ [append_to: %{messages: error_results}]

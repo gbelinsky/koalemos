@@ -912,7 +912,7 @@ Captures complete state via PubSub coordination:
 **Plugin Architecture:** Providers implement `Koalemos.LLMProvider` behavior.
 
 **Available Providers:**
-- **Anthropic** (`llm_providers/anthropic.ex`) - Native format, API key + OAuth, progressive retry
+- **Anthropic** (`llm_providers/anthropic.ex`) - Native format, API key, progressive retry
 - **OpenAI** (`llm_providers/openai.ex`) - Message format conversion, system prompt handling
 - **Ollama** (`llm_providers/ollama.ex`) - Local server, OpenAI-compatible format
 
@@ -987,9 +987,8 @@ All caches are ETS-based GenServers with TTL and cleanup.
 - GenServer with file watching (future)
 
 **SimpleCredentialManager** (`lib/koalemos/simple_credential_manager.ex`):
-- OAuth token management for Anthropic
+- Token management for Anthropic
 - Token refresh, storage, retrieval
-- Used by API key providers as well
 
 **Format:**
 ```json

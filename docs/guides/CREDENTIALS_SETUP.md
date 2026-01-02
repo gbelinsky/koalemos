@@ -7,7 +7,7 @@
 ## Overview
 
 Koalemos supports three LLM providers:
-- **Anthropic Claude** (cloud API with API key or OAuth)
+- **Anthropic Claude** (cloud API with API key)
 - **OpenAI** (cloud API with API key)
 - **Ollama** (local models, free)
 
@@ -86,35 +86,6 @@ This guide walks you through setting up credentials for each provider.
    ```bash
    mix phx.server
    ```
-
-**OAuth Setup (Optional):**
-
-If you prefer OAuth authentication:
-
-1. **Get OAuth Credentials:**
-   - Contact Anthropic for OAuth access
-   - You'll receive: `client_id`, `client_secret`
-
-2. **Configure OAuth:**
-   ```json
-   {
-     "providers": {
-       "anthropic": {
-         "use_oauth": true,
-         "client_id": "your_client_id",
-         "client_secret": "your_client_secret",
-         "model": "claude-sonnet-4-5"
-       }
-     },
-     "selected_provider": "anthropic"
-   }
-   ```
-
-3. **First Run:**
-   - Start Koalemos: `mix phx.server`
-   - You'll be redirected to Anthropic for authorization
-   - After approval, tokens are saved automatically
-   - Tokens refresh automatically (no manual intervention needed)
 
 ---
 
@@ -411,17 +382,6 @@ mkdir -p .koalemos
 ls -la .koalemos/.credentials.json
 ```
 
-### OAuth Token Refresh Failures (Anthropic)
-
-**Symptoms:**
-- Works initially, then fails after ~1 hour
-- Error: "invalid_grant" or "token expired"
-
-**Solution:**
-- Tokens auto-refresh in background
-- If persistent issues, delete `.koalemos/.credentials.json` and re-authenticate
-- Check logs for refresh errors
-
 ---
 
 ## Security Best Practices
@@ -439,17 +399,6 @@ ls -la .koalemos/.credentials.json
 - ❌ Share API keys
 - ❌ Use production keys in development (create separate keys)
 - ❌ Store keys in plaintext outside `.koalemos/`
-
-### OAuth Tokens
-
-**DO:**
-- ✅ Store tokens in `.koalemos/.credentials.json` (ignored by Git)
-- ✅ Let system handle refresh automatically
-- ✅ Revoke OAuth access if device is compromised
-
-**DON'T:**
-- ❌ Commit token files to Git
-- ❌ Manually edit refresh tokens (they're managed automatically)
 
 ---
 

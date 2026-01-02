@@ -71,7 +71,6 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.StateStore do
 
   @impl true
   def init({routine_id, designed}) do
-    Logger.info("[StateStore] Starting for routine: #{routine_id}")
 
     state = %{
       routine_id: routine_id,

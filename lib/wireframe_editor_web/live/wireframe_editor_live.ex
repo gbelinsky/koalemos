@@ -17,6 +17,8 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   use WireframeEditorWeb, :live_view
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   alias Koalemos.{EngineManager, Engine}
   alias WireframeEditorWeb.Routines.{WireframeEditorRoutine, WireframeDesignRoutine}
@@ -80,7 +82,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
       # Check if routine already exists (reconnection case)
       case EngineManager.get_routine(routine_id) do
         {:ok, _pid} ->
-          Logger.info("[WireframeEditorLive] Reconnecting to existing routine #{routine_id}")
+          Log.debug(:wireframe, "[WireframeEditorLive] Reconnecting to existing routine #{routine_id}")
           Process.send_after(self(), :fetch_initial_state, 100)
 
           {:noreply,
@@ -95,7 +97,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
         {:error, :not_found} ->
           # New routine - show config modal
-          Logger.info("[WireframeEditorLive] New routine #{routine_id}, showing config modal")
+          Log.info(:wireframe, "[WireframeEditorLive] New routine #{routine_id}, showing config modal")
 
           {:noreply,
            assign(socket,
@@ -141,7 +143,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   @impl true
   def handle_event("save_wireframe", _params, socket) do
-    Logger.info("[WireframeEditorLive] Generating wireframe download")
+    Log.debug(:wireframe, "[WireframeEditorLive] Generating wireframe download")
 
     case socket.assigns[:routine_id] do
       nil ->
@@ -153,7 +155,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
         if designed do
           try do
             html = generate_wireframe_html(designed)
-            Logger.info("[WireframeEditorLive] Generated HTML, length: #{String.length(html)} chars")
+            Log.debug(:wireframe, "[WireframeEditorLive] Generated HTML, length: #{String.length(html)} chars")
             filename = "wireframe_#{routine_id}_#{DateTime.utc_now() |> DateTime.to_unix()}.html"
 
             {:noreply,
@@ -177,7 +179,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
   @impl true
   def handle_event("refresh_state", _params, socket) do
     routine_id = socket.assigns.routine_id
-    Logger.info("[WireframeEditorLive] Manual state refresh requested")
+    Log.debug(:wireframe, "[WireframeEditorLive] Manual state refresh requested")
 
     designed = WireframeStateServer.get_designed(routine_id)
     running = WireframeStateServer.get_running(routine_id)
@@ -203,7 +205,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   @impl true
   def handle_info({:config_complete, config}, socket) do
-    Logger.info("[WireframeEditorLive] Config complete: #{inspect(Map.delete(config, :uploaded_html))}")
+    Log.debug(:wireframe, "[WireframeEditorLive] Config complete: #{inspect(Map.delete(config, :uploaded_html))}")
 
     provider = Map.get(config, :provider)
     model = Map.get(config, :model)
@@ -238,7 +240,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
     case EngineManager.start_routine(routine_id, routine_module, user_context) do
       {:ok, _pid} ->
-        Logger.info("[WireframeEditorLive] Started routine #{routine_id} with #{inspect(routine_module)}")
+        Log.debug(:wireframe, "[WireframeEditorLive] Started routine #{routine_id} with #{inspect(routine_module)}")
         Process.send_after(self(), :fetch_initial_state, 500)
 
         {:noreply,
@@ -344,7 +346,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   @impl true
   def handle_info({:user_input_submitted, %{text: text, images: images} = data}, socket) do
-    Logger.info("[WireframeEditorLive] User input: #{String.slice(text, 0, 50)}...")
+    Log.debug(:wireframe, "[WireframeEditorLive] User input: #{String.slice(text, 0, 50)}...")
     include_screenshot = Map.get(data, :include_screenshot, false)
 
     Engine.send_external_event(socket.assigns.routine_id, :user_input, %{
@@ -358,14 +360,14 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   @impl true
   def handle_info({:new_messages, new_messages}, socket) do
-    Logger.debug("[WireframeEditorLive] Received #{length(new_messages)} new message(s)")
+    Log.debug(:wireframe, "[WireframeEditorLive] Received #{length(new_messages)} new message(s)")
     updated_messages = socket.assigns.messages ++ new_messages
     {:noreply, assign(socket, messages: updated_messages)}
   end
 
   @impl true
   def handle_info({:routine_event, %{event_type: "routine_completed"} = event}, socket) do
-    Logger.info("[WireframeEditorLive] Routine completed")
+    Log.debug(:wireframe, "[WireframeEditorLive] Routine completed")
     error = get_in(event, [:metadata, :final_context, :error])
     status = if error, do: :error, else: :completed
     {:noreply, assign(socket, status: status, last_error: error, current_step: nil)}
@@ -408,7 +410,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
 
   @impl true
   def handle_info(message, socket) do
-    Logger.debug("[WireframeEditorLive] Unhandled message: #{inspect(message)}")
+    Log.debug(:wireframe, "[WireframeEditorLive] Unhandled message: #{inspect(message)}")
     {:noreply, socket}
   end
 

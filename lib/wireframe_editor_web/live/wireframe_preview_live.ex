@@ -52,12 +52,14 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
 
   use WireframeEditorWeb, :live_view
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   alias WireframeEditorWeb.Servers.WireframeStateServer
 
   @impl true
   def mount(%{"routine_id" => routine_id}, _session, socket) do
-    Logger.info("[WireframePreview] Mounting for routine: #{routine_id}")
+    Log.debug(:wireframe, "[WireframePreview] Mounting for routine: #{routine_id}")
 
     if WireframeStateServer.exists?(routine_id) do
       designed = WireframeStateServer.get_designed(routine_id)
@@ -93,7 +95,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   @impl true
   def handle_event("preview_ready", _payload, socket) do
     routine_id = socket.assigns.routine_id
-    Logger.info("[WireframePreview] Preview ready for #{routine_id}, registering with StateServer")
+    Log.debug(:wireframe, "[WireframePreview] Preview ready for #{routine_id}, registering")
 
     # Register with StateServer - this enables direct communication
     WireframeStateServer.register_preview(routine_id, self())
@@ -106,7 +108,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
     # Find the pending capture request and reply
     case socket.assigns[:pending_capture] do
       {coordinator_pid, from} ->
-        Logger.debug("[WireframePreview] State captured, sending to coordinator")
+        Log.debug(:wireframe, "[WireframePreview] State captured, sending to coordinator")
 
         # Pass through payload with string keys converted to atoms
         # JS sends: dom_tree, variables, console_logs, viewport, scroll_position
@@ -128,7 +130,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   def handle_event("interaction_complete", result, socket) do
     case socket.assigns[:pending_interaction] do
       {coordinator_pid, from} ->
-        Logger.debug("[WireframePreview] Interaction complete, sending to coordinator")
+        Log.debug(:wireframe, "[WireframePreview] Interaction complete, sending to coordinator")
         send(coordinator_pid, {:interaction_complete, from, result})
         {:noreply, assign(socket, pending_interaction: nil)}
 
@@ -140,7 +142,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
 
   @impl true
   def handle_event("console_log", %{"log" => log}, socket) do
-    Logger.debug("[WireframePreview] Console: #{inspect(log)}")
+    Log.debug(:wireframe, "[WireframePreview] Console: #{inspect(log)}")
     {:noreply, socket}
   end
 
@@ -150,7 +152,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
 
   @impl true
   def handle_info({:capture_state, coordinator_pid, from}, socket) do
-    Logger.debug("[WireframePreview] Capture state request received")
+    Log.debug(:wireframe, "[WireframePreview] Capture state request received")
 
     socket =
       socket
@@ -162,7 +164,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
 
   @impl true
   def handle_info({:execute_interaction, coordinator_pid, from, args}, socket) do
-    Logger.debug("[WireframePreview] Execute interaction request: #{inspect(args)}")
+    Log.debug(:wireframe, "[WireframePreview] Execute interaction request: #{inspect(args)}")
 
     socket =
       socket
@@ -175,7 +177,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
   @impl true
   def handle_info(:reload_preview, socket) do
     routine_id = socket.assigns.routine_id
-    Logger.info("[WireframePreview] Reload request received for #{routine_id}")
+    Log.debug(:wireframe, "[WireframePreview] Reload request received for #{routine_id}")
 
     # Full HTTP redirect forces complete remount
     {:noreply, redirect(socket, to: "/wireframe-preview/#{routine_id}")}
@@ -183,7 +185,7 @@ defmodule WireframeEditorWeb.WireframePreviewLive do
 
   @impl true
   def handle_info(msg, socket) do
-    Logger.debug("[WireframePreview] Unhandled message: #{inspect(msg)}")
+    Log.debug(:wireframe, "[WireframePreview] Unhandled message: #{inspect(msg)}")
     {:noreply, socket}
   end
 

@@ -34,6 +34,8 @@ defmodule Koalemos.Steps.User.ChatUserInput do
 
   alias Koalemos.Utils.MessageBuilder
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Waits for a :user_input event from the UI.
@@ -69,12 +71,12 @@ defmodule Koalemos.Steps.User.ChatUserInput do
     case format_user_input(data, state.routine_id) do
       {:ok, formatted_message} ->
         msg_id = get_in(formatted_message, [:metadata, :id])
-        Logger.info("[ChatUserInput] User message formatted (id: #{msg_id}), appending")
+        Log.debug(:engine, "[ChatUserInput] User message formatted (id: #{msg_id}), appending")
 
         # Check if screenshot was requested (only for map input)
         diff =
           if is_map(data) and Map.get(data, :include_screenshot, false) do
-            Logger.info("[ChatUserInput] Screenshot requested, setting lens_state flag")
+            Log.debug(:engine, "[ChatUserInput] Screenshot requested, setting lens_state flag")
 
             # Merge into existing lens_state to preserve other keys
             existing_lens_state = state.context[:lens_state] || %{}

@@ -30,6 +30,8 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
   alias WireframeEditorWeb.Servers.WireframeStateServer
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @sample_files %{
     "simple" => "wireframe_simple.html",
@@ -264,13 +266,13 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
     routine_id = Map.get(context, :routine_id, "wireframe-v4-#{:erlang.unique_integer([:positive])}")
     html = Map.get(context, :wireframe_html)
 
-    Logger.info("[WireframeDesignRoutine] Setting up routine #{routine_id}")
+    Log.info(:wireframe, "[WireframeDesignRoutine] Setting up routine #{routine_id}")
 
     case parse_html_to_designed(html, routine_id) do
       {:ok, designed} ->
-        Logger.info("[WireframeDesignRoutine] HTML parsed successfully")
+        Log.debug(:wireframe, "[WireframeDesignRoutine] HTML parsed successfully")
         {:ok, _pid} = WireframeStateServer.start_link(routine_id: routine_id, designed: designed)
-        Logger.info("[WireframeDesignRoutine] StateServer started")
+        Log.debug(:wireframe, "[WireframeDesignRoutine] StateServer started")
         {:ok, [{:add_or_update, %{routine_id: routine_id}}]}
 
       {:error, reason} ->
@@ -279,7 +281,7 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
 
       nil ->
         # No HTML provided - start with minimal root element
-        Logger.info("[WireframeDesignRoutine] No HTML provided, starting with minimal root")
+        Log.info(:wireframe, "[WireframeDesignRoutine] No HTML provided, starting with minimal root")
         minimal_root = %{dom_tree: %{tag: "div", id: "root", children: []}}
         {:ok, _pid} = WireframeStateServer.start_link(routine_id: routine_id, designed: minimal_root)
         {:ok, [{:add_or_update, %{routine_id: routine_id}}]}

@@ -53,6 +53,8 @@ defmodule Koalemos.Engine.Orchestrator do
   alias Koalemos.Engine.{ContextManager, EventRecorder, StepUtils}
   require Logger
   require Koalemos.Engine.StepUtils
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @type state :: map()
   @type step_result :: {:ok, ContextManager.diff()} | {:error, String.t()}
@@ -92,6 +94,10 @@ defmodule Koalemos.Engine.Orchestrator do
   @spec execute_current_step(state()) :: state()
   def execute_current_step(state) do
     step_config = get_current_step_config(state)
+
+    Log.debug(:engine, fn ->
+      "[Engine] Executing step #{state.current_step} in #{state.current_routine_module}"
+    end)
 
     if step_config == nil do
       EventRecorder.record_event(state, "error_occurred", %{
@@ -452,6 +458,10 @@ defmodule Koalemos.Engine.Orchestrator do
         EventRecorder.record_event(state, "transition_taken", %{
           metadata: %{from: state.current_step, to: next_step}
         })
+
+        Log.debug(:engine, fn ->
+          "[Engine] Transition: #{state.current_step} -> #{next_step}"
+        end)
 
         updated_state = %{state | current_step: next_step}
 

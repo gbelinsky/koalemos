@@ -29,6 +29,8 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
   """
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Parse LLM response and extract assistant message and tool calls.
@@ -50,15 +52,15 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
             usage: usage
           )
 
-        Logger.debug(
+        Log.debug(:llm, fn ->
           "ResponseParsing: Assistant message built (id: #{get_in(assistant_message, [:metadata, :id])})"
-        )
+        end)
 
         # Log detailed content breakdown
         content_summary = summarize_content(content)
-        Logger.info("[ResponseParsing] Content summary: #{content_summary}")
+        Log.debug(:llm, "[ResponseParsing] Content summary: #{content_summary}")
 
-        # Log token usage for debugging
+        # Log token usage - keep visible for cost tracking
         if map_size(usage) > 0 do
           Logger.info(
             "Tokens - Input: #{Map.get(usage, "input_tokens", 0)}, Output: #{Map.get(usage, "output_tokens", 0)}"
@@ -70,9 +72,7 @@ defmodule Koalemos.Steps.Agent.ResponseParsing do
 
         if length(tool_calls) > 0 do
           tool_names = Enum.map(tool_calls, & &1.name) |> Enum.join(", ")
-          Logger.info("[ResponseParsing] Tool calls: #{length(tool_calls)} tools - #{tool_names}")
-        else
-          Logger.info("[ResponseParsing] No tool calls in response")
+          Log.debug(:llm, "[ResponseParsing] Tool calls: #{length(tool_calls)} tools - #{tool_names}")
         end
 
         # Build context diff using append_to for messages

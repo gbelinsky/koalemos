@@ -7,7 +7,7 @@ This guide explains how to create a new LLM provider plugin for Koalemos.
 Koalemos uses a plugin architecture for LLM providers. Each provider implements the `Koalemos.LLMProvider` behavior and handles provider-specific details like:
 
 - Message format conversion
-- Authentication (API keys, OAuth, etc.)
+- Authentication (API keys)
 - HTTP request construction
 - Response parsing
 - Error handling
@@ -128,7 +128,7 @@ The `credentials` map contains authentication info:
   provider: :your_provider,
   api_key: "sk-...",
   base_url: "https://api.yourprovider.com/v1",
-  auth_type: :api_key  # or :oauth
+  auth_type: :api_key
 }
 ```
 
@@ -362,7 +362,7 @@ Study these implementations as examples:
 
 - **Anthropic** (`lib/koalemos/llm_providers/anthropic.ex`) - Phase 6d-4
   - Native Anthropic format
-  - API key + OAuth authentication
+  - API key authentication
   - Progressive retry logic
 
 - **OpenAI** (`lib/koalemos/llm_providers/openai.ex`) - Phase 6d-5

@@ -11,6 +11,8 @@ defmodule Koalemos.Supervisor do
   """
   def children do
     [
+      # Log configuration - runtime-configurable logging domains
+      Koalemos.LogConfig,
       # Routine Registry - for looking up Engine processes by routine_id
       {Registry, keys: :unique, name: Koalemos.RoutineRegistry},
       # Task Supervisor - for supervised step execution

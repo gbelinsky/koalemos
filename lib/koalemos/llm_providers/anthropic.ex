@@ -40,6 +40,8 @@ defmodule Koalemos.LLMProviders.Anthropic do
   alias Koalemos.LLMProvider.Utils
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @default_model "claude-sonnet-4-5-20250929"
   @default_max_tokens 16384
@@ -60,7 +62,11 @@ defmodule Koalemos.LLMProviders.Anthropic do
   end
 
   defp do_call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
-    Logger.info("[Anthropic] Making request for routine #{routine_id}")
+    Log.debug(:llm, "[Anthropic] Making request for routine #{routine_id}")
+
+    Log.debug(:llm, fn ->
+      "[LLM] Request details - messages: #{length(messages)}, tools: #{length(tool_descriptions)}"
+    end)
 
     # Extract text and image contexts
     text_contexts = Map.get(lens_contexts, :text, [])
@@ -68,9 +74,7 @@ defmodule Koalemos.LLMProviders.Anthropic do
 
     # Debug: Log image context status
     if length(image_contexts) > 0 do
-      Logger.info("[Anthropic] Including #{length(image_contexts)} image(s) as user messages")
-    else
-      Logger.debug("[Anthropic] No image contexts to append")
+      Log.debug(:llm, "[Anthropic] Including #{length(image_contexts)} image(s)")
     end
 
     # Build system content with text contexts and step prompt
@@ -104,7 +108,7 @@ defmodule Koalemos.LLMProviders.Anthropic do
     max_tokens = config[:max_tokens] || @default_max_tokens
     temperature = config[:temperature] || @default_temperature
 
-    Logger.info("[Anthropic] Using model: #{model}")
+    Log.debug(:llm, "[Anthropic] Using model: #{model}")
 
     # Build request body
     json_body = %{
@@ -115,10 +119,15 @@ defmodule Koalemos.LLMProviders.Anthropic do
       messages: all_messages
     }
 
+    Log.debug(:llm, fn ->
+      system_size = system_content |> Enum.map(&byte_size(Map.get(&1, :text, ""))) |> Enum.sum()
+      "[LLM] System content: #{length(system_content)} blocks, ~#{system_size} bytes"
+    end)
+
     # Add tools if any are available
     json_body =
       if length(tool_descriptions) > 0 do
-        Logger.debug("[Anthropic] Including #{length(tool_descriptions)} tools")
+        Log.debug(:llm, "[Anthropic] Including #{length(tool_descriptions)} tools")
         Map.put(json_body, :tools, tool_descriptions)
       else
         json_body
@@ -149,7 +158,13 @@ defmodule Koalemos.LLMProviders.Anthropic do
              retry: false
            ) do
         {:ok, %{status: 200} = response} ->
-          Logger.info("[Anthropic] Request succeeded (attempt #{attempt})")
+          Log.debug(:llm, "[Anthropic] Request succeeded (attempt #{attempt})")
+
+          Log.debug(:llm, fn ->
+            usage = Map.get(response.body, "usage", %{})
+            "[LLM] Response - input: #{Map.get(usage, "input_tokens", "?")} tokens, output: #{Map.get(usage, "output_tokens", "?")} tokens"
+          end)
+
           {:ok, [{:add_or_update, %{llm_response: response.body}}]}
 
         {:ok, %{status: status} = _response}

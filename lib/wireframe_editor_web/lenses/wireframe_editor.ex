@@ -15,6 +15,8 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
   alias WireframeEditorWeb.Services.ScreenshotRenderer
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @default_timeout 10_000
 
@@ -33,13 +35,13 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
     timeout = config[:timeout] || @default_timeout
 
     # Log tool execution for debugging
-    Logger.info("[WireframeEditor] Tool: #{tool_name}, params: #{inspect(params, limit: 200)}")
+    Log.debug(:wireframe, "[WireframeEditor] Tool: #{tool_name}, params: #{inspect(params, limit: 200)}")
 
     designed = WireframeStateServer.get_designed(routine_id)
 
     case EditorCore.execute_tool(tool_name, params, designed) do
       {:ok, message, updates} ->
-        Logger.debug("[WireframeEditor] Tool #{tool_name} success: #{String.slice(message, 0, 100)}")
+        Log.debug(:wireframe, "[WireframeEditor] Tool #{tool_name} success: #{String.slice(message, 0, 100)}")
         if tool_name == :trigger_interaction do
           # Trigger interaction doesn't persist - execute via StateServer
           interaction_args = Map.get(updates, :_interaction_request, params)
@@ -66,15 +68,15 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
   end
 
   defp execute_interaction(routine_id, args, timeout) do
-    Logger.info("[WireframeEditor] Executing interaction: #{inspect(args)}")
+    Log.debug(:wireframe, "[WireframeEditor] Executing interaction: #{inspect(args)}")
 
     case WireframeStateServer.execute_interaction(routine_id, args, timeout) do
       {:ok, result} ->
-        Logger.info("[WireframeEditor] Interaction complete: #{inspect(result)}")
+        Log.debug(:wireframe, "[WireframeEditor] Interaction complete: #{inspect(result)}")
         result
 
       {:error, reason} ->
-        Logger.warning("[WireframeEditor] Interaction failed: #{inspect(reason)}")
+        Log.warning(:wireframe, "[WireframeEditor] Interaction failed: #{inspect(reason)}")
         %{"success" => false, "error" => inspect(reason)}
     end
   end
@@ -97,16 +99,12 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
         screenshot = capture_screenshot(routine_id, designed, running)
         WireframeStateServer.update_screenshot(routine_id, screenshot)
 
-        # DEBUG: Log context structure
-        context_blocks = EditorCore.build_context(designed, running, screenshot)
-        block_types = Enum.map(context_blocks, & &1[:type])
-        has_image = Enum.member?(block_types, "image")
-        Logger.info("[WireframeEditor] Context blocks: #{inspect(block_types)}, has_image: #{has_image}")
-
-        context_blocks
+        # Build context blocks (logged centrally by LensRendering step)
+        EditorCore.build_context(designed, running, screenshot)
 
       {:error, _reason} ->
         # Graceful degradation - provide context without running state
+        Log.warning(:context, "[Context] Capture failed, building context without running state")
         EditorCore.build_context(designed, nil, nil)
     end
   end
@@ -116,11 +114,11 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
 
     case ScreenshotRenderer.capture_from_lens_state(lens_state, use_live_dom: true, routine_id: routine_id) do
       {:ok, base64} ->
-        Logger.debug("[WireframeEditor] Screenshot captured")
+        Log.debug(:wireframe, "[WireframeEditor] Screenshot captured")
         base64
 
       {:error, reason} ->
-        Logger.warning("[WireframeEditor] Screenshot failed: #{inspect(reason)}")
+        Log.warning(:wireframe, "[WireframeEditor] Screenshot failed: #{inspect(reason)}")
         nil
     end
   end

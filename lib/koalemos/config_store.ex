@@ -86,7 +86,6 @@ defmodule Koalemos.ConfigStore do
            json <- Jason.encode!(config_with_timestamp, pretty: true),
            :ok <- File.write(path, json),
            :ok <- File.chmod(path, 0o644) do
-        Logger.info("[ConfigStore] Saved configuration to #{path}")
         {:ok, path}
       else
         error ->

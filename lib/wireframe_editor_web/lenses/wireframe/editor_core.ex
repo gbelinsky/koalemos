@@ -23,6 +23,10 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   - screenshot: Base64 encoded image
   """
 
+  require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
+
   # ============================================================================
   # Tool: modify_classes
   # ============================================================================
@@ -445,9 +449,19 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   - Optional image block with screenshot
   """
   def build_context(designed, running, screenshot) do
+    designed_section = build_designed_section(designed)
+    running_section = build_running_section(running)
+
+    Log.debug(:context, fn ->
+      designed_size = byte_size(designed_section || "")
+      running_size = byte_size(running_section || "")
+      has_screenshot = screenshot && byte_size(screenshot) > 0
+      "[Context] EditorCore - designed: #{designed_size} bytes, running: #{running_size} bytes, screenshot: #{has_screenshot}"
+    end)
+
     context_parts = [
-      build_designed_section(designed),
-      build_running_section(running),
+      designed_section,
+      running_section,
       # build_tools_guide()
     ]
 
@@ -457,6 +471,9 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
 
     # Add screenshot if available
     if screenshot && byte_size(screenshot) > 0 do
+      Log.debug(:context, fn ->
+        "[Context] EditorCore - screenshot size: #{byte_size(screenshot)} bytes"
+      end)
       blocks ++ [build_screenshot_block(screenshot)]
     else
       blocks
@@ -560,6 +577,18 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
     variables = Map.get(running, :variables, %{})
     console_logs = Map.get(running, :console_logs, [])
 
+    Log.debug(:context, fn ->
+      "[Context] Running state - dom: #{if dom_tree, do: "present", else: "nil"}, " <>
+        "variables: #{map_size(variables)}, console_logs: #{length(console_logs)}"
+    end)
+
+    if length(console_logs) > 0 do
+      Log.debug(:context, fn ->
+        preview = console_logs |> Enum.take(3) |> inspect(limit: 200)
+        "[Context] Console logs sample: #{preview}"
+      end)
+    end
+
     if is_nil(dom_tree) do
       nil
     else
@@ -605,14 +634,15 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
 
   defp format_dom_tree(element, indent) when is_map(element) do
     prefix = String.duplicate("  ", indent)
-    id = Map.get(element, :id, "?")
-    tag = Map.get(element, :tag, "?")
-    classes = Map.get(element, :classes, [])
-    content = Map.get(element, :content)
-    children = Map.get(element, :children, [])
+    # Handle both atom and string keys (designed state uses atoms, running state uses strings from JS)
+    id = Map.get(element, :id) || Map.get(element, "id", "?")
+    tag = Map.get(element, :tag) || Map.get(element, "tag", "?")
+    classes = Map.get(element, :classes) || Map.get(element, "classes", [])
+    content = Map.get(element, :content) || Map.get(element, "content")
+    children = Map.get(element, :children) || Map.get(element, "children", [])
 
     class_str = if classes != [], do: ".#{Enum.join(classes, ".")}", else: ""
-    content_str = if content, do: " \"#{truncate(content, 30)}\"", else: ""
+    content_str = if content && content != "", do: " \"#{content}\"", else: ""
 
     line = "#{prefix}<#{tag}##{id}#{class_str}>#{content_str}"
 
@@ -628,21 +658,27 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
 
   defp format_handlers(handlers) do
     Enum.map_join(handlers, "\n", fn {element_id, events} ->
-      event_list = Map.keys(events) |> Enum.join(", ")
-      "  #{element_id}: #{event_list}"
+      event_lines = Enum.map_join(events, "\n", fn {event_name, handler_info} ->
+        # Handle both atom and string keys
+        body = Map.get(handler_info, "body") || Map.get(handler_info, :body, "")
+        params = Map.get(handler_info, "params") || Map.get(handler_info, :params, [])
+        params_str = if params == [], do: "", else: "(#{Enum.join(params, ", ")})"
+        "    #{event_name}#{params_str}: #{body}"
+      end)
+      "  #{element_id}:\n#{event_lines}"
     end)
   end
 
   defp format_init_scripts(scripts) do
     Enum.map_join(scripts, "\n", fn {name, code} ->
-      "  #{name}: #{truncate(code, 50)}"
+      "  #{name}: #{code}"
     end)
   end
 
   defp format_css(css) do
     Enum.map_join(css, "\n", fn {selector, rules} ->
       rules_str = css_rules_to_string(rules)
-      "  #{selector} { #{truncate(rules_str, 40)} }"
+      "  #{selector} { #{rules_str} }"
     end)
   end
 
@@ -665,8 +701,8 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
   defp css_value_to_string(val), do: inspect(val)
 
   defp format_functions(functions) do
-    Enum.map_join(functions, "\n", fn {name, _code} ->
-      "  #{name}()"
+    Enum.map_join(functions, "\n", fn {name, code} ->
+      "  #{name}: #{code}"
     end)
   end
 
@@ -683,19 +719,10 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
       # Handle both atom and string keys (JS sends string keys)
       level = Map.get(log, :level) || Map.get(log, "level", "log")
       message = Map.get(log, :message) || Map.get(log, "message", "")
-      "  [#{level}] #{truncate(message, 60)}"
+      "  [#{level}] #{message}"
     end)
   end
 
-  defp truncate(str, max_len) when is_binary(str) do
-    if String.length(str) > max_len do
-      String.slice(str, 0, max_len) <> "..."
-    else
-      str
-    end
-  end
-
-  defp truncate(other, _max_len), do: inspect(other)
 
   # ============================================================================
   # Private: modify_elements helpers

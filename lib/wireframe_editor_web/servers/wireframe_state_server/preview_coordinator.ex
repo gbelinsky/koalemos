@@ -27,6 +27,8 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
 
   use GenServer
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   alias WireframeEditorWeb.Servers.WireframeStateServer.StateStore
 
@@ -93,7 +95,6 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
 
   @impl true
   def init(routine_id) do
-    Logger.info("[PreviewCoordinator] Starting for routine: #{routine_id}")
 
     state = %{
       routine_id: routine_id,
@@ -107,7 +108,7 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
 
   @impl true
   def handle_call({:register_preview, preview_pid}, _from, state) do
-    Logger.info("[PreviewCoordinator] Registering preview: #{inspect(preview_pid)}")
+    Log.debug(:wireframe, "[PreviewCoordinator] Registering preview: #{inspect(preview_pid)}")
 
     # Clean up old monitor if exists
     if state.preview_ref do
@@ -140,7 +141,7 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
   @impl true
   def handle_call(:reload_preview, _from, state) do
     if state.preview_pid do
-      Logger.info("[PreviewCoordinator] Sending reload to preview")
+      Log.debug(:wireframe, "[PreviewCoordinator] Sending reload to preview")
       send(state.preview_pid, :reload_preview)
     else
       Logger.warning("[PreviewCoordinator] No preview to reload")
@@ -157,7 +158,7 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
   # Handle responses from PreviewLive
   @impl true
   def handle_info({:state_captured, from, payload}, state) do
-    Logger.debug("[PreviewCoordinator] State captured, replying to #{inspect(from)}")
+    Log.debug(:wireframe, "[PreviewCoordinator] State captured, replying to #{inspect(from)}")
 
     # Store running state
     StateStore.update_running(state.routine_id, payload)
@@ -170,7 +171,7 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
 
   @impl true
   def handle_info({:interaction_complete, from, result}, state) do
-    Logger.debug("[PreviewCoordinator] Interaction complete, replying to #{inspect(from)}")
+    Log.debug(:wireframe, "[PreviewCoordinator] Interaction complete, replying to #{inspect(from)}")
 
     GenServer.reply(from, {:ok, result})
 
@@ -180,7 +181,7 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
   # Handle preview death
   @impl true
   def handle_info({:DOWN, ref, :process, pid, reason}, %{preview_ref: ref} = state) do
-    Logger.info("[PreviewCoordinator] Preview died: #{inspect(pid)}, reason: #{inspect(reason)}")
+    Log.debug(:wireframe, "[PreviewCoordinator] Preview died: #{inspect(pid)}, reason: #{inspect(reason)}")
 
     # Fail all pending requests
     state = fail_pending(state, {:error, :preview_died})
@@ -190,7 +191,7 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
 
   @impl true
   def handle_info(msg, state) do
-    Logger.debug("[PreviewCoordinator] Unhandled message: #{inspect(msg)}")
+    Log.debug(:wireframe, "[PreviewCoordinator] Unhandled message: #{inspect(msg)}")
     {:noreply, state}
   end
 
@@ -210,7 +211,7 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
   end
 
   defp enqueue_or_process(request, %{preview_pid: nil} = state) do
-    Logger.debug("[PreviewCoordinator] No preview, queuing request")
+    Log.debug(:wireframe, "[PreviewCoordinator] No preview, queuing request")
     %{state | pending: :queue.in(request, state.pending)}
   end
 
@@ -220,12 +221,12 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.PreviewCoordinator do
   end
 
   defp process_request({:capture_state, from, _timeout}, state) do
-    Logger.debug("[PreviewCoordinator] Sending capture_state to preview")
+    Log.debug(:wireframe, "[PreviewCoordinator] Sending capture_state to preview")
     send(state.preview_pid, {:capture_state, self(), from})
   end
 
   defp process_request({:execute_interaction, from, args, _timeout}, state) do
-    Logger.debug("[PreviewCoordinator] Sending execute_interaction to preview")
+    Log.debug(:wireframe, "[PreviewCoordinator] Sending execute_interaction to preview")
     send(state.preview_pid, {:execute_interaction, self(), from, args})
   end
 

@@ -135,9 +135,6 @@ defmodule WireframeEditorWeb.StatusBar do
   defp build_breadcrumb(nil, [], step), do: to_string(step)
 
   defp build_breadcrumb(module, execution_stack, step) when is_atom(module) or is_binary(module) do
-    require Logger
-    Logger.debug("[StatusBar] build_breadcrumb: module=#{inspect(module)}, execution_stack=#{inspect(execution_stack)}, step=#{inspect(step)}")
-
     # Start with the main routine name (simplified)
     routine_name = extract_routine_name(module)
 
@@ -160,9 +157,7 @@ defmodule WireframeEditorWeb.StatusBar do
       [routine_name | stack_path] ++
         if step, do: [to_string(step)], else: []
 
-    result = Enum.join(all_parts, " → ")
-    Logger.debug("[StatusBar] build_breadcrumb result: #{result}")
-    result
+    Enum.join(all_parts, " → ")
   end
 
   defp build_breadcrumb(module, _stack, step) do

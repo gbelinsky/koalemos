@@ -60,7 +60,6 @@ defmodule Koalemos.SimpleCredentialManager do
       file_path ->
         case load_oauth_file(file_path) do
           {:ok, credentials} ->
-            Logger.info("Auto-loaded OAuth credentials from #{file_path}")
             {:ok, %{state | credentials: credentials, file_path: file_path}}
 
           {:error, reason} ->
@@ -117,10 +116,7 @@ defmodule Koalemos.SimpleCredentialManager do
       if state.file_path do
         case load_oauth_file(state.file_path) do
           {:ok, disk_creds} ->
-            Logger.debug(
-              "[Credential Refresh] Reloaded from disk, refresh_token: #{String.slice(disk_creds.refresh_token, 0..15)}..."
-            )
-
+            Logger.debug("[Credential Refresh] Reloaded credentials from disk")
             disk_creds
 
           {:error, reason} ->
@@ -137,9 +133,7 @@ defmodule Koalemos.SimpleCredentialManager do
 
     case refresh_token(credentials_to_use) do
       {:ok, new_credentials} ->
-        Logger.info(
-          "[Credential Refresh] Successfully refreshed token, new refresh_token: #{String.slice(new_credentials.refresh_token, 0..15)}..."
-        )
+        Logger.info("[Credential Refresh] Successfully refreshed token")
 
         # Save to file
         case save_credentials_to_file(new_credentials, state.file_path) do

@@ -98,7 +98,7 @@ GenServer-based execution engine that:
 ### Core Platform Features
 
 **Multi-Provider Support:**
-- Anthropic Claude (API key + OAuth)
+- Anthropic Claude (API key)
 - OpenAI (API key)
 - Ollama (local models)
 
