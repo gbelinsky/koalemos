@@ -9,6 +9,7 @@ defmodule Koalemos.LogConfig do
 
   - `:llm` - LLM provider requests and responses
   - `:context` - Context building in provide_context
+  - `:prompts` - Complete system prompts sent to LLM
   - `:engine` - Engine orchestration and step execution
   - `:wireframe` - Wireframe editor operations
   - `:lens` - Lens tool execution

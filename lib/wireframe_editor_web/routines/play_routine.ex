@@ -43,34 +43,15 @@ defmodule WireframeEditorWeb.Routines.PlayRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          You're in INTERACTIVE PLAY MODE - a tight loop for playing games or testing features.
+          You're in PLAY MODE - interact with the wireframe and respond to the user.
 
-          Respond to the user's request and interact with the wireframe:
-          - Play games implemented in the wireframe
-          - Test interactive features using trigger_interaction
-          - Explore functionality and show results
-          - Use sequential_thinking to plan your interactions
+          Use trigger_interaction to click buttons, fill inputs, submit forms, or run JavaScript.
+          Check LIVE DOM STATE in context to see results.
 
-          AVAILABLE TOOLS:
-          - trigger_interaction: Test clicks, form inputs, etc.
-          - read_dom: Check current state
-          - capture_screenshot: Show visual state
-          - sequential_thinking: Plan and explain your actions
-
-          AFTER RESPONDING - DECIDE NEXT STEP:
-          Watch for signs the user wants to exit:
-          - "let's change..." / "modify..." / "update..."
-          - "go back" / "done playing" / "stop"
-          - Requests that require editing the wireframe
-          - The game being over
-
-          If user wants to exit or make changes:
-          → use choose_transition to exit play mode and return to parent routine
-
-          If continuing to play:
-          → just finish your turn normally
-
-          You are in a LOOP - after responding, decide whether to continue or exit.
+          Exit play mode (use choose_transition) when:
+          - User wants to make changes to the wireframe
+          - User says "done", "stop", "go back"
+          - Game is over
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",

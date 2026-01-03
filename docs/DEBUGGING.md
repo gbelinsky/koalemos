@@ -12,6 +12,7 @@ Koalemos uses domain-based logging that can be enabled/disabled at runtime witho
 |--------|-------------|-------------|
 | `:llm` | LLM provider requests and responses | anthropic.ex, openai.ex, ollama.ex |
 | `:context` | Context building in provide_context | wireframe_editor.ex, editor_core.ex |
+| `:prompts` | Complete system prompts sent to LLM | anthropic.ex, openai.ex, ollama.ex |
 | `:engine` | Engine orchestration and step execution | orchestrator.ex, engine.ex |
 | `:wireframe` | Wireframe editor operations | wireframe_editor.ex, state_server.ex |
 | `:lens` | Lens tool execution | sequential_thinking.ex, semantic_transition.ex |
@@ -86,6 +87,45 @@ This shows:
 - Request details (message count, tool count)
 - System content size and block count
 - Input/output token usage from response
+
+### Debugging Prompts
+
+When you need to see the complete prompts being sent to the LLM:
+
+```elixir
+Koalemos.LogConfig.enable(:prompts)
+```
+
+This shows the **full prompts** (not truncated):
+- Complete system content (all blocks from lenses + step prompt)
+- Message history summary (role + content preview)
+- Available tools list
+
+Example output:
+```
+[info] [Prompt] System content (3 blocks):
+You are Claude Code, Anthropic's official CLI for Claude.
+
+---
+
+WIREFRAME EDITOR CONTEXT
+...full context here...
+
+---
+
+Make the specific change requested. Be precise and focused.
+
+[info] [Prompt] Messages (2):
+  user: Build me a todo app
+  assistant: I'll help you build a todo app...
+
+[info] [Prompt] Tools (5):
+  - modify_elements
+  - manage_handlers
+  - manage_css
+  - trigger_interaction
+  - think
+```
 
 ### Debugging Engine Flow
 

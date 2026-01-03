@@ -27,19 +27,13 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
 
   def routine_definition do
     %{
-      # Stage 1: Planning (no tools, just text response)
+      # Stage 1: Planning
       planning: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Based on the user's request, write a brief plan for the wireframe.
-
-          Include:
-          - Components needed
-          - Basic structure
-          - Any interactions required
-
-          Just respond with your plan in plain text.
+          Plan the wireframe: list components, structure, and interactions needed.
+          Respond with your plan in plain text.
           """,
           lenses: [
             ["WireframeEditorWeb.Lenses.WireframeEditor", %{readonly: true}],
@@ -54,24 +48,18 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Build the HTML structure and layout.
+          Build the HTML structure and layout CSS.
 
-          What the user wants to build (check recent conversation messages)
+          Use modify_elements for:
+          - Containers, sections, headers, footers
+          - Form elements, buttons, inputs
+          - Content elements with placeholder text
 
-          Use modify_elements to create the complete HTML structure:
-          - Main containers with appropriate IDs
-          - Form elements, buttons, inputs (if needed)
-          - Structural elements (header, main, footer, sections, etc.)
-          - Content elements (headings, paragraphs, labels, placeholders)
+          Use manage_css for layout:
+          - Flexbox/grid positioning
+          - Spacing and sizing
 
-          Use manage_css to create the layout (you can call tools in parallel):
-          - Layout CSS (flexbox, grid, positioning)
-          - Spacing (margins, padding)
-          - Container sizing and alignment
-          - Basic structural CSS to make the layout work
-
-          Build the full structure with all content and layout CSS.
-          Focus on making the layout functional - no visual polish or behavior yet.
+          Focus on structure and layout only - no behavior or visual polish yet.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -86,19 +74,13 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Add interactive behavior using handlers and JavaScript.
+          Add interactive behavior.
 
-          What the user wants to build (check recent conversation messages)
+          Use manage_handlers for click/submit/input events.
+          Use manage_functions for reusable JavaScript.
+          Use manage_variables for state tracking.
 
-          Add interactivity:
-          - Event handlers for buttons (onclick, etc.)
-          - Form submission handlers
-          - Input validation or dynamic behavior
-          - Custom JavaScript functions if needed
-          - Variables to track state if needed
-
-          Use manage_handlers, manage_functions, and manage_variables.
-          Make the wireframe interactive and functional.
+          Make the wireframe functional.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -113,28 +95,15 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Test the wireframe functionality using trigger_interaction.
+          Verify the wireframe works using trigger_interaction.
 
-          TESTING APPROACH - Keep it focused and efficient:
-          - Test each interactive element ONCE to verify it works
-          - One successful verification per element is sufficient
-          - Don't retry or re-test elements that already responded correctly
-          - Move on immediately after basic verification
+          Test each interactive element once:
+          - Click buttons to verify handlers fire
+          - Fill and submit forms if present
+          - Check LIVE DOM STATE to confirm changes
 
-          What to test:
-          - Click primary buttons to verify click handlers work
-          - If there's a form: fill in ONE field and submit ONCE
-          - Test one example of each interaction type (click, submit, etc.)
-          - Verify JavaScript handlers execute (check LIVE DOM STATE for changes)
-
-          COMPLETION CRITERIA:
-          - Each interactive element tested once → Done
-          - Basic functionality verified → Move to polish stage
-          - Don't aim for exhaustive testing - one verification per element is enough
-
-          Use trigger_interaction to test (changes are ephemeral).
-          Check the LIVE DOM STATE in context to see what happened.
-          Document what works, then MOVE ON to polish stage.
+          If something doesn't work, fix it with the appropriate tool, then retest.
+          When core functionality works, move on.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -149,22 +118,14 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Add visual polish and styling to the wireframe.
+          Add visual styling with manage_css.
 
-          What the user wants to build (check recent conversation messages)
+          Apply:
+          - Colors and backgrounds
+          - Typography (sizes, weights)
+          - Borders, shadows, hover states
 
-          Apply CSS rules using manage_css for visual appeal:
-          - Colors and backgrounds (use good contrast ratios)
-          - Typography (font sizes 14-16px body, weights, line height 1.5)
-          - Borders, shadows, and visual effects
-          - Button and form styling (colors, hover states)
-          - Visual refinements and professional appearance
-
-          The layout CSS is already done - focus on making it look good.
-
-          IMPORTANT: Apply CSS rules once based on good design principles.
-          Do NOT check screenshots to verify - screenshots are not pixel-perfect.
-          Trust your CSS choices and move on.
+          Layout is done - focus on visual appeal.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",

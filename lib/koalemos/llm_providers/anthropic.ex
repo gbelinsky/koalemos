@@ -81,6 +81,14 @@ defmodule Koalemos.LLMProviders.Anthropic do
     step_prompt = Map.get(lens_contexts, :step_prompt)
     system_content = build_system_content(text_contexts, step_prompt)
 
+    # Log complete system prompt when :prompts domain enabled
+    Log.info(:prompts, fn ->
+      prompt_text = system_content
+        |> Enum.map(fn %{text: text} -> text end)
+        |> Enum.join("\n\n---\n\n")
+      "[Prompt] System content (#{length(system_content)} blocks):\n#{prompt_text}"
+    end)
+
     # Prepare messages using common utilities
     filtered_messages =
       messages
@@ -102,6 +110,24 @@ defmodule Koalemos.LLMProviders.Anthropic do
       end)
 
     all_messages = filtered_messages ++ image_messages
+
+    # Log messages when :prompts domain enabled
+    Log.info(:prompts, fn ->
+      msg_summary = Enum.map(all_messages, fn msg ->
+        role = msg[:role] || msg["role"]
+        content = msg[:content] || msg["content"]
+        content_preview = case content do
+          text when is_binary(text) ->
+            if String.length(text) > 200, do: String.slice(text, 0, 200) <> "...", else: text
+          blocks when is_list(blocks) ->
+            "[#{length(blocks)} content blocks]"
+          _ ->
+            inspect(content, limit: 100)
+        end
+        "  #{role}: #{content_preview}"
+      end)
+      "[Prompt] Messages (#{length(all_messages)}):\n#{Enum.join(msg_summary, "\n")}"
+    end)
 
     # Get model parameters from config with defaults
     model = config[:model] || @default_model
@@ -128,6 +154,15 @@ defmodule Koalemos.LLMProviders.Anthropic do
     json_body =
       if length(tool_descriptions) > 0 do
         Log.debug(:llm, "[Anthropic] Including #{length(tool_descriptions)} tools")
+
+        # Log tool names when :prompts domain enabled
+        Log.info(:prompts, fn ->
+          tool_names = Enum.map(tool_descriptions, fn tool ->
+            "  - #{tool[:name] || tool["name"]}"
+          end)
+          "[Prompt] Tools (#{length(tool_descriptions)}):\n#{Enum.join(tool_names, "\n")}"
+        end)
+
         Map.put(json_body, :tools, tool_descriptions)
       else
         json_body

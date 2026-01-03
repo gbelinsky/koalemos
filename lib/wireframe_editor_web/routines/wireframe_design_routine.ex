@@ -57,12 +57,8 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Analyze the user's request and choose the most appropriate action.
-
-          Consider what the user wants to accomplish and route accordingly.
-
-          NOTE: If the user just wants an answer or information without any tool use,
-          you can answer directly here and transition to start for the next input.
+          Analyze the user's request and choose the appropriate action.
+          For simple questions, answer directly and transition to start.
           """,
           lenses: [
             ["WireframeEditorWeb.Lenses.WireframeEditor", %{readonly: true}],
@@ -70,32 +66,25 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
           ]
         },
         transitions: [
-          {:interact_wireframe, "Interact with, inspect, or test the wireframe using tools"},
-          {:play, "Enter interactive play mode for games or conversational testing"},
-          {:debug, "Debug and troubleshoot wireframe issues"},
-          {:targeted_change, "Make a specific, focused modification to the wireframe"},
-          {:build_from_scratch, "Create a new wireframe structure from description"},
-          {:modify_existing, "Make broader changes to existing wireframe structure"},
-          {:ask_clarification, "Ask user for more information or clarification"},
-          {:show_current_state, "Show screenshot and explain current wireframe state"},
+          {:interact_wireframe, "Test or explore the wireframe"},
+          {:play, "Play games or interactive testing"},
+          {:debug, "Debug and fix issues"},
+          {:targeted_change, "Make a specific modification"},
+          {:build_from_scratch, "Create new wireframe from scratch"},
+          {:modify_existing, "Make broader structural changes"},
+          {:ask_clarification, "Need more information"},
+          {:show_current_state, "Explain current state"},
           {:start, :always}
         ]
       },
 
-      # Interact with wireframe - full tool access
+      # Interact with wireframe
       interact_wireframe: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Interact with and explore the wireframe using tools.
-
-          You have full access to wireframe tools for:
-          - Testing interactions with trigger_interaction
-          - Inspecting the current state
-          - Making small exploratory changes if helpful
-          - Answering questions that require tool use
-
-          Focus on interaction and exploration rather than major modifications.
+          Explore and test the wireframe.
+          Use trigger_interaction to test, check LIVE DOM STATE for results.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -112,22 +101,12 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
         transitions: [{:show_result, :always}]
       },
 
-      # Debug - investigate and fix issues
+      # Debug issues
       debug: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Help debug the wireframe issue the user is experiencing.
-
-          Use a systematic debugging approach:
-          1. Understand the problem
-          2. Inspect relevant code/state
-          3. Test to reproduce the issue
-          4. Identify the root cause
-          5. Apply fixes
-          6. Verify the fix works
-
-          Use sequential_thinking to explain your debugging process.
+          Debug the issue: understand the problem, inspect state, test to reproduce, fix, verify.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -137,15 +116,12 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
         transitions: [{:show_result, :always}]
       },
 
-      # Targeted change - focused modifications
+      # Targeted change
       targeted_change: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Make the specific change requested by the user.
-
-          Use the wireframe editing tools to make focused, precise changes.
-          When done, use sequential_thinking to explain what you changed and why.
+          Make the specific change requested. Be precise and focused.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -162,15 +138,13 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
         transitions: [{:show_result, :always}]
       },
 
-      # Modify existing - broader changes
+      # Modify existing
       modify_existing: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Make broader modifications to the existing wireframe.
-
-          You may need to make multiple related changes. Use sequential_thinking to plan
-          your approach and explain your changes as you go.
+          Make broader changes to the wireframe structure.
+          Plan your approach for multiple related changes.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -180,15 +154,12 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
         transitions: [{:show_result, :always}]
       },
 
-      # Ask clarification - readonly context
+      # Ask clarification
       ask_clarification: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          The user's request is ambiguous or needs more details.
-
-          Ask specific questions to understand what they want.
-          Be helpful and suggest options if appropriate.
+          The request is unclear. Ask specific questions to understand what the user wants.
           """,
           lenses: [
             ["WireframeEditorWeb.Lenses.WireframeEditor", %{readonly: true}],
@@ -198,14 +169,12 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
         transitions: [{:start, :always}]
       },
 
-      # Show current state - readonly context
+      # Show current state
       show_current_state: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Show and explain the current state of the wireframe.
-
-          Explain what's currently implemented and what the user can do with it.
+          Explain the current wireframe state and what the user can do with it.
           """,
           lenses: [
             ["WireframeEditorWeb.Lenses.WireframeEditor", %{readonly: true}],
@@ -215,15 +184,12 @@ defmodule WireframeEditorWeb.Routines.WireframeDesignRoutine do
         transitions: [{:start, :always}]
       },
 
-      # Show result - summarize changes
+      # Show result
       show_result: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Summarize the changes you just made.
-
-          Review the current wireframe state and explain what changed.
-          Be concise and clear about what you accomplished.
+          Briefly summarize what you changed.
           """,
           lenses: [
             ["WireframeEditorWeb.Lenses.WireframeEditor", %{readonly: true}],
