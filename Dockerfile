@@ -48,6 +48,8 @@ RUN mkdir config
 # to ensure any relevant config change will trigger the dependencies
 # to be re-compiled.
 COPY config/config.exs config/${MIX_ENV}.exs config/
+COPY config/koalemos_core.exs config/koalemos_core.${MIX_ENV}.exs config/
+COPY config/wireframe_editor_web.exs config/wireframe_editor_web.${MIX_ENV}.exs config/
 RUN mix deps.compile
 
 COPY priv priv
