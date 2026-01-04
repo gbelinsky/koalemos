@@ -1,8 +1,5 @@
 # Semantic Routing Guide
 
-**Last Updated:** November 12, 2025
-**Milestone:** M5 Sprint 1
-
 ---
 
 ## What is Semantic Routing?
@@ -680,7 +677,5 @@ See these files for working examples:
 
 ## Further Reading
 
-- **M5 Milestone Doc:** `docs/milestones/M5.md` - Architecture overview
-- **Sprint 1 Plan:** `docs/sprints/m5-sprint-1-plan.md` - Implementation details
 - **Execution Engine:** `docs/ARCHITECTURE.md` - How routines and steps work
 - **Lens Development:** `docs/guides/LENS_DEVELOPMENT.md` - Creating lenses
