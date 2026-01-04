@@ -332,17 +332,17 @@ docker run -p 4000:4000 \
 ### Security
 
 **DO:**
-- ✅ Use environment variables for secrets
-- ✅ Set `SECRET_KEY_BASE` explicitly (generate with `mix phx.gen.secret`)
-- ✅ Use HTTPS/SSL termination (via reverse proxy)
-- ✅ Set resource limits
-- ✅ Use non-root user (already configured in Dockerfile)
+- Use environment variables for secrets
+- Set `SECRET_KEY_BASE` explicitly (generate with `mix phx.gen.secret`)
+- Use HTTPS/SSL termination (via reverse proxy)
+- Set resource limits
+- Use non-root user (already configured in Dockerfile)
 
 **DON'T:**
-- ❌ Commit `.env` to version control
-- ❌ Use default/empty `SECRET_KEY_BASE`
-- ❌ Expose container directly to internet without reverse proxy
-- ❌ Use `--privileged` mode
+- Commit `.env` to version control
+- Use default/empty `SECRET_KEY_BASE`
+- Expose container directly to internet without reverse proxy
+- Use `--privileged` mode
 
 ### Resource Limits
 

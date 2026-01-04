@@ -7,9 +7,9 @@
 
 ## Overview
 
-Koalemos is a conversational AI platform built on Phoenix LiveView and a custom execution engine. While the current application focus is wireframe design, the architecture is designed as a **developer framework** for building any conversational AI application with complex workflows, tool execution, and stateful interactions.
+Koalemos is a conversational AI platform built on Phoenix LiveView and a custom execution engine. While the current application focus is wireframe design, the architecture is designed as a **developer framework** for building any conversational AI application with complex conversations, tool execution, and stateful interactions.
 
-**Key Philosophy:** Koalemos is not just an application – it's a framework for building AI-powered applications with sophisticated conversation flows, pluggable capabilities (lenses), and reusable workflows (routines).
+**Key Philosophy:** Koalemos is a framework for building AI-powered applications with sophisticated conversation flows, pluggable capabilities (lenses), and reusable routines.
 
 ---
 
@@ -1232,9 +1232,9 @@ end
 **Milestone 4:** Advanced Lens System (Sprint 7 of 8 complete)
 
 **Completed Lenses:**
-1. ✅ **PersonaLens** - Context-only dimensional persona configuration
-2. ✅ **SequentialThinking** - Step-by-step reasoning with thought chains
-3. ✅ **WireframeEditor** - Interactive wireframe editing with full feedback loop
+1. **PersonaLens** - Context-only dimensional persona configuration
+2. **SequentialThinking** - Step-by-step reasoning with thought chains
+3. **WireframeEditor** - Interactive wireframe editing with full feedback loop
 
 **Key M4 Achievements:**
 - Test infrastructure (sample wireframes, interactive test pages)
@@ -1258,7 +1258,7 @@ end
 
 - Persistent storage layer (PostgreSQL + Ecto)
 - Multi-routine support (parallel execution)
-- Routine builder/editor (visual workflow design)
+- Routine builder/editor (visual routine design)
 - Plugin system for custom lenses (marketplace)
 - Distributed execution (for scaling)
 - Event sourcing for routine replay (time-travel debugging)

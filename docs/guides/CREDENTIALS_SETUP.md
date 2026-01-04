@@ -389,16 +389,16 @@ ls -la .koalemos/.credentials.json
 ### API Keys
 
 **DO:**
-- ✅ Keep `.koalemos/` directory in `.gitignore`
-- ✅ Use environment variables in production
-- ✅ Rotate keys periodically
-- ✅ Use minimum required permissions
+- Keep `.koalemos/` directory in `.gitignore`
+- Use environment variables in production
+- Rotate keys periodically
+- Use minimum required permissions
 
 **DON'T:**
-- ❌ Commit credentials to Git
-- ❌ Share API keys
-- ❌ Use production keys in development (create separate keys)
-- ❌ Store keys in plaintext outside `.koalemos/`
+- Commit credentials to Git
+- Share API keys
+- Use production keys in development (create separate keys)
+- Store keys in plaintext outside `.koalemos/`
 
 ---
 
@@ -420,7 +420,7 @@ After configuring credentials, verify they work:
    - You should get a response within 5-10 seconds
 
 4. **Check for Errors:**
-   - No errors = setup successful! ✅
+   - No errors = setup successful
    - See errors = check troubleshooting section above
 
 ---
@@ -452,9 +452,8 @@ After configuring credentials, verify they work:
 
 Once credentials are configured:
 
-1. **Try the Tutorial:** http://localhost:4000/example/login-form
-2. **Read Usage Guide:** [`docs/guides/USAGE_GUIDE.md`](./USAGE_GUIDE.md)
-3. **Explore Test Pages:** http://localhost:4000/test/wireframe
+1. **Try the Demo:** http://localhost:4000
+2. **Explore Test Pages:** http://localhost:4000/test/wireframe
 
 ---
 
@@ -476,4 +475,3 @@ Once credentials are configured:
 
 ---
 
-**Happy building! 🚀**

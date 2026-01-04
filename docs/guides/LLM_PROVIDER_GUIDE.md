@@ -353,7 +353,7 @@ end
 
 1. **Unit tests**: Test message conversion, error handling, edge cases
 2. **Integration tests**: Test with mock HTTP responses
-3. **Manual testing**: Use in a workflow with real credentials
+3. **Manual testing**: Use in a routine with real credentials
 4. **Coverage**: Aim for 95%+ line coverage
 
 ## Existing Providers
