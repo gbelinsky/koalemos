@@ -22,12 +22,14 @@ const puppeteer = require('puppeteer');
  * @param {number} options.viewport.height - Viewport height in pixels (default: 720)
  * @param {boolean} options.fullPage - Capture full page or just viewport (default: false)
  * @param {Object} options.scrollPosition - Scroll position {x: number, y: number} (default: {x: 0, y: 0})
- * @returns {Promise<Object>} Object with {base64: string, width: number, height: number}
+ * @param {number} options.quality - JPEG quality 0-100 (default: 70)
+ * @returns {Promise<Object>} Object with {base64: string, width: number, height: number, mediaType: string}
  */
 async function captureScreenshot(html, options = {}) {
   const viewport = options.viewport || { width: 1280, height: 720 };
   const fullPage = options.fullPage !== undefined ? options.fullPage : false;
   const scrollPosition = options.scrollPosition || { x: 0, y: 0 };
+  const quality = options.quality !== undefined ? options.quality : 70;
 
   let browser = null;
 
@@ -71,9 +73,10 @@ async function captureScreenshot(html, options = {}) {
     // Using setTimeout instead of deprecated page.waitForTimeout
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Capture screenshot as base64
+    // Capture screenshot as base64 JPEG (smaller than PNG)
     const screenshotBuffer = await page.screenshot({
-      type: 'png',
+      type: 'jpeg',
+      quality: quality,
       fullPage: fullPage,
       encoding: 'binary'
     });
@@ -95,7 +98,8 @@ async function captureScreenshot(html, options = {}) {
     return {
       base64: base64,
       width: dimensions.width,
-      height: dimensions.height
+      height: dimensions.height,
+      mediaType: 'image/jpeg'
     };
 
   } catch (error) {

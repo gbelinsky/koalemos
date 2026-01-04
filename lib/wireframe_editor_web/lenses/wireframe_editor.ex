@@ -60,6 +60,9 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
           end
         end
 
+        # Mark that we need a new screenshot after tool execution
+        WireframeStateServer.set_screenshot_needed(routine_id, true)
+
         {message, %{}}
 
       {:error, reason} ->
@@ -85,6 +88,7 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
   Provide context for the LLM.
 
   Captures running state and screenshot, then builds context blocks.
+  Screenshot is always captured fresh since user may have interacted with preview.
   """
   def provide_context(state, config \\ %{}) do
     routine_id = get_in(state, [:context, :routine_id])
@@ -95,7 +99,7 @@ defmodule WireframeEditorWeb.Lenses.WireframeEditor do
     # Capture running state from preview
     case WireframeStateServer.capture_state(routine_id, timeout) do
       {:ok, running} ->
-        # Capture screenshot via Puppeteer
+        # Always capture fresh screenshot - user may have interacted with preview
         screenshot = capture_screenshot(routine_id, designed, running)
         WireframeStateServer.update_screenshot(routine_id, screenshot)
 

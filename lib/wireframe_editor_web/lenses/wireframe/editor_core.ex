@@ -620,7 +620,7 @@ defmodule WireframeEditorWeb.Lenses.Wireframe.EditorCore do
       type: "image",
       source: %{
         type: "base64",
-        media_type: "image/png",
+        media_type: "image/jpeg",
         data: screenshot
       }
     }

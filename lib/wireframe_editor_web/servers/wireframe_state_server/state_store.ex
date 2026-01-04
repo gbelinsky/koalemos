@@ -65,6 +65,16 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.StateStore do
     call(routine_id, {:update_screenshot, screenshot})
   end
 
+  @doc "Check if screenshot is needed"
+  def screenshot_needed?(routine_id) do
+    call(routine_id, :screenshot_needed?)
+  end
+
+  @doc "Set screenshot_needed flag"
+  def set_screenshot_needed(routine_id, needed) when is_boolean(needed) do
+    call(routine_id, {:set_screenshot_needed, needed})
+  end
+
   # ============================================================================
   # GenServer Callbacks
   # ============================================================================
@@ -76,7 +86,8 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.StateStore do
       routine_id: routine_id,
       designed: designed,
       running: nil,
-      screenshot: nil
+      screenshot: nil,
+      screenshot_needed: true  # Start true so first context gets a screenshot
     }
 
     {:ok, state}
@@ -111,6 +122,16 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer.StateStore do
   @impl true
   def handle_call({:update_screenshot, screenshot}, _from, state) do
     {:reply, :ok, %{state | screenshot: screenshot}}
+  end
+
+  @impl true
+  def handle_call(:screenshot_needed?, _from, state) do
+    {:reply, state.screenshot_needed, state}
+  end
+
+  @impl true
+  def handle_call({:set_screenshot_needed, needed}, _from, state) do
+    {:reply, :ok, %{state | screenshot_needed: needed}}
   end
 
   # ============================================================================

@@ -4,18 +4,28 @@ defmodule Koalemos.MixProject do
   def project do
     [
       app: :koalemos,
-      version: "0.1.0",
+      version: "0.5.0",
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      releases: releases(),
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test
+      ]
+    ]
+  end
+
+  defp releases do
+    [
+      koalemos: [
+        include_executables_for: [:unix],
+        applications: [runtime_tools: :permanent]
       ]
     ]
   end

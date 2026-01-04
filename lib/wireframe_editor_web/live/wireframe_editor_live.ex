@@ -595,7 +595,7 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
                   </div>
                   <div class="flex-1 p-2 overflow-auto">
                     <%= if @screenshot do %>
-                      <img src={"data:image/png;base64,#{@screenshot}"} class="max-w-full border rounded" />
+                      <img src={"data:image/jpeg;base64,#{@screenshot}"} class="max-w-full border rounded" />
                     <% else %>
                       <div class="text-xs text-gray-500">No screenshot yet</div>
                     <% end %>

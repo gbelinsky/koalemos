@@ -294,7 +294,7 @@ defmodule WireframeEditorWeb.ScreenshotTestLive do
               <%= if @screenshot do %>
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                   <img
-                    src={"data:image/png;base64,#{@screenshot}"}
+                    src={"data:image/jpeg;base64,#{@screenshot}"}
                     alt="Captured screenshot"
                     class="w-full h-auto"
                   />

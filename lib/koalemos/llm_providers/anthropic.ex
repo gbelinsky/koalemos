@@ -202,10 +202,15 @@ defmodule Koalemos.LLMProviders.Anthropic do
 
           {:ok, [{:add_or_update, %{llm_response: response.body}}]}
 
-        {:ok, %{status: status} = _response}
+        {:ok, %{status: status, headers: headers} = response}
         when status in [429, 500, 502, 503, 504, 529] and remaining_timeouts != [] ->
-          # Retryable server errors - exponential backoff
-          backoff_ms = min(1000 * :math.pow(2, attempt - 1), 30_000) |> round()
+          # Retryable server errors - use header-based delay for 429, exponential backoff otherwise
+          backoff_ms = extract_retry_delay(headers, status, attempt)
+
+          # Log rate limit details for 429
+          if status == 429 do
+            log_rate_limit_info(headers, response.body)
+          end
 
           Logger.warning(
             "[Anthropic] Retryable error #{status} (attempt #{attempt}), retrying after #{backoff_ms}ms"
@@ -350,5 +355,114 @@ defmodule Koalemos.LLMProviders.Anthropic do
       end
 
     [base_content] ++ formatted_lens_contexts ++ step_prompt_content
+  end
+
+  # Extract retry delay from rate limit headers, fall back to exponential backoff
+  defp extract_retry_delay(headers, status, attempt) do
+    cond do
+      # For 429, try to use rate limit headers
+      status == 429 ->
+        case get_header_retry_delay(headers) do
+          {:ok, delay_ms} -> delay_ms
+          :not_found -> exponential_backoff(attempt)
+        end
+
+      # For other retryable errors, use exponential backoff
+      true ->
+        exponential_backoff(attempt)
+    end
+  end
+
+  # Try to extract delay from Anthropic rate limit headers
+  defp get_header_retry_delay(headers) do
+    # Req returns headers as a map with lowercase keys
+    headers_map = headers_to_map(headers)
+
+    # Check retry-after first (standard HTTP header, value in seconds)
+    case get_header_value(headers_map, "retry-after") do
+      nil -> :not_found
+      seconds_str ->
+        case Integer.parse(seconds_str) do
+          {seconds, _} ->
+            delay_ms = seconds * 1000
+            Logger.info("[Anthropic] Using retry-after header: #{seconds}s")
+            {:ok, delay_ms}
+          :error ->
+            # Could be an HTTP-date, try parsing as ISO timestamp
+            try_parse_reset_timestamp(seconds_str)
+        end
+    end
+    |> case do
+      {:ok, delay} -> {:ok, delay}
+      :not_found ->
+        # Fall back to anthropic-ratelimit-tokens-reset (ISO timestamp)
+        case get_header_value(headers_map, "anthropic-ratelimit-tokens-reset") do
+          nil -> :not_found
+          timestamp_str -> try_parse_reset_timestamp(timestamp_str)
+        end
+    end
+  end
+
+  # Get header value, handling both single values and lists
+  defp get_header_value(headers_map, key) do
+    case Map.get(headers_map, key) do
+      nil -> nil
+      [value | _] -> to_string(value)  # Take first value if list
+      value -> to_string(value)
+    end
+  end
+
+  # Parse ISO timestamp and calculate delay until that time
+  defp try_parse_reset_timestamp(timestamp_str) do
+    case DateTime.from_iso8601(timestamp_str) do
+      {:ok, reset_time, _offset} ->
+        now = DateTime.utc_now()
+        diff_seconds = DateTime.diff(reset_time, now, :second)
+        # Add 1 second buffer, minimum 1 second wait
+        delay_ms = max(diff_seconds + 1, 1) * 1000
+        Logger.info("[Anthropic] Rate limit resets at #{timestamp_str}, waiting #{delay_ms}ms")
+        {:ok, delay_ms}
+
+      {:error, _} ->
+        :not_found
+    end
+  end
+
+  # Convert headers to a simple map for easier lookup
+  defp headers_to_map(headers) when is_list(headers) do
+    Enum.into(headers, %{}, fn {key, value} ->
+      {String.downcase(to_string(key)), to_string(value)}
+    end)
+  end
+  defp headers_to_map(headers) when is_map(headers), do: headers
+  defp headers_to_map(_), do: %{}
+
+  # Exponential backoff: 1s, 2s, 4s, 8s, ... capped at 30s
+  defp exponential_backoff(attempt) do
+    min(1000 * :math.pow(2, attempt - 1), 30_000) |> round()
+  end
+
+  # Log rate limit information for debugging
+  defp log_rate_limit_info(headers, body) do
+    headers_map = headers_to_map(headers)
+
+    # Extract useful rate limit headers
+    remaining = get_header_value(headers_map, "anthropic-ratelimit-tokens-remaining")
+    limit = get_header_value(headers_map, "anthropic-ratelimit-tokens-limit")
+    reset = get_header_value(headers_map, "anthropic-ratelimit-tokens-reset")
+
+    # Extract error message from body
+    error_msg = case body do
+      %{"error" => %{"message" => msg}} -> msg
+      _ -> "Rate limited"
+    end
+
+    Logger.warning("""
+    [Anthropic] Rate limit hit (429):
+      Message: #{error_msg}
+      Tokens remaining: #{remaining || "unknown"}
+      Tokens limit: #{limit || "unknown"}
+      Reset at: #{reset || "unknown"}
+    """)
   end
 end

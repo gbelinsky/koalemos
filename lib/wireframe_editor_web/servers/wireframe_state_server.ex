@@ -87,6 +87,12 @@ defmodule WireframeEditorWeb.Servers.WireframeStateServer do
   @doc "Update screenshot"
   defdelegate update_screenshot(routine_id, screenshot), to: StateStore
 
+  @doc "Check if screenshot is needed"
+  defdelegate screenshot_needed?(routine_id), to: StateStore
+
+  @doc "Set screenshot_needed flag"
+  defdelegate set_screenshot_needed(routine_id, needed), to: StateStore
+
   # ============================================================================
   # Preview Coordination (delegate to PreviewCoordinator)
   # ============================================================================
