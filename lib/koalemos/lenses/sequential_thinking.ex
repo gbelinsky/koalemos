@@ -59,6 +59,8 @@ defmodule Koalemos.Lenses.SequentialThinking do
   """
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Provide context blocks showing current thinking chain.
@@ -83,6 +85,13 @@ defmodule Koalemos.Lenses.SequentialThinking do
           "#{prefix}#{thought.thought_number}. #{thought.thought}"
         end)
 
+      status_text =
+        case List.last(current_chain) do
+          nil -> "[No thoughts yet]"
+          %{next_thought_needed: true} -> "[Thinking continues...]"
+          _ -> "[Thinking complete]"
+        end
+
       [
         %{
           type: "text",
@@ -91,7 +100,7 @@ defmodule Koalemos.Lenses.SequentialThinking do
 
           #{chain_text}
 
-          #{if List.last(current_chain).next_thought_needed, do: "[Thinking continues...]", else: "[Thinking complete]"}
+          #{status_text}
           """
         }
       ]
@@ -204,6 +213,10 @@ defmodule Koalemos.Lenses.SequentialThinking do
   """
   def execute(:sequential_thinking, args, context) do
     try do
+      Log.debug(:lens, fn ->
+        "[Lens] SequentialThinking - thought #{args["thought_number"]}/#{args["total_thoughts"]}"
+      end)
+
       validated_input = validate_thought_data(args)
 
       # Adjust total_thoughts if thought_number exceeds it

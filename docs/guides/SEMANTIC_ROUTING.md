@@ -1,13 +1,10 @@
 # Semantic Routing Guide
 
-**Last Updated:** November 12, 2025
-**Milestone:** M5 Sprint 1
-
 ---
 
 ## What is Semantic Routing?
 
-Semantic routing allows agents to intelligently analyze user requests and choose workflow paths based on natural language understanding, rather than following hardcoded conditions or fixed phase sequences.
+Semantic routing allows agents to intelligently analyze user requests and choose execution paths based on natural language understanding, rather than following hardcoded conditions or fixed phase sequences.
 
 **Traditional Approach (Fixed Phases):**
 ```
@@ -27,7 +24,7 @@ User Request → Agent Analysis → Intelligent Path Choice
 1. **More Natural:** Users don't think in phases, they think in goals
 2. **Context-Aware:** Agent chooses path based on understanding the request
 3. **Flexible:** Can add/remove/modify paths without changing core logic
-4. **Generalizable:** Pattern works for any workflow type
+4. **Generalizable:** Pattern works for any routine type
 5. **Composable:** Routes can contain sub-routes for nested decisions
 
 ---
@@ -80,7 +77,7 @@ routing: %{
 
 ### 2. SemanticTransition Lens
 
-Enables agents to choose workflow transitions using natural language descriptions.
+Enables agents to choose transitions using natural language descriptions.
 
 **Purpose:** Convert semantic transition choices into workflow_transition signals
 
@@ -130,12 +127,12 @@ transitions: [
 
 ### 3. Lens Scoping System
 
-Manages lens configuration across workflow branches with proper inheritance and isolation.
+Manages lens configuration across routine branches with proper inheritance and isolation.
 
 **Purpose:** Prevent lens modifications from leaking across branches while allowing proper inheritance
 
 **Three Configuration Levels:**
-1. **Base Lenses:** Inherited from parent context (workflow-level)
+1. **Base Lenses:** Inherited from parent context (routine-level)
 2. **Config Lenses:** Specified in step config (step-level)
 3. **Merged Lenses:** Result of merge-with-override
 
@@ -276,7 +273,7 @@ action: %{
 
 ### Pattern 3: Nested Semantic Routing
 
-**Use Case:** Sub-workflows with their own routing decisions
+**Use Case:** Sub-routines with their own routing decisions
 
 ```elixir
 main_routing: %{
@@ -310,7 +307,7 @@ wireframe_create: %{
 
 ### Pattern 4: Conditional Lens Activation
 
-**Use Case:** Different lenses based on workflow path
+**Use Case:** Different lenses based on execution path
 
 ```elixir
 visual_editing: %{
@@ -438,17 +435,17 @@ assert context[:lenses] does NOT include "SemanticTransition"
 
 ## When to Use Semantic Routing
 
-### ✅ Use Semantic Routing When:
+### Use Semantic Routing When:
 
 1. **Multiple Valid Paths:** User requests could go different directions
 2. **Intent Analysis:** Need agent to understand what user wants
-3. **Flexible Workflow:** Paths might change over time
+3. **Flexible Flow:** Paths might change over time
 4. **Conversational UI:** Users describe goals, not steps
 5. **Context-Dependent:** Best path depends on current state
 
-### ❌ Don't Use Semantic Routing When:
+### Don't Use Semantic Routing When:
 
-1. **Single Path:** Only one way through workflow
+1. **Single Path:** Only one way through the routine
 2. **Fixed Sequence:** Steps must happen in specific order
 3. **No Ambiguity:** Intent is always clear from context
 4. **Performance Critical:** Extra LLM call is too expensive
@@ -642,10 +639,10 @@ end
 
 - [ ] Agent receives context showing available transitions
 - [ ] Agent calls `choose_transition` with valid choice
-- [ ] Workflow transitions to chosen step
+- [ ] Engine transitions to chosen step
 - [ ] Lenses are correct in each step (check via context dump)
 - [ ] Scope isolation works (routing lenses don't leak)
-- [ ] Agent can complete full workflow
+- [ ] Agent can complete full routine
 - [ ] Error handling works (invalid transition choice)
 
 ---
@@ -680,7 +677,5 @@ See these files for working examples:
 
 ## Further Reading
 
-- **M5 Milestone Doc:** `docs/milestones/M5.md` - Architecture overview
-- **Sprint 1 Plan:** `docs/sprints/m5-sprint-1-plan.md` - Implementation details
 - **Execution Engine:** `docs/ARCHITECTURE.md` - How routines and steps work
 - **Lens Development:** `docs/guides/LENS_DEVELOPMENT.md` - Creating lenses

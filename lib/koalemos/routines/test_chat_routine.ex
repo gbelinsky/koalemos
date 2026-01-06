@@ -64,7 +64,7 @@ defmodule Koalemos.Routines.TestChatRoutine do
   def initial_context do
     %{
       messages: [],
-      lenses: ["Koalemos.Lenses.TestLensScreenshot"],
+      lenses: ["Koalemos.Lenses.TestLens"],
       llm_provider: "anthropic",
       llm_model: "claude-haiku-4-5",
       max_tokens: 2000,

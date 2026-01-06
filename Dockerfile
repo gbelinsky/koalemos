@@ -48,6 +48,8 @@ RUN mkdir config
 # to ensure any relevant config change will trigger the dependencies
 # to be re-compiled.
 COPY config/config.exs config/${MIX_ENV}.exs config/
+COPY config/koalemos_core.exs config/koalemos_core.${MIX_ENV}.exs config/
+COPY config/wireframe_editor_web.exs config/wireframe_editor_web.${MIX_ENV}.exs config/
 RUN mix deps.compile
 
 COPY priv priv
@@ -84,6 +86,34 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
+# Install Chrome dependencies for Puppeteer
+# These packages are required for headless Chrome to run properly
+RUN apt-get update -y && \
+  apt-get install -y \
+    chromium \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    xdg-utils \
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
+
+# Set Puppeteer to use system Chromium instead of downloading its own
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
 # Set the locale
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
@@ -98,6 +128,8 @@ RUN chown nobody /app
 ENV MIX_ENV="prod"
 # Set HOME so System.user_home!() works for nobody user
 ENV HOME="/app"
+# Signal that storage is ephemeral (no persistent volumes by default)
+ENV KOALEMOS_EPHEMERAL_STORAGE="true"
 
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/koalemos ./

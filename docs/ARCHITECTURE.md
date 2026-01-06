@@ -1,15 +1,12 @@
 # Koalemos - System Architecture
 
-**Last Updated:** November 11, 2025
-**Status:** Living Document
-
 ---
 
 ## Overview
 
-Koalemos is a conversational AI platform built on Phoenix LiveView and a custom execution engine. While the current application focus is wireframe design, the architecture is designed as a **developer framework** for building any conversational AI application with complex workflows, tool execution, and stateful interactions.
+Koalemos is a conversational AI platform built on Phoenix LiveView and a custom execution engine. While the current application focus is wireframe design, the architecture is designed as a **developer framework** for building any conversational AI application with complex conversations, tool execution, and stateful interactions.
 
-**Key Philosophy:** Koalemos is not just an application – it's a framework for building AI-powered applications with sophisticated conversation flows, pluggable capabilities (lenses), and reusable workflows (routines).
+**Key Philosophy:** Koalemos is a framework for building AI-powered applications with sophisticated conversation flows, pluggable capabilities (lenses), and reusable routines.
 
 ---
 
@@ -882,7 +879,7 @@ Brief JSON with progress indication. Thought text stored in lens_state, shown in
 - **Designed**: Source being edited (DOM tree, styles, scripts, functions, variables, handlers, init scripts)
 - **Running**: Live preview state (captured from browser)
 
-**Feedback Loop (M4 Sprint 7):**
+**Feedback Loop:**
 - Before each LLM request, captures current state from preview
 - Includes console output, DOM differences, screenshots
 - Agent sees results of previous interactions
@@ -900,7 +897,7 @@ Captures complete state via PubSub coordination:
 
 **Screenshot Integration:**
 - Screenshots captured automatically in state snapshots
-- Reuses Sprint 2's html2canvas infrastructure
+- Reuses html2canvas infrastructure
 - Blocking capture for state consistency
 
 ---
@@ -912,7 +909,7 @@ Captures complete state via PubSub coordination:
 **Plugin Architecture:** Providers implement `Koalemos.LLMProvider` behavior.
 
 **Available Providers:**
-- **Anthropic** (`llm_providers/anthropic.ex`) - Native format, API key + OAuth, progressive retry
+- **Anthropic** (`llm_providers/anthropic.ex`) - Native format, API key, progressive retry
 - **OpenAI** (`llm_providers/openai.ex`) - Message format conversion, system prompt handling
 - **Ollama** (`llm_providers/ollama.ex`) - Local server, OpenAI-compatible format
 
@@ -932,7 +929,7 @@ Captures complete state via PubSub coordination:
 - `strip_metadata/1` - Remove internal metadata before API calls
 - `filter_empty_assistant_messages/1` - Remove empty assistant messages
 
-**See:** `docs/LLM_PROVIDER_GUIDE.md` for creating new providers.
+**See:** `docs/guides/LLM_PROVIDER_GUIDE.md` for creating new providers.
 
 ---
 
@@ -987,9 +984,8 @@ All caches are ETS-based GenServers with TTL and cleanup.
 - GenServer with file watching (future)
 
 **SimpleCredentialManager** (`lib/koalemos/simple_credential_manager.ex`):
-- OAuth token management for Anthropic
+- Token management for Anthropic
 - Token refresh, storage, retrieval
-- Used by API key providers as well
 
 **Format:**
 ```json
@@ -1187,9 +1183,6 @@ end
 - `PersonaTestRoutine` - Persona testing
 - `ThinkingTestRoutine` - Sequential thinking testing
 
-**Manual Test Guide:**
-`docs/testing/MANUAL_TEST_GUIDE.md` - 5 scenarios for WireframeEditor validation.
-
 ---
 
 ## Key Design Decisions
@@ -1228,16 +1221,14 @@ end
 
 ---
 
-## M4 Features (Current State)
-
-**Milestone 4:** Advanced Lens System (Sprint 7 of 8 complete)
+## Current Features
 
 **Completed Lenses:**
-1. ✅ **PersonaLens** - Context-only dimensional persona configuration
-2. ✅ **SequentialThinking** - Step-by-step reasoning with thought chains
-3. ✅ **WireframeEditor** - Interactive wireframe editing with full feedback loop
+1. **PersonaLens** - Context-only dimensional persona configuration
+2. **SequentialThinking** - Step-by-step reasoning with thought chains
+3. **WireframeEditor** - Interactive wireframe editing with full feedback loop
 
-**Key M4 Achievements:**
+**Key Achievements:**
 - Test infrastructure (sample wireframes, interactive test pages)
 - Modular WireframeEditor architecture (core + handlers)
 - Tool execution infrastructure (9 tools functional)
@@ -1245,11 +1236,6 @@ end
 - Real-time preview with LiveView-in-iframe pattern
 - JavaScript rendering and execution
 - State snapshot coordination via PubSub
-
-**Sprint 8 Remaining:**
-- Comprehensive developer documentation (this file + guides)
-- Production roadmap
-- Final integration polish
 
 ---
 
@@ -1259,7 +1245,7 @@ end
 
 - Persistent storage layer (PostgreSQL + Ecto)
 - Multi-routine support (parallel execution)
-- Routine builder/editor (visual workflow design)
+- Routine builder/editor (visual routine design)
 - Plugin system for custom lenses (marketplace)
 - Distributed execution (for scaling)
 - Event sourcing for routine replay (time-travel debugging)
@@ -1273,7 +1259,7 @@ end
 **Guides:**
 - `docs/guides/LENS_DEVELOPMENT.md` - How to create lenses
 - `docs/guides/ROUTINE_DEVELOPMENT.md` - How to create routines
-- `docs/LLM_PROVIDER_GUIDE.md` - How to add LLM providers
+- `docs/guides/LLM_PROVIDER_GUIDE.md` - How to add LLM providers
 
 **Example Code:**
 - `lib/koalemos/lenses/persona_lens.ex` - Context-only lens
@@ -1284,14 +1270,4 @@ end
 **Testing:**
 - `test/koalemos/engine/` - Engine unit tests
 - `test/koalemos/integration/` - Integration tests
-- `docs/testing/MANUAL_TEST_GUIDE.md` - Manual testing scenarios
 
----
-
-## Notes
-
-**Last Major Update:** November 11, 2025 (M4 Sprint 8 - Phase 2 Documentation)
-
-**Status:** This document is now comprehensive and reflects the complete M4 architecture. Future updates should maintain this level of detail.
-
-**For Developers:** This architecture document, combined with the lens and routine development guides, provides everything needed to extend Koalemos with new capabilities.

@@ -53,6 +53,8 @@ defmodule Koalemos.Engine.Orchestrator do
   alias Koalemos.Engine.{ContextManager, EventRecorder, StepUtils}
   require Logger
   require Koalemos.Engine.StepUtils
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @type state :: map()
   @type step_result :: {:ok, ContextManager.diff()} | {:error, String.t()}
@@ -92,6 +94,10 @@ defmodule Koalemos.Engine.Orchestrator do
   @spec execute_current_step(state()) :: state()
   def execute_current_step(state) do
     step_config = get_current_step_config(state)
+
+    Log.debug(:engine, fn ->
+      "[Engine] Executing step #{state.current_step} in #{state.current_routine_module}"
+    end)
 
     if step_config == nil do
       EventRecorder.record_event(state, "error_occurred", %{
@@ -161,7 +167,8 @@ defmodule Koalemos.Engine.Orchestrator do
             get_in(state_after_setup, [:context, :config, state_after_setup.current_step]) || %{}
         }
 
-        Task.start(fn ->
+        # Execute step in supervised task (start_child for fire-and-forget with supervision)
+        Task.Supervisor.start_child(Koalemos.StepTaskSupervisor, fn ->
           result =
             try do
               apply(step_module, :execute, [
@@ -170,9 +177,12 @@ defmodule Koalemos.Engine.Orchestrator do
               ])
             rescue
               error ->
+                stacktrace = __STACKTRACE__
+                Logger.error("[Orchestrator] Step execution failed: #{Exception.message(error)}\n#{Exception.format_stacktrace(stacktrace)}")
                 {:error, "Step execution failed: #{Exception.message(error)}"}
             catch
               :exit, reason ->
+                Logger.error("[Orchestrator] Step execution process exited: #{inspect(reason)}")
                 {:error, "Step execution process exited: #{inspect(reason)}"}
             end
 
@@ -403,6 +413,9 @@ defmodule Koalemos.Engine.Orchestrator do
       try do
         apply(state.current_routine_module, :check_condition, [condition, state.context])
       rescue
+        # Intentional: String conditions (for semantic transitions) fail here
+        # and return false, falling through to :always. This allows mixing
+        # code conditions and LLM-display-only string conditions.
         _error -> false
       end
     end)
@@ -445,6 +458,10 @@ defmodule Koalemos.Engine.Orchestrator do
         EventRecorder.record_event(state, "transition_taken", %{
           metadata: %{from: state.current_step, to: next_step}
         })
+
+        Log.debug(:engine, fn ->
+          "[Engine] Transition: #{state.current_step} -> #{next_step}"
+        end)
 
         updated_state = %{state | current_step: next_step}
 

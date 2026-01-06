@@ -1,4 +1,4 @@
-defmodule KoalemosWeb.ConnCase do
+defmodule WireframeEditorWeb.ConnCase do
   @moduledoc """
   This module defines the test case to be used by
   tests that require setting up a connection.
@@ -11,7 +11,7 @@ defmodule KoalemosWeb.ConnCase do
   we enable the SQL sandbox, so changes done to the database
   are reverted at the end of every test. If you are using
   PostgreSQL, you can even run database tests asynchronously
-  by setting `use KoalemosWeb.ConnCase, async: true`, although
+  by setting `use WireframeEditorWeb.ConnCase, async: true`, although
   this option is not recommended for other databases.
   """
 
@@ -20,14 +20,14 @@ defmodule KoalemosWeb.ConnCase do
   using do
     quote do
       # The default endpoint for testing
-      @endpoint KoalemosWeb.Endpoint
+      @endpoint WireframeEditorWeb.Endpoint
 
-      use KoalemosWeb, :verified_routes
+      use WireframeEditorWeb, :verified_routes
 
       # Import conveniences for testing with connections
       import Plug.Conn
       import Phoenix.ConnTest
-      import KoalemosWeb.ConnCase
+      import WireframeEditorWeb.ConnCase
     end
   end
 

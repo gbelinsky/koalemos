@@ -40,6 +40,8 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
   """
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Route to appropriate provider and make LLM request.
@@ -64,10 +66,11 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
                 # Prepare inputs for provider
                 tool_descriptions = Map.get(state.context, :tool_descriptions, [])
 
-                # Get lens contexts (both text and images)
+                # Get lens contexts (both text and images) and step system prompt
                 lens_contexts = %{
                   text: Map.get(state.context, :lens_text_contexts, []),
-                  images: Map.get(state.context, :lens_image_contexts, [])
+                  images: Map.get(state.context, :lens_image_contexts, []),
+                  step_prompt: Map.get(state.context, :step_system_prompt)
                 }
 
                 # Build config map from context
@@ -78,41 +81,8 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
                   base_url: Map.get(state.context, :llm_base_url)
                 }
 
-                # Log lens contexts for debugging
-                text_contexts = lens_contexts.text || []
-
-                if length(text_contexts) > 0 do
-                  full_text =
-                    Enum.map_join(text_contexts, "\n---\n", fn ctx ->
-                      ctx.text || ""
-                    end)
-
-                  has_live_dom = String.contains?(full_text, "LIVE DOM STATE")
-                  has_design_dom = String.contains?(full_text, "DESIGN DOM STRUCTURE")
-
-                  Logger.info("[LLMRequest] Lens context sections present:")
-                  Logger.info("  - DESIGN DOM STRUCTURE: #{has_design_dom}")
-                  Logger.info("  - LIVE DOM STATE: #{has_live_dom}")
-                  Logger.info("  - Total context length: #{String.length(full_text)} chars")
-
-                  # Show first 1000 chars for preview
-                  preview =
-                    if String.length(full_text) > 1000 do
-                      String.slice(full_text, 0, 1000) <>
-                        "\n... (#{String.length(full_text) - 1000} more chars)"
-                    else
-                      full_text
-                    end
-
-                  Logger.debug("[LLMRequest] Context preview:\n#{preview}")
-                end
-
-                # Delegate to provider
-                Logger.info("LLMRequest: Routing to #{provider_name} provider")
-
-                Logger.debug(
-                  "LLMRequest: #{length(tool_descriptions)} tools available, #{length(messages)} messages"
-                )
+                # Delegate to provider (context already logged by LensRendering step)
+                Log.debug(:llm, "[LLMRequest] Routing to #{provider_name}, #{length(tool_descriptions)} tools, #{length(messages)} messages")
 
                 provider_module.call(
                   messages,
@@ -148,7 +118,6 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
 
         if api_key != "" do
           # Use API key from settings
-          Logger.info("LLMRequest: Using Anthropic API key from DemoCredentialStore")
           base_url = Map.get(context, :llm_base_url, "https://api.anthropic.com/v1")
 
           {:ok,
@@ -160,7 +129,6 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
            }}
         else
           # No API key, fall back to OAuth
-          Logger.info("LLMRequest: No API key in settings, falling back to OAuth")
           get_oauth_credentials()
         end
 
@@ -180,7 +148,6 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
         api_key = Map.get(config, "api_key", "")
 
         if api_key != "" do
-          Logger.info("LLMRequest: Using OpenAI API key from DemoCredentialStore")
 
           {:ok,
            %{
@@ -201,7 +168,6 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
     # Ollama doesn't need API keys, just base URL and model
     case Koalemos.DemoCredentialStore.get_provider_config("ollama") do
       {:ok, config} when is_map(config) ->
-        Logger.info("LLMRequest: Using Ollama from DemoCredentialStore")
         base_url = Map.get(config, "base_url", "http://localhost:11434")
         model = Map.get(config, "model", "llama2")
 
@@ -238,7 +204,6 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
     try do
       case Koalemos.SimpleCredentialManager.get_access_token() do
         {:ok, access_token} ->
-          Logger.info("LLMRequest: Using OAuth token from SimpleCredentialManager")
 
           {:ok,
            %{

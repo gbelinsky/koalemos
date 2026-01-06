@@ -123,22 +123,22 @@ defmodule Koalemos.Steps.Agent.TemplatedSemanticAgent do
   def check_condition(:always, _context), do: true
 
   def check_condition(:when_has_tool_calls, context) do
-    tool_calls = Map.get(context, :tool_calls, [])
+    tool_calls = Map.get(context, :tool_calls) || []
     length(tool_calls) > 0
   end
 
   def check_condition(:when_no_tool_calls, context) do
-    tool_calls = Map.get(context, :tool_calls, [])
+    tool_calls = Map.get(context, :tool_calls) || []
     length(tool_calls) == 0
   end
 
   def check_condition(:when_has_more_tools, context) do
-    to_execute = Map.get(context, :to_execute, [])
+    to_execute = Map.get(context, :to_execute) || []
     length(to_execute) > 0
   end
 
   def check_condition(:when_tools_complete, context) do
-    to_execute = Map.get(context, :to_execute, [])
+    to_execute = Map.get(context, :to_execute) || []
     length(to_execute) == 0
   end
 
@@ -218,7 +218,9 @@ defmodule Koalemos.Steps.Agent.TemplatedSemanticAgent do
           save_base_diff ++ [{:add_or_update, %{lenses: merged_lenses}} | diff]
       end
 
-    # 2. Add templated message if present
+    # 2. Add step system prompt if template present
+    # NOTE: step_system_prompt persists in context until overwritten by next step with template
+    # TODO (post-release): Clear step_system_prompt when agent loop completes
     diff =
       case Map.get(config, :template) do
         nil ->
@@ -228,17 +230,8 @@ defmodule Koalemos.Steps.Agent.TemplatedSemanticAgent do
           # Render the template with current context
           rendered_action = render_eex_template(template, state.context)
 
-          # Convert rendered action to user message with system source
-          action_message = %{
-            role: "user",
-            content: rendered_action,
-            metadata: %{
-              source: :system,
-              id: generate_message_id()
-            }
-          }
-
-          [{:append_to, %{messages: action_message}} | diff]
+          # Store as step_system_prompt - included in system content by LLM provider
+          [{:add_or_update, %{step_system_prompt: rendered_action}} | diff]
       end
 
     {:ok, Enum.reverse(diff)}
@@ -256,8 +249,4 @@ defmodule Koalemos.Steps.Agent.TemplatedSemanticAgent do
       "Template rendering failed: #{Exception.message(error)}"
   end
 
-  # Generate a unique message ID
-  defp generate_message_id do
-    "msg-#{:erlang.unique_integer([:positive, :monotonic])}"
-  end
 end

@@ -1,13 +1,10 @@
 # Routine Development Guide
 
-**Last Updated:** November 11, 2025
-**For:** Koalemos M4+
-
 ---
 
 ## TLDR
 
-**Routines** are state machines that define conversation flows (workflows) in Koalemos.
+**Routines** are state machines that define conversation flows in Koalemos.
 
 **Core pattern:**
 ```elixir
@@ -69,7 +66,7 @@ A **routine** is a state machine that defines a conversation flow. Routines:
 
 ### Philosophy
 
-Routines embody the **workflow** of your AI application:
+Routines embody the **conversation flow** of your AI application:
 - Each routine solves ONE conversation pattern (chat, task management, code review, etc.)
 - Routines are declarative – you define the flow, the engine executes it
 - Routines are reusable – one routine can be used in multiple contexts
@@ -78,14 +75,14 @@ Routines embody the **workflow** of your AI application:
 ### When to Create a Routine
 
 **Create a routine when:**
-- You have a multi-step conversation workflow
+- You have a multi-step conversation flow
 - You need specific step ordering and transitions
 - You want reusable conversation patterns
 - You need to coordinate multiple lenses and steps
 
 **Don't create a routine when:**
 - You're adding a single capability (create a Lens or Step instead)
-- The workflow is specific to ONE routine (use sub-routines or extend existing routine)
+- The flow is specific to ONE routine (use sub-routines or extend existing routine)
 
 ---
 
@@ -755,7 +752,7 @@ defmodule Koalemos.Lenses.TaskLens do
     done_count = length(Map.get(by_status, :done, []))
 
     """
-    📋 **Summary:**
+    **Summary:**
     - Todo: #{todo_count}
     - In Progress: #{in_progress_count}
     - Done: #{done_count}
@@ -927,7 +924,7 @@ Any step can be a routine itself. The engine automatically detects this and ente
 ### When to Use Sub-Routines
 
 - **Complex multi-step operations** that need their own state machine
-- **Reusable workflows** used by multiple parent routines
+- **Reusable routines** used by multiple parent routines
 - **Conditional branches** that have complex internal logic
 
 ### Pattern

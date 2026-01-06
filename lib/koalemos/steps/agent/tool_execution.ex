@@ -40,6 +40,8 @@ defmodule Koalemos.Steps.Agent.ToolExecution do
   """
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Executes one tool from the queue.
@@ -58,7 +60,7 @@ defmodule Koalemos.Steps.Agent.ToolExecution do
         # Build tool result message from tool output
         tool_message = build_tool_result_message(tool_call.id, result, state.routine_id)
 
-        Logger.info("[ToolExecution] Appending tool_result for #{tool_call.id}")
+        Log.debug(:engine, "[ToolExecution] Appending tool_result for #{tool_call.id}")
 
         # Build diff - use append_to for messages
         diff = [
@@ -110,14 +112,35 @@ defmodule Koalemos.Steps.Agent.ToolExecution do
   # Normalize different tool result formats to {result, lens_updates, metadata}
   defp normalize_tool_result(tool_result) do
     case tool_result do
-      {result, lens_updates, metadata} when is_map(metadata) ->
+      # Standard formats
+      {result, lens_updates, metadata} when is_list(lens_updates) and is_map(metadata) ->
         {result, lens_updates, metadata}
 
-      {result, lens_updates} ->
+      {result, lens_updates} when is_list(lens_updates) ->
         {result, lens_updates, %{}}
 
       result when is_binary(result) ->
         {result, [], %{}}
+
+      # Handle {:ok, result} and {:error, reason} patterns
+      {:ok, result} when is_binary(result) ->
+        {result, [], %{}}
+
+      {:ok, result} ->
+        {inspect(result), [], %{}}
+
+      {:error, reason} when is_binary(reason) ->
+        {"Error: #{reason}", [], %{}}
+
+      {:error, reason} ->
+        {"Error: #{inspect(reason)}", [], %{}}
+
+      # Catch-all for unexpected formats
+      nil ->
+        {"Tool returned nil", [], %{}}
+
+      other ->
+        {inspect(other), [], %{}}
     end
   end
 

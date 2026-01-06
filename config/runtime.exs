@@ -17,7 +17,7 @@ import Config
 # For Koalemos, we default to starting the server since it's a web application.
 # Set PHX_SERVER=false to disable if needed (e.g., for running migrations only).
 unless System.get_env("PHX_SERVER") == "false" do
-  config :koalemos, KoalemosWeb.Endpoint, server: true
+  config :koalemos, WireframeEditorWeb.Endpoint, server: true
 end
 
 if config_env() == :prod do
@@ -54,7 +54,7 @@ if config_env() == :prod do
 
   config :koalemos, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  config :koalemos, KoalemosWeb.Endpoint,
+  config :koalemos, WireframeEditorWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
       # Enable IPv6 and bind on all interfaces.
@@ -73,7 +73,7 @@ if config_env() == :prod do
   # To get SSL working, you will need to add the `https` key
   # to your endpoint configuration:
   #
-  #     config :koalemos, KoalemosWeb.Endpoint,
+  #     config :koalemos, WireframeEditorWeb.Endpoint,
   #       https: [
   #         ...,
   #         port: 443,
@@ -95,7 +95,7 @@ if config_env() == :prod do
   # We also recommend setting `force_ssl` in your config/prod.exs,
   # ensuring no data is ever sent via http, always redirecting to https:
   #
-  #     config :koalemos, KoalemosWeb.Endpoint,
+  #     config :koalemos, WireframeEditorWeb.Endpoint,
   #       force_ssl: [hsts: true]
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
