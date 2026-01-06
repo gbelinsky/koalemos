@@ -442,17 +442,21 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
     <div class="h-screen flex flex-col bg-gray-50">
       <!-- Header -->
       <div class="bg-white border-b border-slate-200 shadow-sm flex-shrink-0">
-        <div class="px-4 py-3 flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <h1 class="text-xl font-semibold text-slate-800">Wireframe Editor</h1>
-            <%= if @current_sample do %>
-              <div class="text-sm text-slate-600">
-                <span class="font-medium"><%= @current_sample %></span>
-              </div>
-            <% end %>
-            <%= if @mode == :debug do %>
-              <span class="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">Debug</span>
-            <% end %>
+        <div class="px-4 h-14 flex items-center justify-between">
+          <div class="flex items-center gap-6">
+            <a href="/" class="text-xl font-bold text-slate-800 hover:text-slate-600 transition-colors">
+              koalemos
+            </a>
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-slate-600">Editor</span>
+              <%= if @current_sample do %>
+                <span class="text-slate-400">/</span>
+                <span class="text-sm text-slate-600"><%= @current_sample %></span>
+              <% end %>
+              <%= if @mode == :debug do %>
+                <span class="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">Debug</span>
+              <% end %>
+            </div>
           </div>
           <div class="flex items-center gap-3">
             <%= if @routine_id && @agent_running do %>
@@ -483,13 +487,13 @@ defmodule WireframeEditorWeb.WireframeEditorLive do
               phx-click="new_wireframe"
               class="px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              New Wireframe
+              New
             </button>
             <a
-              href="/"
-              class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+              href="/test"
+              class="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              Home
+              Test Pages
             </a>
           </div>
         </div>

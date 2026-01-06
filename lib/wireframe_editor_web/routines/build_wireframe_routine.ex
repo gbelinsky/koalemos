@@ -27,13 +27,30 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
 
   def routine_definition do
     %{
-      # Stage 1: Planning
+      # Stage 1: Planning (readonly - no tools available)
       planning: %{
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Plan the wireframe: list components, structure, and interactions needed.
-          Respond with your plan in plain text.
+          ## PLANNING PHASE (1 of 5)
+
+          You are building a wireframe through 5 sequential phases:
+          1. **Planning** (current) - Understand and plan
+          2. **Structure** - Build HTML and layout CSS
+          3. **Behavior** - Add JavaScript interactivity
+          4. **Testing** - Verify everything works
+          5. **Polish** - Visual styling and refinement
+
+          No tools are available in this phase. Analyze the user's request and create a plan.
+
+          Your plan should cover:
+          - What components are needed (containers, buttons, inputs, etc.)
+          - How the layout should be structured
+          - What interactions/behaviors are required
+          - Any state that needs to be tracked
+
+          Respond with your plan in plain text. Be specific but concise.
+          After this, you'll move to the Structure phase where tools become available.
           """,
           lenses: [
             ["WireframeEditorWeb.Lenses.WireframeEditor", %{readonly: true}],
@@ -48,18 +65,21 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Build the HTML structure and layout CSS.
+          ## STRUCTURE PHASE (2 of 5)
 
-          Use modify_elements for:
-          - Containers, sections, headers, footers
-          - Form elements, buttons, inputs
-          - Content elements with placeholder text
+          Now build the HTML structure and layout CSS based on your plan.
 
-          Use manage_css for layout:
-          - Flexbox/grid positioning
-          - Spacing and sizing
+          Available tools:
+          - **modify_elements**: Add containers, sections, buttons, inputs, text
+          - **manage_css**: Set up flexbox/grid layout, spacing, sizing
 
-          Focus on structure and layout only - no behavior or visual polish yet.
+          Guidelines:
+          - Work incrementally - build one section at a time
+          - Use placeholder text for content
+          - Focus on structure and layout ONLY
+          - Do NOT add colors, fancy styling, or JavaScript yet
+
+          When the structure is complete, you'll move to the Behavior phase.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -74,13 +94,23 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Add interactive behavior.
+          ## BEHAVIOR PHASE (3 of 5)
 
-          Use manage_handlers for click/submit/input events.
-          Use manage_functions for reusable JavaScript.
-          Use manage_variables for state tracking.
+          Now add interactive behavior to make the wireframe functional.
 
-          Make the wireframe functional.
+          Available tools:
+          - **manage_handlers**: Add click, submit, input event handlers
+          - **manage_functions**: Create reusable JavaScript functions
+          - **manage_variables**: Set up state variables
+          - **manage_init_scripts**: Add initialization code
+
+          Guidelines:
+          - Implement the interactions from your plan
+          - Keep JavaScript simple and focused
+          - Use variables to track state (counters, toggles, etc.)
+          - Do NOT add visual styling yet
+
+          When behavior is implemented, you'll move to Testing.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -95,15 +125,21 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Verify the wireframe works using trigger_interaction.
+          ## TESTING PHASE (4 of 5)
 
-          Test each interactive element once:
-          - Click buttons to verify handlers fire
-          - Fill and submit forms if present
-          - Check LIVE DOM STATE to confirm changes
+          Verify the wireframe works by testing each interactive element.
 
-          If something doesn't work, fix it with the appropriate tool, then retest.
-          When core functionality works, move on.
+          Available tools:
+          - **trigger_interaction**: Simulate clicks, form submissions, inputs
+          - All modification tools (to fix issues you discover)
+
+          Guidelines:
+          - Test each button/interaction once
+          - Check LIVE DOM STATE after each test to confirm it worked
+          - If something fails, fix it and retest
+          - Don't over-test - verify core functionality works, then move on
+
+          When core functionality is verified, you'll move to Polish.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",
@@ -118,14 +154,22 @@ defmodule WireframeEditorWeb.Routines.BuildWireframeRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          Add visual styling with manage_css.
+          ## POLISH PHASE (5 of 5)
 
-          Apply:
-          - Colors and backgrounds
-          - Typography (sizes, weights)
-          - Borders, shadows, hover states
+          Add visual styling to make the wireframe look polished.
 
-          Layout is done - focus on visual appeal.
+          Available tools:
+          - **manage_css**: Add colors, typography, borders, shadows, hover states
+          - **modify_classes**: Add utility classes if needed
+
+          Guidelines:
+          - Apply colors and backgrounds
+          - Refine typography (sizes, weights, line-height)
+          - Add borders, shadows, rounded corners
+          - Add hover/focus states for interactive elements
+          - Ensure visual consistency
+
+          This is the final phase. When complete, summarize what you built.
           """,
           lenses: [
             "WireframeEditorWeb.Lenses.WireframeEditor",

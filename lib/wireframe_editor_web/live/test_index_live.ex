@@ -14,12 +14,14 @@ defmodule WireframeEditorWeb.TestIndexLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div class="min-h-screen bg-slate-50">
+      <.site_nav current_page={:test} />
+
       <div class="max-w-4xl mx-auto px-4 py-12">
         <!-- Header -->
         <div class="text-center mb-12">
           <h1 class="text-4xl font-bold text-slate-800 mb-3">
-            koalemos test pages
+            Test Pages
           </h1>
           <p class="text-lg text-slate-600">
             Manual testing and demonstration pages
@@ -435,23 +437,6 @@ defmodule WireframeEditorWeb.TestIndexLive do
           </a>
         </div>
 
-    <!-- Back to Home -->
-        <div class="mt-12 text-center">
-          <a
-            href="/"
-            class="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back to Home
-          </a>
-        </div>
       </div>
     </div>
     """

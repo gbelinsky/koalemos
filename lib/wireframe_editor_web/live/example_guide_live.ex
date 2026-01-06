@@ -29,25 +29,18 @@ defmodule WireframeEditorWeb.ExampleGuideLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 py-12">
-      <div class="container mx-auto px-4 max-w-4xl">
-        <!-- Header -->
-        <div class="mb-8">
-          <a href="/" class="text-blue-600 hover:text-blue-700 flex items-center gap-2 mb-4">
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fill-rule="evenodd"
-                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            back to home
-          </a>
-          <h1 class="text-4xl font-bold text-slate-800 mb-2">example: build a login form</h1>
-          <p class="text-lg text-slate-600">
-            a step-by-step guide to using the AI wireframe editor
-          </p>
-        </div>
+    <div class="min-h-screen bg-slate-50">
+      <.site_nav current_page={nil} />
+
+      <div class="py-12">
+        <div class="container mx-auto px-4 max-w-4xl">
+          <!-- Header -->
+          <div class="mb-8">
+            <h1 class="text-4xl font-bold text-slate-800 mb-2">Example: Build a Login Form</h1>
+            <p class="text-lg text-slate-600">
+              A step-by-step guide to using the AI wireframe editor
+            </p>
+          </div>
         <!-- Introduction -->
         <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
           <h2 class="text-2xl font-bold text-slate-800 mb-4">what you'll learn</h2>
@@ -244,6 +237,7 @@ defmodule WireframeEditorWeb.ExampleGuideLive do
               home page
             </a>
           </p>
+        </div>
         </div>
       </div>
     </div>
