@@ -1,4 +1,4 @@
-const esprima = require('esprima');
+const acorn = require('acorn');
 const escodegen = require('escodegen');
 
 /**
@@ -8,7 +8,11 @@ const escodegen = require('escodegen');
  */
 function parseJavaScript(code) {
   try {
-    const ast = esprima.parseScript(code, { loc: true, range: true });
+    const ast = acorn.parse(code, {
+      ecmaVersion: 'latest',
+      locations: true,
+      ranges: true
+    });
 
     const variables = {};
     const functions = {};
@@ -140,12 +144,21 @@ function parseJavaScript(code) {
           const valueCode = code.substring(valueStart, valueEnd);
 
           try {
-            // Try to eval it as JSON
+            // First try JSON.parse (safe and fast for JSON literals)
             const value = JSON.parse(valueCode);
             variables[name] = value;
-          } catch (e) {
-            // If it's not valid JSON, skip it
-            console.error(`Could not parse value for ${name}: ${valueCode}`);
+          } catch (jsonError) {
+            // If JSON.parse fails, try evaluating as JavaScript
+            // This handles single-quoted strings, arrays with single quotes, etc.
+            try {
+              // Use Function constructor to safely evaluate the expression
+              // Returns the evaluated value without polluting scope
+              const value = new Function(`return ${valueCode}`)();
+              variables[name] = value;
+            } catch (evalError) {
+              // If both fail, log and skip
+              console.error(`Could not parse value for ${name}: ${valueCode}`, evalError.message);
+            }
           }
         }
 
@@ -174,14 +187,18 @@ function parseJavaScript(code) {
     const remainingNodes = ast.body.filter((_, index) => !nodesToRemove.has(index));
 
     // Helper to check if a node is a DOMContentLoaded wrapper
+    // Handles both document.addEventListener and window.addEventListener
     function isDOMContentLoadedWrapper(node) {
-      return node.type === 'ExpressionStatement' &&
-             node.expression?.type === 'CallExpression' &&
-             node.expression.callee?.type === 'MemberExpression' &&
-             node.expression.callee.object?.name === 'document' &&
-             node.expression.callee.property?.name === 'addEventListener' &&
-             node.expression.arguments?.length >= 2 &&
-             node.expression.arguments[0]?.value === 'DOMContentLoaded';
+      if (node.type !== 'ExpressionStatement' ||
+          node.expression?.type !== 'CallExpression' ||
+          node.expression.callee?.type !== 'MemberExpression' ||
+          node.expression.callee.property?.name !== 'addEventListener' ||
+          node.expression.arguments?.length < 2 ||
+          node.expression.arguments[0]?.value !== 'DOMContentLoaded') {
+        return false;
+      }
+      const objName = node.expression.callee.object?.name;
+      return objName === 'document' || objName === 'window';
     }
 
     // Helper to extract body from DOMContentLoaded wrapper

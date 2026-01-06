@@ -134,6 +134,53 @@ defmodule Koalemos.DemoCredentialStore do
     {:error, "Invalid provider: #{provider}. Must be anthropic, openai, or ollama"}
   end
 
+  @doc """
+  Get all provider API keys (without other config like models).
+  Returns empty strings for missing keys.
+  """
+  def get_all_api_keys do
+    case load() do
+      {:ok, data} ->
+        %{
+          "anthropic" => get_in(data, ["providers", "anthropic", "api_key"]) || "",
+          "openai" => get_in(data, ["providers", "openai", "api_key"]) || ""
+        }
+
+      _ ->
+        %{"anthropic" => "", "openai" => ""}
+    end
+  end
+
+  @doc """
+  Update API keys for multiple providers.
+  Only updates API keys, preserves other settings like models and base URLs.
+  Does not affect OAuth section.
+  """
+  def update_api_keys(keys) when is_map(keys) do
+    with_lock(fn ->
+      case load() do
+        {:ok, data} ->
+          # Update each provider's API key while preserving other fields
+          updated_data =
+            Enum.reduce(keys, data, fn {provider, key}, acc ->
+              # Get current provider config (or default)
+              current = get_in(acc, ["providers", provider]) || default_provider_config(provider)
+
+              # Update only the api_key field
+              updated_provider = Map.put(current, "api_key", key)
+
+              # Put back into data structure
+              put_in(acc, ["providers", provider], updated_provider)
+            end)
+
+          write_file(updated_data)
+
+        error ->
+          error
+      end
+    end)
+  end
+
   ## Private Functions
 
   defp get_credentials_path do
@@ -144,10 +191,11 @@ defmodule Koalemos.DemoCredentialStore do
     providers = Map.get(data, "providers", %{})
 
     # Ensure each provider has a config
-    providers = providers
-    |> Map.put_new("anthropic", default_provider_config("anthropic"))
-    |> Map.put_new("openai", default_provider_config("openai"))
-    |> Map.put_new("ollama", default_provider_config("ollama"))
+    providers =
+      providers
+      |> Map.put_new("anthropic", default_provider_config("anthropic"))
+      |> Map.put_new("openai", default_provider_config("openai"))
+      |> Map.put_new("ollama", default_provider_config("ollama"))
 
     data
     |> Map.put("providers", providers)

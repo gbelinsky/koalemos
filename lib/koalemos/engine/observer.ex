@@ -26,13 +26,18 @@ defmodule Koalemos.Engine.Observer do
 
   ## Configuration
 
-  The log file path can be configured in config.exs:
+  Event logging can be enabled/disabled per environment in config files:
 
-      config :koalemos, :event_log_path, "priv/events.log"
+      # In dev.exs
+      config :koalemos,
+        enable_event_logging: true,
+        event_log_path: "tmp/events.log"
+
+      # In prod.exs
+      config :koalemos,
+        enable_event_logging: false
 
   """
-
-  @log_file_path Application.compile_env(:koalemos, :event_log_path, "priv/events.log")
 
   @type event :: map()
   @type routine_id :: String.t()
@@ -84,26 +89,42 @@ defmodule Koalemos.Engine.Observer do
     # Convert any tuples to JSON-serializable format
     serializable_event = make_serializable(event)
 
-    # Log to file
-    log_entry =
-      serializable_event
-      |> Map.put(:timestamp, timestamp)
-      |> Jason.encode!()
+    # Log to file (only if enabled in config - typically dev only)
+    # TODO OPTIMIZATION: Use compile-time macros to eliminate this code entirely in prod builds
+    # (similar to Logger's compile_time_purge_matching). Current approach has ~1-2µs runtime
+    # overhead per event, which is negligible but could be zero with macro-based elimination.
+    if Application.get_env(:koalemos, :enable_event_logging, false) do
+      log_entry =
+        serializable_event
+        |> Map.put(:timestamp, timestamp)
+        |> Jason.encode!()
 
-    case File.write(@log_file_path, log_entry <> "\n", [:append]) do
-      :ok ->
-        :ok
+      log_file_path = Application.get_env(:koalemos, :event_log_path, "tmp/events.log")
 
-      {:error, reason} ->
-        Logger.error("Failed to write event log: #{inspect(reason)}")
+      case File.write(log_file_path, log_entry <> "\n", [:append]) do
+        :ok ->
+          :ok
+
+        {:error, reason} ->
+          Logger.error("Failed to write event log to #{log_file_path}: #{inspect(reason)}")
+      end
     end
 
     # Broadcast to PubSub
-    Phoenix.PubSub.broadcast(Koalemos.PubSub, "routine_events", {:routine_event, serializable_event})
+    Phoenix.PubSub.broadcast(
+      Koalemos.PubSub,
+      "routine_events",
+      {:routine_event, serializable_event}
+    )
 
     # Also broadcast to routine-specific topic
-    if routine_id = Map.get(serializable_event, :routine_id) || Map.get(serializable_event, :workflow_id) do
-      Phoenix.PubSub.broadcast(Koalemos.PubSub, "routine:#{routine_id}", {:routine_event, serializable_event})
+    if routine_id =
+         Map.get(serializable_event, :routine_id) || Map.get(serializable_event, :workflow_id) do
+      Phoenix.PubSub.broadcast(
+        Koalemos.PubSub,
+        "routine:#{routine_id}",
+        {:routine_event, serializable_event}
+      )
     end
 
     # Check for message changes and broadcast to message-specific topic
@@ -247,7 +268,10 @@ defmodule Koalemos.Engine.Observer do
 
     # Look for context_changed events with messages
     if event_type == "context_changed" or event_type == :context_changed do
-      routine_id = Map.get(event, :routine_id) || Map.get(event, :workflow_id) || Map.get(event, "routine_id") || Map.get(event, "workflow_id")
+      routine_id =
+        Map.get(event, :routine_id) || Map.get(event, :workflow_id) ||
+          Map.get(event, "routine_id") || Map.get(event, "workflow_id")
+
       context_diff = Map.get(event, :context_diff) || Map.get(event, "context_diff")
 
       if routine_id && context_diff do

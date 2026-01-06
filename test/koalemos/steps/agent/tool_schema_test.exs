@@ -24,6 +24,7 @@ defmodule Koalemos.Steps.Agent.ToolSchemaTest do
 
     def info(:context_tool, context) do
       mode = context[:mode] || "default"
+
       %{
         name: "context_tool",
         description: "Tool with mode: #{mode}",

@@ -33,7 +33,15 @@ defmodule Koalemos.Routines.ThinkingTestRoutine do
   """
 
   alias Koalemos.Steps.User.ChatUserInput
-  alias Koalemos.Steps.Agent.{ToolSchema, LensRendering, LLMRequest, ResponseParsing, ToolLookup, ToolExecution}
+
+  alias Koalemos.Steps.Agent.{
+    ToolSchema,
+    LensRendering,
+    LLMRequest,
+    ResponseParsing,
+    ToolLookup,
+    ToolExecution
+  }
 
   @doc """
   Returns the routine definition.

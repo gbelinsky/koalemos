@@ -14,9 +14,10 @@ defmodule Koalemos.LLMProvider.UtilsTest do
       result = Utils.strip_metadata(message)
 
       assert result == %{
-        role: "user",
-        content: [%{type: "text", text: "Hello"}]
-      }
+               role: "user",
+               content: [%{type: "text", text: "Hello"}]
+             }
+
       refute Map.has_key?(result, :metadata)
     end
 

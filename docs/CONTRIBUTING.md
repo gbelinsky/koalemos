@@ -1,201 +1,101 @@
 # Contributing to Koalemos
 
-**Status:** Active development (Milestone 2+)
-
----
-
 ## Development Workflow
 
 ### Branch Strategy
 
-We use Git Flow for structured development:
-
-- **`main`** - Production-ready code, tagged milestone releases
-- **`develop`** - Integration branch for completed features
-- **`feature/*`** - Feature branches for active development
+- `main` - Stable releases
+- `develop` - Integration branch for completed features
+- `feature/*` - Active development
 
 ### Process
 
-1. **Create Feature Branch**
-   ```bash
-   git checkout develop
-   git pull origin develop
-   git checkout -b feature/m2-ui-foundation
-   ```
+1. Create a feature branch from `develop`
+2. Write code and tests (maintain >85% coverage)
+3. Run `mix test` and `mix format`
+4. Open a pull request to `develop`
+5. Address review feedback
+6. Merge when approved
 
-2. **Develop and Test**
-   - Write code
-   - Add tests (maintain >85% coverage)
-   - Run full test suite: `mix test`
-   - Update documentation as needed
+### Commit Messages
 
-3. **Commit Guidelines**
-   - Write clear, concise commit messages
-   - Format: `<component>: <change>`
-   - Examples:
-     ```
-     LiveView: Add basic chat interface
-     TemplatedSemanticAgent: Port from Flo
-     Tests: Add integration tests for agent loop
-     ```
+Use the format: `<component>: <change>`
 
-4. **Create Pull Request**
-   - Target: `develop` branch
-   - Title: Descriptive (e.g., "M2: Add basic LiveView chat interface")
-   - Description: What changed, why, test results
-   - Link to milestone/issue if applicable
-
-5. **Code Review**
-   - At least one approval required
-   - Address feedback
-   - Update PR as needed
-
-6. **Merge to Develop**
-   - Squash commits if many small ones
-   - Delete feature branch after merge
-
-7. **Milestone Release**
-   - When milestone complete, merge `develop` → `main`
-   - Tag release: `git tag v2.0.0-milestone2`
-   - Push tags: `git push --tags`
-
----
-
-## Milestone Structure
-
-See [BACKLOG.md](./BACKLOG.md) for detailed milestone breakdown.
-
-**Current Milestones:**
-- ✅ M1: Foundation (complete)
-- 🚧 M2: UI Foundation + Simple Agent Loop (in progress)
-- ⏳ M3: Infrastructure Layer
-- ⏳ M4: WireframeEditor Lens
-- ⏳ M5: WireframeDesign Routine (MVP complete)
-- ⏳ M6: Polish & Production-Ready
-
----
+Examples:
+```
+Engine: Fix state transition edge case
+WireframeEditor: Add CSS grid support
+Tests: Add lens integration tests
+```
 
 ## Code Standards
 
 ### Elixir
 
-**Style:**
-- Follow [Elixir Style Guide](https://github.com/christopheradams/elixir_style_guide)
+- Follow the [Elixir Style Guide](https://github.com/christopheradams/elixir_style_guide)
 - Run `mix format` before committing
-- Use `@moduledoc` and `@doc` for all public modules/functions
+- Add `@moduledoc` and `@doc` to public modules and functions
+- Use descriptive variable names
 
-**Testing:**
-- Unit tests for all modules
-- Integration tests for workflows
-- Target: >85% test coverage
-- Run: `mix test` or `mix coveralls.detail`
-
-**Naming:**
-- See [NAMING.md](./NAMING.md) for conventions
-- Modules: `PascalCase`
-- Functions: `snake_case`
-- Atoms: `:snake_case`
-
-### LiveView/JavaScript
-
-**Style:**
-- Semantic HTML
-- Tailwind CSS for styling
-- Minimal JavaScript (use LiveView where possible)
-- Document JavaScript hooks
-
----
-
-## Testing
-
-### Running Tests
+### Testing
 
 ```bash
-# All tests
+# Run all tests
 mix test
 
-# Specific file
-mix test test/koalemos/engine_test.exs
-
-# Specific test
-mix test test/koalemos/engine_test.exs:42
-
-# With coverage
+# Run with coverage
 mix coveralls.detail
 
-# Real API tests (requires credentials)
+# Run specific file
+mix test test/koalemos/engine_test.exs
+
+# Include real API tests (requires credentials)
 mix test --include real_api
 ```
 
-### Writing Tests
+Write tests for new functionality:
 
-**Unit Tests:**
 ```elixir
 defmodule Koalemos.MyModuleTest do
   use ExUnit.Case, async: true
 
-  describe "function_name/2" do
-    test "handles normal case" do
-      assert MyModule.function_name(arg1, arg2) == expected
+  describe "my_function/2" do
+    test "returns expected result" do
+      assert MyModule.my_function(arg1, arg2) == expected
     end
 
-    test "handles error case" do
-      assert {:error, _} = MyModule.function_name(bad_arg1, bad_arg2)
+    test "handles errors" do
+      assert {:error, _} = MyModule.my_function(bad_arg)
     end
   end
 end
 ```
 
-**Integration Tests:**
-```elixir
-defmodule Koalemos.Integration.MyFlowTest do
-  use Koalemos.IntegrationTestCase, async: false
+### LiveView and JavaScript
 
-  test "complete workflow", %{routine_id: routine_id} do
-    {:ok, pid} = EngineManager.start_routine(routine_id, MyRoutine, %{})
-
-    assert_receive {:routine_event, %{event_type: "routine_completed"}}, 1000
-
-    state = :sys.get_state(pid)
-    assert state.routine_status == :completed
-  end
-end
-```
-
----
+- Use semantic HTML
+- Style with Tailwind CSS
+- Prefer LiveView over JavaScript where possible
+- Document JavaScript hooks in the module they support
 
 ## Documentation
 
-### When to Update Docs
+Update docs when you change:
 
-- **BACKLOG.md** - When completing milestones, marking todos done
-- **COVERAGE_LOG.md** - After each phase/milestone, log test coverage
-- **ARCHITECTURE.md** - When adding major components or changing design
-- **NAMING.md** - When establishing new naming conventions
-- **README.md** - When changing setup, requirements, or usage
+- Setup or requirements: update README.md
+- Architecture or major components: update docs/ARCHITECTURE.md
+- Features or usage: update the relevant guide in docs/guides/
 
-### Documentation Style
-
-- Clear, concise explanations
-- Code examples where helpful
-- Link to relevant files/modules
-- Keep it up-to-date (docs rot quickly!)
-
----
+Keep documentation concise. Include code examples where they help.
 
 ## Getting Help
 
-- **Questions:** Open an issue with `question` label
-- **Bugs:** Open an issue with `bug` label
-- **Discussions:** Use GitHub Discussions for design questions
-
----
+Open a GitHub issue for bugs or questions.
 
 ## Development Setup
 
 See [README.md](../README.md) for setup instructions.
 
-**Quick Start:**
 ```bash
 git clone https://github.com/gbelinsky/koalemos.git
 cd koalemos
@@ -203,27 +103,3 @@ mix deps.get
 mix test
 mix phx.server
 ```
-
----
-
-## Release Process
-
-**Milestone Release:**
-1. Complete all milestone todos
-2. Run full test suite: `mix test`
-3. Update COVERAGE_LOG.md with final stats
-4. Update BACKLOG.md (mark milestone complete)
-5. Merge `develop` → `main`
-6. Tag release: `git tag v2.0.0-milestone2 -m "Milestone 2: UI Foundation + Simple Agent Loop"`
-7. Push: `git push origin main --tags`
-8. Create GitHub release with changelog
-
----
-
-## Code of Conduct
-
-Be respectful, constructive, and collaborative.
-
----
-
-**Questions?** Open an issue or discussion on GitHub.

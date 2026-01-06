@@ -262,6 +262,7 @@ defmodule Koalemos.Lenses.PersonaLensTest do
   describe "provide_context/2 with combined dimensions" do
     test "combines tone + single expertise + style" do
       state = %{context: %{}}
+
       config = %{
         tone: :professional,
         expertise: [:technical],
@@ -285,6 +286,7 @@ defmodule Koalemos.Lenses.PersonaLensTest do
 
     test "combines tone + multiple expertise + style" do
       state = %{context: %{}}
+
       config = %{
         tone: :friendly,
         expertise: [:creative, :ux],

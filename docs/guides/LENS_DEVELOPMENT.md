@@ -1,8 +1,5 @@
 # Lens Development Guide
 
-**Last Updated:** November 11, 2025
-**For:** Koalemos M4+
-
 ---
 
 ## TLDR

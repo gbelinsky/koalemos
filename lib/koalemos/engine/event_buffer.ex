@@ -5,6 +5,13 @@ defmodule Koalemos.Engine.EventBuffer do
   Events are organized by type for efficient lookup, with each type
   maintaining a list of events in insertion order (FIFO).
 
+  ## Known Limitation: Unbounded Growth
+
+  The buffer currently has no size limit. In normal operation this is fine
+  because events are consumed as they arrive. However, if events accumulate
+  faster than they're consumed, memory could grow unbounded. For production
+  use, consider adding: max buffer size, per-type limits, or TTL-based expiry.
+
   ## Usage
 
   The EventBuffer is used to store external events that arrive while

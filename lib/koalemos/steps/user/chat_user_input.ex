@@ -34,6 +34,8 @@ defmodule Koalemos.Steps.User.ChatUserInput do
 
   alias Koalemos.Utils.MessageBuilder
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @doc """
   Waits for a :user_input event from the UI.
@@ -69,23 +71,24 @@ defmodule Koalemos.Steps.User.ChatUserInput do
     case format_user_input(data, state.routine_id) do
       {:ok, formatted_message} ->
         msg_id = get_in(formatted_message, [:metadata, :id])
-        Logger.info("[ChatUserInput] User message formatted (id: #{msg_id}), appending")
+        Log.debug(:engine, "[ChatUserInput] User message formatted (id: #{msg_id}), appending")
 
         # Check if screenshot was requested (only for map input)
-        diff = if is_map(data) and Map.get(data, :include_screenshot, false) do
-          Logger.info("[ChatUserInput] Screenshot requested, setting lens_state flag")
+        diff =
+          if is_map(data) and Map.get(data, :include_screenshot, false) do
+            Log.debug(:engine, "[ChatUserInput] Screenshot requested, setting lens_state flag")
 
-          # Merge into existing lens_state to preserve other keys
-          existing_lens_state = state.context[:lens_state] || %{}
-          updated_lens_state = Map.put(existing_lens_state, :request_screenshot, true)
+            # Merge into existing lens_state to preserve other keys
+            existing_lens_state = state.context[:lens_state] || %{}
+            updated_lens_state = Map.put(existing_lens_state, :request_screenshot, true)
 
-          [
-            append_to: %{messages: [formatted_message]},
-            add_or_update: %{lens_state: updated_lens_state}
-          ]
-        else
-          [append_to: %{messages: [formatted_message]}]
-        end
+            [
+              append_to: %{messages: [formatted_message]},
+              add_or_update: %{lens_state: updated_lens_state}
+            ]
+          else
+            [append_to: %{messages: [formatted_message]}]
+          end
 
         {:ok, diff}
 
@@ -111,7 +114,7 @@ defmodule Koalemos.Steps.User.ChatUserInput do
 
   # Text with images (or text only, or images only)
   defp format_user_input(%{text: text, images: images}, routine_id)
-      when is_binary(text) and is_list(images) do
+       when is_binary(text) and is_list(images) do
     # Only include text if non-empty (BUG-002 fix)
     text_parts = if text != "", do: [{:text, text}], else: []
     image_parts = Enum.map(images, fn img -> {:image, img.base64, img.media_type} end)
@@ -119,11 +122,12 @@ defmodule Koalemos.Steps.User.ChatUserInput do
 
     # If both are empty, this must be a screenshot-only request
     # Create a minimal placeholder message
-    content_parts = if content_parts == [] do
-      [{:text, "(screenshot requested)"}]
-    else
-      content_parts
-    end
+    content_parts =
+      if content_parts == [] do
+        [{:text, "(screenshot requested)"}]
+      else
+        content_parts
+      end
 
     opts = [source: :user, routine_id: routine_id]
     {:ok, MessageBuilder.build_user_message_with_content(content_parts, opts)}
@@ -131,7 +135,7 @@ defmodule Koalemos.Steps.User.ChatUserInput do
 
   # Images only (no text)
   defp format_user_input(%{images: images}, routine_id)
-      when is_list(images) and length(images) > 0 do
+       when is_list(images) and length(images) > 0 do
     content_parts = Enum.map(images, fn img -> {:image, img.base64, img.media_type} end)
     opts = [source: :user, routine_id: routine_id]
     {:ok, MessageBuilder.build_user_message_with_content(content_parts, opts)}
@@ -148,19 +152,20 @@ defmodule Koalemos.Steps.User.ChatUserInput do
         content = Map.get(user_msg, :content) || Map.get(user_msg, "content")
 
         # Rebuild message with proper metadata
-        rebuilt_msg = if is_list(content) do
-          # Normalize content blocks to use atom keys for validation
-          normalized_content = Enum.map(content, &normalize_content_block/1)
+        rebuilt_msg =
+          if is_list(content) do
+            # Normalize content blocks to use atom keys for validation
+            normalized_content = Enum.map(content, &normalize_content_block/1)
 
-          %{
-            role: "user",
-            content: normalized_content,
-            metadata: MessageBuilder.build_user_message("", routine_id: routine_id).metadata
-          }
-        else
-          # Fallback for unexpected format
-          MessageBuilder.build_user_message(inspect(content), routine_id: routine_id)
-        end
+            %{
+              role: "user",
+              content: normalized_content,
+              metadata: MessageBuilder.build_user_message("", routine_id: routine_id).metadata
+            }
+          else
+            # Fallback for unexpected format
+            MessageBuilder.build_user_message(inspect(content), routine_id: routine_id)
+          end
 
         case MessageBuilder.validate_message(rebuilt_msg) do
           :ok -> {:ok, rebuilt_msg}
@@ -175,6 +180,10 @@ defmodule Koalemos.Steps.User.ChatUserInput do
   end
 
   # Normalize content block keys from strings to atoms
+  # NOTE: String.to_existing_atom can crash on unknown keys. This is low risk because:
+  # 1. Only affects pre-formatted messages (edge case)
+  # 2. Known content block keys (type, text, source, etc.) already exist as atoms
+  # 3. If this becomes a problem, add a whitelist of known keys or use try/rescue
   defp normalize_content_block(%{"type" => _type} = block) do
     # Convert string keys to atom keys
     Enum.reduce(block, %{}, fn {key, value}, acc ->
@@ -192,11 +201,13 @@ defmodule Koalemos.Steps.User.ChatUserInput do
 
   # Recursively normalize nested maps
   defp normalize_value(%{"type" => _} = map), do: normalize_content_block(map)
+
   defp normalize_value(map) when is_map(map) do
     Enum.reduce(map, %{}, fn {key, value}, acc ->
       atom_key = if is_binary(key), do: String.to_existing_atom(key), else: key
       Map.put(acc, atom_key, normalize_value(value))
     end)
   end
+
   defp normalize_value(value), do: value
 end

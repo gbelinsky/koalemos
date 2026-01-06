@@ -36,6 +36,10 @@ defmodule Koalemos.Steps.Agent.LensRendering do
 
   alias Koalemos.ConfigMerge
 
+  require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
+
   def execute(config_sources, state) do
     # Hybrid pattern: base lenses from context + config lenses
     base_lenses = state.context[:lenses] || []
@@ -51,10 +55,13 @@ defmodule Koalemos.Steps.Agent.LensRendering do
       # Separate text and image blocks
       {text_blocks, image_blocks} = separate_context_blocks(all_context_blocks)
 
-      {:ok, [add_or_update: %{
-        lens_text_contexts: text_blocks,
-        lens_image_contexts: image_blocks
-      }]}
+      {:ok,
+       [
+         add_or_update: %{
+           lens_text_contexts: text_blocks,
+           lens_image_contexts: image_blocks
+         }
+       ]}
     rescue
       error ->
         {:error, "Lens context rendering failed: #{Exception.message(error)}"}
@@ -66,11 +73,51 @@ defmodule Koalemos.Steps.Agent.LensRendering do
     Enum.flat_map(lenses_config, fn
       # String format: "ModuleName"
       module_name when is_binary(module_name) ->
-        get_context_from_module_name(module_name, %{}, state)
+        blocks = get_context_from_module_name(module_name, %{}, state)
+        log_lens_context(module_name, blocks)
+        blocks
 
       # List format: ["ModuleName", config]
       [module_name, config] when is_binary(module_name) ->
-        get_context_from_module_name(module_name, config, state)
+        blocks = get_context_from_module_name(module_name, config, state)
+        log_lens_context(module_name, blocks)
+        blocks
+    end)
+  end
+
+  # Log the full context from a lens (not truncated)
+  defp log_lens_context(module_name, blocks) do
+    # Get short module name for cleaner logs
+    short_name = module_name |> String.split(".") |> List.last()
+
+    Enum.each(blocks, fn block ->
+      cond do
+        is_binary(block) ->
+          Log.info(:context, fn ->
+            "[LensContext] #{short_name} (text):\n#{block}"
+          end)
+
+        is_map(block) ->
+          type = block["type"] || block[:type]
+
+          case type do
+            "text" ->
+              text = block["text"] || block[:text] || ""
+              Log.info(:context, fn ->
+                "[LensContext] #{short_name} (text):\n#{text}"
+              end)
+
+            "image" ->
+              # Don't log base64 data, just note presence
+              Log.info(:context, "[LensContext] #{short_name} (image): screenshot included")
+
+            _ ->
+              Log.info(:context, "[LensContext] #{short_name} (#{type || "unknown"}): #{inspect(block, limit: 200)}")
+          end
+
+        true ->
+          Log.info(:context, "[LensContext] #{short_name}: #{inspect(block, limit: 200)}")
+      end
     end)
   end
 

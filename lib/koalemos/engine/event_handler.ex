@@ -162,7 +162,13 @@ defmodule Koalemos.Engine.EventHandler do
         EventHandler.handle_get_event(types, timeout, diff, from, state)
       end
   """
-  @spec handle_get_event(event_types(), timeout_ms(), ContextManager.diff(), GenServer.from(), state()) ::
+  @spec handle_get_event(
+          event_types(),
+          timeout_ms(),
+          ContextManager.diff(),
+          GenServer.from(),
+          state()
+        ) ::
           genserver_result()
   def handle_get_event(event_types, timeout, diff, from, state) do
     # Apply the context diff first
@@ -209,6 +215,10 @@ defmodule Koalemos.Engine.EventHandler do
         # This timeout matches our current wait - handle it
         step_config = Orchestrator.get_current_step_config(state)
 
+        if is_nil(step_config) do
+          raise "Step :#{state.current_step} not found in routine #{inspect(state.current_routine_module)}"
+        end
+
         final_state =
           StepUtils.call_step_function_if_exists(
             step_config.type,
@@ -247,7 +257,8 @@ defmodule Koalemos.Engine.EventHandler do
 
       ms when is_integer(ms) and ms > 0 ->
         # Wait for specified time
-        timer_ref = :timer.send_after(ms, self(), {:external_event, :timeout, event_types})
+        # Note: :timer.send_after returns {:ok, TRef}, extract the ref
+        {:ok, timer_ref} = :timer.send_after(ms, self(), {:external_event, :timeout, event_types})
 
         waiting_state = %{
           state
@@ -283,6 +294,10 @@ defmodule Koalemos.Engine.EventHandler do
       {:found, event_type, data, _timestamp, new_buffer} ->
         updated_state = %{state | event_buffer: new_buffer}
         step_config = Orchestrator.get_current_step_config(state)
+
+        if is_nil(step_config) do
+          raise "Step :#{state.current_step} not found in routine #{inspect(state.current_routine_module)}"
+        end
 
         # Call handle_event and capture both the updated state AND the diff
         {final_state, diff} =

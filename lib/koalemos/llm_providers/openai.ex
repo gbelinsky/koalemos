@@ -41,6 +41,8 @@ defmodule Koalemos.LLMProviders.OpenAI do
   alias Koalemos.OpenAIFormatConverter
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
   @default_model "gpt-4"
   @default_max_tokens 16384
@@ -48,6 +50,18 @@ defmodule Koalemos.LLMProviders.OpenAI do
 
   @impl true
   def call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
+    # Validate credentials early to provide clear error message
+    case validate_credentials(credentials) do
+      :ok ->
+        do_call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id)
+
+      {:error, reason} ->
+        Logger.error("[OpenAI] #{reason}")
+        {:error, reason}
+    end
+  end
+
+  defp do_call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
     Logger.info("[OpenAI] Making request for routine #{routine_id}")
 
     # Extract text and image contexts
@@ -63,16 +77,42 @@ defmodule Koalemos.LLMProviders.OpenAI do
     # Convert to OpenAI format
     openai_messages = OpenAIFormatConverter.convert_messages_to_openai(filtered_messages)
 
-    # Build system message from text contexts
-    system_message = OpenAIFormatConverter.build_system_message(text_contexts)
+    # Build system message from text contexts and step prompt
+    step_prompt = Map.get(lens_contexts, :step_prompt)
+    system_message = OpenAIFormatConverter.build_system_message(text_contexts, step_prompt)
+
+    # Log complete system prompt when :prompts domain enabled
+    Log.info(:prompts, fn ->
+      content = system_message["content"] || ""
+      "[Prompt] System content:\n#{content}"
+    end)
 
     # Convert image contexts to user messages
-    image_messages = Enum.map(image_contexts, fn img ->
-      %{"role" => "user", "content" => [img]}
-    end)
+    image_messages =
+      Enum.map(image_contexts, fn img ->
+        %{"role" => "user", "content" => [img]}
+      end)
 
     # Combine: system, images, actual messages
     all_messages = [system_message] ++ image_messages ++ openai_messages
+
+    # Log messages when :prompts domain enabled
+    Log.info(:prompts, fn ->
+      msg_summary = Enum.map(all_messages, fn msg ->
+        role = msg["role"] || msg[:role]
+        content = msg["content"] || msg[:content]
+        content_preview = case content do
+          text when is_binary(text) ->
+            if String.length(text) > 200, do: String.slice(text, 0, 200) <> "...", else: text
+          blocks when is_list(blocks) ->
+            "[#{length(blocks)} content blocks]"
+          _ ->
+            inspect(content, limit: 100)
+        end
+        "  #{role}: #{content_preview}"
+      end)
+      "[Prompt] Messages (#{length(all_messages)}):\n#{Enum.join(msg_summary, "\n")}"
+    end)
 
     # Get model parameters from config with defaults
     model = config[:model] || @default_model
@@ -93,6 +133,15 @@ defmodule Koalemos.LLMProviders.OpenAI do
     json_body =
       if length(tool_descriptions) > 0 do
         openai_tools = ToolSchemaConverter.anthropic_to_openai(tool_descriptions)
+
+        # Log tool names when :prompts domain enabled
+        Log.info(:prompts, fn ->
+          tool_names = Enum.map(tool_descriptions, fn tool ->
+            "  - #{tool[:name] || tool["name"]}"
+          end)
+          "[Prompt] Tools (#{length(tool_descriptions)}):\n#{Enum.join(tool_names, "\n")}"
+        end)
+
         Map.put(json_body, :tools, openai_tools)
       else
         json_body
@@ -151,6 +200,19 @@ defmodule Koalemos.LLMProviders.OpenAI do
         {:error, "Invalid request: #{error.message}"}
     end
   end
+
+  # Validate that required credentials are present
+  defp validate_credentials(nil), do: {:error, "Missing credentials - configure API key in settings"}
+
+  defp validate_credentials(credentials) when is_map(credentials) do
+    case Map.get(credentials, :api_key) do
+      nil -> {:error, "Missing api_key in credentials - configure API key in settings"}
+      "" -> {:error, "Empty api_key in credentials - configure API key in settings"}
+      _key -> :ok
+    end
+  end
+
+  defp validate_credentials(_), do: {:error, "Invalid credentials format"}
 
   # Build HTTP headers for OpenAI API
   defp build_headers(credentials) do

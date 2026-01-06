@@ -115,7 +115,12 @@ defmodule Koalemos.Engine.OrchestratorTest do
 
       state = %{
         state
-        | routine_definitions: Map.put(state.routine_definitions, AnotherRoutine, AnotherRoutine.routine_definition()),
+        | routine_definitions:
+            Map.put(
+              state.routine_definitions,
+              AnotherRoutine,
+              AnotherRoutine.routine_definition()
+            ),
           current_routine_module: AnotherRoutine,
           current_step: :init
       }
@@ -213,8 +218,10 @@ defmodule Koalemos.Engine.OrchestratorTest do
       assert new_state.current_step == :next
 
       # Should see transition_taken event
-      assert_receive {:routine_event, _}, 1000  # step_completed
-      assert_receive {:routine_event, _}, 1000  # context_changed
+      # step_completed
+      assert_receive {:routine_event, _}, 1000
+      # context_changed
+      assert_receive {:routine_event, _}, 1000
       assert_receive {:routine_event, event}, 1000
       assert event.event_type == "transition_taken"
     end
@@ -227,7 +234,8 @@ defmodule Koalemos.Engine.OrchestratorTest do
       {:noreply, error_state} = Orchestrator.handle_step_success(diff, state)
 
       # Should have recorded error
-      assert_receive {:routine_event, _}, 1000  # step_completed
+      # step_completed
+      assert_receive {:routine_event, _}, 1000
       assert_receive {:routine_event, event}, 1000
       assert event.event_type == "error_occurred"
 
@@ -257,8 +265,10 @@ defmodule Koalemos.Engine.OrchestratorTest do
       assert final_state.current_step == :end
 
       # Should see routine_completed event
-      assert_receive {:routine_event, _}, 1000  # step_completed
-      assert_receive {:routine_event, _}, 1000  # context_changed
+      # step_completed
+      assert_receive {:routine_event, _}, 1000
+      # context_changed
+      assert_receive {:routine_event, _}, 1000
       assert_receive {:routine_event, event}, 1000
       assert event.event_type == "routine_completed"
     end
@@ -359,7 +369,8 @@ defmodule Koalemos.Engine.OrchestratorTest do
         | current_routine_module: SubRoutine,
           current_step: :sub_start,
           execution_stack: [%{module: TestRoutine, step: :start}],
-          routine_definitions: Map.put(state.routine_definitions, SubRoutine, SubRoutine.routine_definition())
+          routine_definitions:
+            Map.put(state.routine_definitions, SubRoutine, SubRoutine.routine_definition())
       }
 
       # Complete the sub-routine by calling handle_step_success with transition to :end
@@ -390,7 +401,8 @@ defmodule Koalemos.Engine.OrchestratorTest do
       # Pre-load SubRoutineStep definition
       state = %{
         state
-        | routine_definitions: Map.put(state.routine_definitions, SubRoutineStep, SubRoutine.routine_definition())
+        | routine_definitions:
+            Map.put(state.routine_definitions, SubRoutineStep, SubRoutine.routine_definition())
       }
 
       state = put_in(state, [:routine_definitions, TestRoutine, :start, :type], SubRoutineStep)
@@ -490,7 +502,8 @@ defmodule Koalemos.Engine.OrchestratorTest do
     end
 
     test "transitions to :end when transitions list is empty", %{state: state} do
-      state = %{state | current_step: :next}  # :next has no transitions
+      # :next has no transitions
+      state = %{state | current_step: :next}
 
       {:noreply, new_state} = Orchestrator.handle_step_success([], state)
 

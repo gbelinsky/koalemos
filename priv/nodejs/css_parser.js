@@ -5,7 +5,7 @@
  * Similar architecture to js_parser.js.
  *
  * Input: CSS string
- * Output: { rules: [{selector, declarations}] }
+ * Output: { rules: { selector: declarations, ... } }
  */
 
 const css = require('css');
@@ -13,13 +13,13 @@ const css = require('css');
 /**
  * Parse CSS string into structured rules
  * @param {string} cssContent - The CSS content to parse
- * @returns {object} - { rules: [{selector, declarations}] }
+ * @returns {object} - { rules: { selector: declarations, ... } }
  */
 function parseCSS(cssContent) {
   try {
     const ast = css.parse(cssContent, { silent: false });
 
-    const rules = [];
+    const rules = {};
 
     // Extract rules from stylesheet
     if (ast.stylesheet && ast.stylesheet.rules) {
@@ -28,7 +28,12 @@ function parseCSS(cssContent) {
           // Standard CSS rule with selectors and declarations
           const ruleData = extractRule(rule);
           if (ruleData) {
-            rules.push(ruleData);
+            // Merge declarations if selector already exists (handles duplicate selectors)
+            if (rules[ruleData.selector]) {
+              Object.assign(rules[ruleData.selector], ruleData.declarations);
+            } else {
+              rules[ruleData.selector] = ruleData.declarations;
+            }
           }
         }
         // Ignore @media, @keyframes, etc. for MVP

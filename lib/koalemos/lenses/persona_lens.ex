@@ -50,7 +50,7 @@ defmodule Koalemos.Lenses.PersonaLens do
   Extracts tone, expertise, and style from config and builds appropriate
   context blocks for the system prompt.
   """
-  def provide_context(_state, config) do
+  def provide_context(_state, config \\ %{}) do
     tone = Map.get(config, :tone)
     expertise_list = Map.get(config, :expertise, [])
     style = Map.get(config, :style)

@@ -124,10 +124,10 @@ defmodule Koalemos.OpenAIFormatConverterTest do
       assert Enum.at(result, 0) == %{"role" => "user", "content" => "Here's the result:"}
       # Tool result message second
       assert Enum.at(result, 1) == %{
-        "role" => "tool",
-        "tool_call_id" => "tool_123",
-        "content" => "42"
-      }
+               "role" => "tool",
+               "tool_call_id" => "tool_123",
+               "content" => "42"
+             }
     end
 
     test "skips empty messages" do
@@ -354,7 +354,7 @@ defmodule Koalemos.OpenAIFormatConverterTest do
       }
 
       assert {:error, "No choices in response"} =
-        OpenAIFormatConverter.convert_response_to_anthropic(openai_response)
+               OpenAIFormatConverter.convert_response_to_anthropic(openai_response)
     end
 
     test "handles malformed tool call arguments" do

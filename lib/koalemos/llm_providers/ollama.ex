@@ -42,8 +42,9 @@ defmodule Koalemos.LLMProviders.Ollama do
   alias Koalemos.OpenAIFormatConverter
 
   require Logger
+  require Koalemos.Log
+  alias Koalemos.Log
 
-  @default_base_url "http://localhost:11434"
   @default_model "llama2"
   @default_max_tokens 16384
   @default_temperature 0.1
@@ -65,16 +66,42 @@ defmodule Koalemos.LLMProviders.Ollama do
     # Convert to OpenAI format (Ollama uses OpenAI-compatible API)
     openai_messages = OpenAIFormatConverter.convert_messages_to_openai(filtered_messages)
 
-    # Build system message from text contexts
-    system_message = OpenAIFormatConverter.build_system_message(text_contexts)
+    # Build system message from text contexts and step prompt
+    step_prompt = Map.get(lens_contexts, :step_prompt)
+    system_message = OpenAIFormatConverter.build_system_message(text_contexts, step_prompt)
+
+    # Log complete system prompt when :prompts domain enabled
+    Log.info(:prompts, fn ->
+      content = system_message["content"] || ""
+      "[Prompt] System content:\n#{content}"
+    end)
 
     # Convert image contexts to user messages
-    image_messages = Enum.map(image_contexts, fn img ->
-      %{"role" => "user", "content" => [img]}
-    end)
+    image_messages =
+      Enum.map(image_contexts, fn img ->
+        %{"role" => "user", "content" => [img]}
+      end)
 
     # Combine: system, images, actual messages
     all_messages = [system_message] ++ image_messages ++ openai_messages
+
+    # Log messages when :prompts domain enabled
+    Log.info(:prompts, fn ->
+      msg_summary = Enum.map(all_messages, fn msg ->
+        role = msg["role"] || msg[:role]
+        content = msg["content"] || msg[:content]
+        content_preview = case content do
+          text when is_binary(text) ->
+            if String.length(text) > 200, do: String.slice(text, 0, 200) <> "...", else: text
+          blocks when is_list(blocks) ->
+            "[#{length(blocks)} content blocks]"
+          _ ->
+            inspect(content, limit: 100)
+        end
+        "  #{role}: #{content_preview}"
+      end)
+      "[Prompt] Messages (#{length(all_messages)}):\n#{Enum.join(msg_summary, "\n")}"
+    end)
 
     # Get model parameters from config with defaults
     model = config[:model] || credentials.model || @default_model
@@ -95,6 +122,15 @@ defmodule Koalemos.LLMProviders.Ollama do
     json_body =
       if length(tool_descriptions) > 0 do
         openai_tools = ToolSchemaConverter.anthropic_to_openai(tool_descriptions)
+
+        # Log tool names when :prompts domain enabled
+        Log.info(:prompts, fn ->
+          tool_names = Enum.map(tool_descriptions, fn tool ->
+            "  - #{tool[:name] || tool["name"]}"
+          end)
+          "[Prompt] Tools (#{length(tool_descriptions)}):\n#{Enum.join(tool_names, "\n")}"
+        end)
+
         Map.put(json_body, :tools, openai_tools)
       else
         json_body
@@ -106,7 +142,11 @@ defmodule Koalemos.LLMProviders.Ollama do
 
   # Make HTTP request to Ollama API
   defp make_request(credentials, json_body, _routine_id) do
-    base_url = credentials.base_url || @default_base_url
+    # Priority order for base_url:
+    # 1. OLLAMA_BASE_URL environment variable (highest - for Docker/config)
+    # 2. credentials.base_url (from credential store)
+    # 3. http://localhost:11434 (default fallback)
+    base_url = System.get_env("OLLAMA_BASE_URL") || credentials.base_url || "http://localhost:11434"
     url = "#{base_url}/v1/chat/completions"
 
     # Ollama doesn't require authentication headers

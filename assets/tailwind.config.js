@@ -8,8 +8,8 @@ const path = require("path")
 module.exports = {
   content: [
     "./js/**/*.js",
-    "../lib/koalemos_web.ex",
-    "../lib/koalemos_web/**/*.*ex"
+    "../lib/wireframe_editor_web.ex",
+    "../lib/wireframe_editor_web/**/*.*ex"
   ],
   theme: {
     extend: {
