@@ -4,6 +4,8 @@ Koalemos is a framework for building conversational AI applications in Elixir. I
 
 ## Quick Start
 
+**Note:** Koalemos is tested with Anthropic Claude models. OpenAI and Ollama support is experimental and may not work reliably.
+
 ### Run the Demo
 
 ```bash
@@ -11,8 +13,6 @@ docker run -p 4000:4000 -e ANTHROPIC_API_KEY=sk-ant-... ghcr.io/gbelinsky/koalem
 ```
 
 Open http://localhost:4000
-
-See [docs/QUICKSTART.md](docs/QUICKSTART.md) for Ollama and other options.
 
 ### Build from Source
 

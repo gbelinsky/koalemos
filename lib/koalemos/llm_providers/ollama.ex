@@ -53,9 +53,8 @@ defmodule Koalemos.LLMProviders.Ollama do
   def call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
     Logger.info("[Ollama] Making request for routine #{routine_id}")
 
-    # Extract text and image contexts
+    # Extract text contexts (images not supported for Ollama)
     text_contexts = Map.get(lens_contexts, :text, [])
-    image_contexts = Map.get(lens_contexts, :images, [])
 
     # Prepare messages using common utilities
     filtered_messages =
@@ -76,14 +75,8 @@ defmodule Koalemos.LLMProviders.Ollama do
       "[Prompt] System content:\n#{content}"
     end)
 
-    # Convert image contexts to user messages
-    image_messages =
-      Enum.map(image_contexts, fn img ->
-        %{"role" => "user", "content" => [img]}
-      end)
-
-    # Combine: system, images, actual messages
-    all_messages = [system_message] ++ image_messages ++ openai_messages
+    # Combine: system message + conversation messages (no images for Ollama)
+    all_messages = [system_message | openai_messages]
 
     # Log messages when :prompts domain enabled
     Log.info(:prompts, fn ->
