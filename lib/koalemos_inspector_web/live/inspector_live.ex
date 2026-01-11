@@ -69,7 +69,8 @@ defmodule KoalemosInspectorWeb.InspectorLive do
         rendered_context: [],
         active_lenses: [],
         disabled_lenses: [],
-        token_estimate: 0
+        token_estimate: 0,
+        llm_log: []
       )
 
     {:ok, socket}
@@ -168,7 +169,8 @@ defmodule KoalemosInspectorWeb.InspectorLive do
         rendered_context: [],
         active_lenses: [],
         disabled_lenses: [],
-        token_estimate: 0
+        token_estimate: 0,
+        llm_log: []
       )
 
     {:noreply, socket}
@@ -212,7 +214,8 @@ defmodule KoalemosInspectorWeb.InspectorLive do
     user_context = %{
       llm_provider: socket.assigns.selected_provider,
       llm_model: String.trim(socket.assigns.model_input),
-      working_directory: socket.assigns.working_directory
+      working_directory: socket.assigns.working_directory,
+      enable_llm_logging: true
     }
 
     case EngineManager.start_routine(routine_id, routine_module, user_context) do
@@ -313,6 +316,20 @@ defmodule KoalemosInspectorWeb.InspectorLive do
 
   defp handle_routine_event(%{event_type: "error_occurred", error: error}, socket) do
     assign(socket, status: :error, last_error: error)
+  end
+
+  defp handle_routine_event(%{event_type: "llm_request_complete"} = event, socket) do
+    # Prepend new log entry (newest first)
+    log_entry = %{
+      timestamp: Map.get(event, :timestamp, DateTime.utc_now()),
+      provider: Map.get(event, :provider),
+      model: Map.get(event, :model),
+      request: Map.get(event, :request, %{}),
+      response: Map.get(event, :response, %{}),
+      usage: Map.get(event, :usage)
+    }
+
+    assign(socket, llm_log: [log_entry | socket.assigns.llm_log])
   end
 
   defp handle_routine_event(_event, socket), do: socket
@@ -670,6 +687,16 @@ defmodule KoalemosInspectorWeb.InspectorLive do
                 >
                   State
                 </button>
+                <button
+                  phx-click="switch_tab"
+                  phx-value-tab="log"
+                  class={tab_class(@inspector_tab == :log)}
+                >
+                  Log
+                  <%= if length(@llm_log) > 0 do %>
+                    <span class="ml-1 px-1.5 py-0.5 text-xs bg-blue-600 rounded-full">{length(@llm_log)}</span>
+                  <% end %>
+                </button>
               </div>
 
               <!-- Tab content -->
@@ -684,6 +711,8 @@ defmodule KoalemosInspectorWeb.InspectorLive do
                     <.context_tab rendered_context={@rendered_context} />
                   <% :state -> %>
                     <.state_tab lens_state={@lens_state} />
+                  <% :log -> %>
+                    <.log_tab llm_log={@llm_log} />
                 <% end %>
               </div>
 
@@ -763,6 +792,111 @@ defmodule KoalemosInspectorWeb.InspectorLive do
     """
   end
 
+  defp log_tab(assigns) do
+    ~H"""
+    <div class="space-y-3 min-w-0">
+      <div class="text-xs text-slate-400 uppercase tracking-wide">LLM Request Log</div>
+      <%= for {entry, idx} <- Enum.with_index(@llm_log) do %>
+        <details class="bg-slate-700 rounded overflow-hidden" open={idx == 0}>
+          <summary class="px-3 py-2 cursor-pointer hover:bg-slate-600 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-500">#{length(@llm_log) - idx}</span>
+              <span class="text-sm font-mono">{entry.provider}/{entry.model}</span>
+            </div>
+            <div class="text-xs text-slate-400">
+              <%= if entry.usage do %>
+                {entry.usage[:input_tokens] || entry.usage["input_tokens"]}→{entry.usage[:output_tokens] || entry.usage["output_tokens"]} tokens
+              <% end %>
+            </div>
+          </summary>
+          <div class="px-3 py-2 border-t border-slate-600 space-y-2">
+            <!-- System Blocks -->
+            <details class="bg-slate-800 rounded">
+              <summary class="px-2 py-1 cursor-pointer hover:bg-slate-700 text-xs text-slate-400">
+                System Blocks ({length(get_in(entry, [:request, :system_blocks]) || [])})
+              </summary>
+              <div class="p-2 space-y-2">
+                <%= for {block, bidx} <- Enum.with_index(get_in(entry, [:request, :system_blocks]) || []) do %>
+                  <details class="bg-slate-900 rounded">
+                    <summary class="px-2 py-1 cursor-pointer hover:bg-slate-800 text-xs text-slate-500">
+                      {bidx + 1}. {block[:type] || block["type"]} ({String.length(block[:text] || block["text"] || "")} chars)
+                    </summary>
+                    <pre class="text-xs text-slate-300 whitespace-pre-wrap break-all p-2 max-h-60 overflow-auto">{block[:text] || block["text"]}</pre>
+                  </details>
+                <% end %>
+              </div>
+            </details>
+
+            <!-- Tools -->
+            <details class="bg-slate-800 rounded">
+              <summary class="px-2 py-1 cursor-pointer hover:bg-slate-700 text-xs text-slate-400">
+                Tools ({length(get_in(entry, [:request, :tools]) || [])})
+              </summary>
+              <div class="p-2 space-y-1">
+                <%= for tool <- get_in(entry, [:request, :tools]) || [] do %>
+                  <div class="text-xs">
+                    <span class="text-blue-400 font-mono">{tool[:name] || tool["name"]}</span>
+                    <span class="text-slate-500 ml-2">{tool[:description] || tool["description"]}</span>
+                  </div>
+                <% end %>
+                <%= if (get_in(entry, [:request, :tools]) || []) == [] do %>
+                  <div class="text-xs text-slate-500 italic">No tools</div>
+                <% end %>
+              </div>
+            </details>
+
+            <!-- Messages -->
+            <details class="bg-slate-800 rounded">
+              <summary class="px-2 py-1 cursor-pointer hover:bg-slate-700 text-xs text-slate-400">
+                Messages ({length(get_in(entry, [:request, :messages]) || [])})
+              </summary>
+              <div class="p-2 space-y-2">
+                <%= for {msg, midx} <- Enum.with_index(get_in(entry, [:request, :messages]) || []) do %>
+                  <details class="bg-slate-900 rounded">
+                    <summary class="px-2 py-1 cursor-pointer hover:bg-slate-800 text-xs text-slate-500">
+                      {midx + 1}. {msg[:role] || msg["role"]}
+                    </summary>
+                    <pre class="text-xs text-slate-300 whitespace-pre-wrap break-all p-2 max-h-40 overflow-auto">{format_message_content(msg[:content] || msg["content"])}</pre>
+                  </details>
+                <% end %>
+              </div>
+            </details>
+
+            <!-- Response -->
+            <details class="bg-slate-800 rounded" open>
+              <summary class="px-2 py-1 cursor-pointer hover:bg-slate-700 text-xs text-slate-400">
+                Response
+              </summary>
+              <div class="p-2 space-y-2">
+                <%= for {block, ridx} <- Enum.with_index(entry.response[:content] || entry.response["content"] || []) do %>
+                  <details class="bg-slate-900 rounded" open={ridx == 0}>
+                    <summary class="px-2 py-1 cursor-pointer hover:bg-slate-800 text-xs text-slate-500">
+                      {ridx + 1}. {block["type"] || block[:type]}
+                      <%= if (block["type"] || block[:type]) == "tool_use" do %>
+                        <span class="text-blue-400 ml-1">{block["name"] || block[:name]}</span>
+                      <% end %>
+                    </summary>
+                    <pre class="text-xs text-slate-300 whitespace-pre-wrap break-all p-2 max-h-40 overflow-auto">{format_response_block(block)}</pre>
+                  </details>
+                <% end %>
+                <%= if entry.response[:error] do %>
+                  <div class="text-xs text-red-400 p-2">{entry.response[:error]}</div>
+                <% end %>
+                <%= if (entry.response[:content] || entry.response["content"] || []) == [] and not Map.has_key?(entry.response, :error) do %>
+                  <div class="text-xs text-slate-500 italic p-2">No response content</div>
+                <% end %>
+              </div>
+            </details>
+          </div>
+        </details>
+      <% end %>
+      <%= if @llm_log == [] do %>
+        <div class="text-sm text-slate-500 italic">No LLM requests yet</div>
+      <% end %>
+    </div>
+    """
+  end
+
   # Helpers
 
   defp tab_class(active?) do
@@ -817,11 +951,50 @@ defmodule KoalemosInspectorWeb.InspectorLive do
     _ -> inspect(state, pretty: true, limit: 500)
   end
 
-  defp truncate(text, max_length) when byte_size(text) > max_length do
+  defp truncate(text, max_length) when is_binary(text) and byte_size(text) > max_length do
     String.slice(text, 0, max_length) <> "..."
   end
 
-  defp truncate(text, _), do: text
+  defp truncate(text, _) when is_binary(text), do: text
+  defp truncate(_, _), do: ""
+
+  defp format_message_content(content) when is_binary(content), do: content
+
+  defp format_message_content(content) when is_list(content) do
+    content
+    |> Enum.map(fn block ->
+      case block do
+        %{"type" => "text", "text" => text} -> text
+        %{type: "text", text: text} -> text
+        %{"type" => "tool_use", "name" => name, "input" => input} ->
+          "[tool_use: #{name}]\n#{Jason.encode!(input, pretty: true)}"
+        %{"type" => "tool_result", "content" => result} ->
+          "[tool_result]\n#{inspect(result, limit: 200)}"
+        _ -> inspect(block, limit: 100)
+      end
+    end)
+    |> Enum.join("\n\n")
+  end
+
+  defp format_message_content(other), do: inspect(other, limit: 200)
+
+  defp format_response_block(block) when is_map(block) do
+    type = block["type"] || block[:type]
+
+    case type do
+      "text" -> block["text"] || block[:text] || ""
+      "tool_use" ->
+        input = block["input"] || block[:input] || %{}
+        try do
+          Jason.encode!(input, pretty: true)
+        rescue
+          _ -> inspect(input, pretty: true)
+        end
+      _ -> inspect(block, pretty: true, limit: 500)
+    end
+  end
+
+  defp format_response_block(other), do: inspect(other, limit: 200)
 
   defp format_number(n) when n >= 1000 do
     "#{div(n, 1000)}k"

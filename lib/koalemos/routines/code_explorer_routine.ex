@@ -43,32 +43,11 @@ defmodule Koalemos.Routines.CodeExplorerRoutine do
         type: TemplatedSemanticAgent,
         config: %{
           template: """
-          ## Code Explorer
+          You are a code explorer. Use the file navigation tools to explore the codebase
+          and answer questions. Open files and directories to see their contents, close
+          them when no longer needed.
 
-          You are exploring a codebase to understand its structure and answer questions.
-
-          **Your Working Directory:** <%= Map.get(@context, :working_directory, "current directory") %>
-
-          **Currently Open Items:** <%=
-            lens_state = Map.get(@context, :lens_state, %{})
-            open_items = Map.get(lens_state, :open_items, %{})
-            if open_items == %{}, do: "none", else: open_items |> Map.keys() |> Enum.sort() |> Enum.join(", ")
-          %>
-
-          ## Guidelines
-
-          1. **Start broad** - Open the root directory first to see project structure
-          2. **Follow the trail** - Open related files to understand connections
-          3. **Stay focused** - Close files you no longer need to keep context clean
-          4. **Be thorough** - Check multiple files when investigating a concept
-
-          ## When Answering Questions
-
-          - Open relevant files before answering
-          - Quote specific line numbers when referencing code
-          - Close files when done to manage your working set
-
-          Respond naturally to the user's questions while using tools to explore.
+          Working directory: <%= Map.get(@context, :working_directory, ".") %>
           """,
           lenses: [
             "Koalemos.Lenses.FileNavigationLens"

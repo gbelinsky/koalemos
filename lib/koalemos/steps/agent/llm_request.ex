@@ -84,7 +84,7 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
                 # Delegate to provider (context already logged by LensRendering step)
                 Log.debug(:llm, "[LLMRequest] Routing to #{provider_name}, #{length(tool_descriptions)} tools, #{length(messages)} messages")
 
-                provider_module.call(
+                result = provider_module.call(
                   messages,
                   credentials,
                   tool_descriptions,
@@ -92,6 +92,13 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
                   config,
                   state.routine_id
                 )
+
+                # Log request/response when enabled
+                if state.context[:enable_llm_logging] do
+                  log_llm_request(state, provider_name, config, lens_contexts, messages, tool_descriptions, result)
+                end
+
+                result
 
               {:error, reason} ->
                 {:error, "Failed to get credentials: #{inspect(reason)}"}
@@ -224,4 +231,103 @@ defmodule Koalemos.Steps.Agent.LLMRequest do
         {:error, "OAuth fallback failed: #{inspect(reason)}"}
     end
   end
+
+  # Log LLM request/response via event system
+  defp log_llm_request(state, provider_name, config, lens_contexts, messages, tool_descriptions, result) do
+    # Build system prompt blocks from lens contexts
+    system_blocks = build_system_blocks(lens_contexts)
+
+    # Extract response data from the diff format returned by providers
+    # Provider returns {:ok, [{:add_or_update, %{llm_response: body}}]}
+    {response_data, usage} = case result do
+      {:ok, diff} when is_list(diff) ->
+        llm_response = extract_llm_response_from_diff(diff)
+        {summarize_response(llm_response), extract_usage(llm_response)}
+      {:error, reason} ->
+        {%{error: inspect(reason)}, nil}
+      _ ->
+        {%{error: "Unexpected result format"}, nil}
+    end
+
+    # Summarize tools
+    tools = Enum.map(tool_descriptions || [], fn tool ->
+      %{
+        name: Map.get(tool, :name) || Map.get(tool, "name"),
+        description: truncate_text(Map.get(tool, :description) || Map.get(tool, "description") || "", 100)
+      }
+    end)
+
+    Koalemos.Engine.EventRecorder.record_event(state, "llm_request_complete", %{
+      provider: provider_name,
+      model: config[:model],
+      request: %{
+        system_blocks: system_blocks,
+        messages: messages,
+        tools: tools
+      },
+      response: response_data,
+      usage: usage
+    })
+  end
+
+  defp build_system_blocks(lens_contexts) do
+    text_blocks = lens_contexts[:text] || []
+    step_prompt = lens_contexts[:step_prompt]
+
+    blocks = Enum.map(text_blocks, fn
+      %{text: text} -> %{type: "lens_context", text: text}
+      text when is_binary(text) -> %{type: "lens_context", text: text}
+      other -> %{type: "lens_context", text: inspect(other)}
+    end)
+
+    if step_prompt do
+      [%{type: "step_prompt", text: step_prompt} | blocks]
+    else
+      blocks
+    end
+  end
+
+  defp truncate_text(text, max) when is_binary(text) and byte_size(text) > max do
+    String.slice(text, 0, max) <> "..."
+  end
+  defp truncate_text(text, _) when is_binary(text), do: text
+  defp truncate_text(_, _), do: ""
+
+  # Extract llm_response from the diff list returned by providers
+  defp extract_llm_response_from_diff(diff) when is_list(diff) do
+    Enum.find_value(diff, %{}, fn
+      {:add_or_update, %{llm_response: response}} -> response
+      [:add_or_update, %{llm_response: response}] -> response
+      _ -> nil
+    end)
+  end
+
+  defp summarize_response(response) when is_map(response) do
+    # Extract key parts without the full raw response
+    # Handle both string and atom keys
+    content = Map.get(response, "content") || Map.get(response, :content) || []
+
+    %{
+      content: content,
+      stop_reason: Map.get(response, "stop_reason") || Map.get(response, :stop_reason),
+      model: Map.get(response, "model") || Map.get(response, :model)
+    }
+  end
+
+  defp summarize_response(_), do: %{content: [], stop_reason: nil, model: nil}
+
+  defp extract_usage(response) when is_map(response) do
+    usage = Map.get(response, "usage") || Map.get(response, :usage)
+
+    case usage do
+      nil -> nil
+      u when is_map(u) -> %{
+        input_tokens: Map.get(u, "input_tokens") || Map.get(u, :input_tokens),
+        output_tokens: Map.get(u, "output_tokens") || Map.get(u, :output_tokens)
+      }
+      _ -> nil
+    end
+  end
+
+  defp extract_usage(_), do: nil
 end

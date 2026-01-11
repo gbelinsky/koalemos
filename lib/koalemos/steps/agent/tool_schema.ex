@@ -75,6 +75,7 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
 
   # Get tools from a module name with proper error checking
   # Passes config to tools/1 if available (for conditional tool exposure like readonly mode)
+  # Returns tuples of {module, tool_atom, config} to preserve config for info/2
   defp get_tools_from_module_name(module_name, config) do
     try do
       module = Module.safe_concat([module_name])
@@ -82,19 +83,23 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
       # Check if module exists and is loaded
       case Code.ensure_loaded(module) do
         {:module, ^module} ->
-          cond do
-            # Prefer tools/1 for config-aware lenses (e.g., readonly mode)
-            function_exported?(module, :tools, 1) ->
-              module.tools(config)
+          tools =
+            cond do
+              # Prefer tools/1 for config-aware lenses (e.g., readonly mode)
+              function_exported?(module, :tools, 1) ->
+                module.tools(config)
 
-            # Fall back to tools/0 for backward compatibility
-            function_exported?(module, :tools, 0) ->
-              module.tools()
+              # Fall back to tools/0 for backward compatibility
+              function_exported?(module, :tools, 0) ->
+                module.tools()
 
-            true ->
-              # Module exists but doesn't implement lens interface
-              []
-          end
+              true ->
+                # Module exists but doesn't implement lens interface
+                []
+            end
+
+          # Attach config to each tool tuple for use in info/2
+          Enum.map(tools, fn {mod, atom} -> {mod, atom, config} end)
 
         {:error, _reason} ->
           raise ArgumentError, "Lens module #{module_name} not found or could not be loaded"
@@ -106,11 +111,15 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
   end
 
   # Build tool description schemas for LLM API
+  # Passes lens config via :current_lens_config in context
   defp build_tool_descriptions(all_tools, context) do
-    Enum.map(all_tools, fn {module, tool_atom} ->
+    Enum.map(all_tools, fn {module, tool_atom, lens_config} ->
+      # Merge lens config into context for info/2
+      enhanced_context = Map.put(context, :current_lens_config, lens_config)
+
       # Check for context-aware info/2, fall back to info/1
       if function_exported?(module, :info, 2) do
-        module.info(tool_atom, context)
+        module.info(tool_atom, enhanced_context)
       else
         module.info(tool_atom)
       end
@@ -118,12 +127,15 @@ defmodule Koalemos.Steps.Agent.ToolSchema do
   end
 
   # Build map from tool name to {module, tool_atom} for execution lookup
+  # Also uses lens config to get correct tool names (for configurable tool names)
   defp build_tool_map(all_tools) do
-    Enum.reduce(all_tools, %{}, fn {module, tool_atom}, acc ->
-      # Use info/2 with empty context if available, otherwise info/1
+    Enum.reduce(all_tools, %{}, fn {module, tool_atom, lens_config}, acc ->
+      # Pass lens config for lenses with configurable tool names
+      enhanced_context = %{current_lens_config: lens_config}
+
       tool_info =
         if function_exported?(module, :info, 2) do
-          module.info(tool_atom, %{})
+          module.info(tool_atom, enhanced_context)
         else
           module.info(tool_atom)
         end
