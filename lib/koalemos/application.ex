@@ -15,7 +15,8 @@ defmodule Koalemos.Application do
     children =
       infrastructure ++
         Koalemos.Supervisor.children() ++
-        WireframeEditorWeb.Supervisor.children()
+        WireframeEditorWeb.Supervisor.children() ++
+        KoalemosInspectorWeb.Supervisor.children()
 
     opts = [strategy: :one_for_one, name: Koalemos.Supervisor]
     Supervisor.start_link(children, opts)
@@ -24,6 +25,7 @@ defmodule Koalemos.Application do
   @impl true
   def config_change(changed, _new, removed) do
     WireframeEditorWeb.Endpoint.config_change(changed, removed)
+    KoalemosInspectorWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 end

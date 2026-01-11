@@ -106,7 +106,7 @@ defmodule WireframeEditorWeb.ChatPanel do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="chat-panel h-full flex flex-col">
+    <div class="chat-panel h-full flex flex-col min-w-0 overflow-hidden">
       <!-- Tab Header (only shown when system messages are visible) -->
       <%= if @show_system_messages do %>
         <div class="border-b border-slate-200 bg-white">
@@ -157,8 +157,8 @@ defmodule WireframeEditorWeb.ChatPanel do
             show_system_messages={@show_system_messages}
           />
         <% else %>
-          <div class="h-full overflow-auto p-4 bg-slate-50 font-mono text-xs">
-            <pre class="text-slate-800"><%= Jason.encode!(@messages, pretty: true) %></pre>
+          <div class="h-full overflow-auto p-4 bg-slate-50 font-mono text-xs min-w-0">
+            <pre class="text-slate-800 whitespace-pre-wrap break-all"><%= Jason.encode!(@messages, pretty: true) %></pre>
           </div>
         <% end %>
       </div>

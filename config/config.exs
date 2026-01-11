@@ -10,6 +10,7 @@ import Config
 # Import component-specific configuration
 import_config "koalemos_core.exs"
 import_config "wireframe_editor_web.exs"
+import_config "koalemos_inspector_web.exs"
 
 # Shared logger configuration
 config :logger, :console,
