@@ -38,8 +38,11 @@ defmodule KoalemosInspectorWeb.InspectorLive do
     "Koalemos.Routines.TestChatRoutine" => "Test Chat",
     "Koalemos.Routines.PersonaTestRoutine" => "Persona Test",
     "Koalemos.Routines.ThinkingTestRoutine" => "Thinking Test",
-    "Koalemos.Routines.CodeExplorerRoutine" => "Code Explorer"
+    "Koalemos.Routines.CodeExplorerRoutine" => "Code Explorer",
+    "Koalemos.Routines.TraditionalAgentRoutine" => "Traditional Agent"
   }
+
+  @default_system_prompt "You are a software engineer. Help with coding tasks using the available tools."
 
   @impl true
   def mount(_params, _session, socket) do
@@ -55,6 +58,7 @@ defmodule KoalemosInspectorWeb.InspectorLive do
         model_input: "claude-sonnet-4-5",
         provider_presets: @provider_presets,
         working_directory: File.cwd!(),
+        system_prompt: @default_system_prompt,
         # Runtime state
         routine_id: nil,
         routine_module: nil,
@@ -114,6 +118,11 @@ defmodule KoalemosInspectorWeb.InspectorLive do
   def handle_event("working_directory_form_change", %{"working_directory" => path}, socket) do
     Logger.debug("working_directory_form_change: #{path}")
     {:noreply, assign(socket, working_directory: path)}
+  end
+
+  def handle_event("system_prompt_form_change", %{"system_prompt" => prompt}, socket) do
+    Logger.debug("system_prompt_form_change")
+    {:noreply, assign(socket, system_prompt: prompt)}
   end
 
   def handle_event("start_session", _params, socket) do
@@ -215,6 +224,7 @@ defmodule KoalemosInspectorWeb.InspectorLive do
       llm_provider: socket.assigns.selected_provider,
       llm_model: String.trim(socket.assigns.model_input),
       working_directory: socket.assigns.working_directory,
+      system_prompt: socket.assigns.system_prompt,
       enable_llm_logging: true
     }
 
@@ -572,6 +582,27 @@ defmodule KoalemosInspectorWeb.InspectorLive do
                   <div class="text-xs text-red-400">Directory not found</div>
                 <% end %>
               </div>
+
+              <!-- System Prompt (for TraditionalAgentRoutine) -->
+              <%= if String.contains?(@routine_input, "TraditionalAgentRoutine") do %>
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium text-slate-300">System Prompt</label>
+                  <form phx-change="system_prompt_form_change" phx-submit="system_prompt_form_change">
+                    <textarea
+                      name="system_prompt"
+                      phx-debounce="300"
+                      placeholder="Enter system prompt for the agent..."
+                      rows="6"
+                      class="w-full px-3 py-2 rounded-lg text-sm resize-y"
+                      style="background-color: #0f172a; border: 1px solid #475569; color: #ffffff;"
+                      spellcheck="false"
+                    ><%= @system_prompt %></textarea>
+                  </form>
+                  <div class="text-xs text-slate-400">
+                    This prompt is injected as the agent's system context.
+                  </div>
+                </div>
+              <% end %>
 
               <!-- Current Selection Summary -->
               <div class="p-3 bg-slate-900 rounded-lg text-sm">
