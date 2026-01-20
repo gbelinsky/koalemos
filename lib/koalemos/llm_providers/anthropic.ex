@@ -29,9 +29,9 @@ defmodule Koalemos.LLMProviders.Anthropic do
   ## Progressive Retry
 
   Requests are retried with increasing timeouts:
-  1. First attempt: 45 seconds
-  2. Second attempt: 90 seconds
-  3. Third attempt: 180 seconds
+  1. First attempt: 2 minutes (120 seconds)
+  2. Second attempt: 4 minutes (240 seconds)
+  3. Third attempt: 8 minutes (480 seconds)
 
   Retryable HTTP status codes: 429, 500, 502, 503, 504, 529
   """
@@ -46,7 +46,9 @@ defmodule Koalemos.LLMProviders.Anthropic do
   @default_model "claude-sonnet-4-5-20250929"
   @default_max_tokens 16384
   @default_temperature 0.1
-  @timeouts [45_000, 90_000, 180_000]
+  # Progressive timeouts for retries: 2min, 4min, 8min
+  # Longer timeouts support large responses (e.g., retrospective documents with 6k+ tokens)
+  @timeouts [120_000, 240_000, 480_000]
 
   @impl true
   def call(messages, credentials, tool_descriptions, lens_contexts, config, routine_id) do
@@ -349,12 +351,26 @@ defmodule Koalemos.LLMProviders.Anthropic do
     # Step prompt at the end (instruction for this turn) - most recent = most attention
     step_prompt_content =
       case step_prompt do
-        nil -> []
-        prompt when is_binary(prompt) -> [%{type: "text", text: prompt}]
-        _ -> []
+        nil ->
+          []
+        prompt when is_binary(prompt) ->
+          trimmed = String.trim(prompt)
+          if trimmed != "", do: [%{type: "text", text: prompt}], else: []
+        _ ->
+          []
       end
 
-    [base_content] ++ formatted_lens_contexts ++ step_prompt_content
+    # Combine all blocks and filter out empty ones
+    all_blocks = [base_content] ++ formatted_lens_contexts ++ step_prompt_content
+
+    Enum.filter(all_blocks, fn block ->
+      case block do
+        %{type: "text", text: text} when is_binary(text) ->
+          String.trim(text) != ""
+        _ ->
+          true
+      end
+    end)
   end
 
   # Extract retry delay from rate limit headers, fall back to exponential backoff

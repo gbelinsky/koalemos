@@ -47,3 +47,10 @@ npm-debug.log
 *.credentials.json
 .env
 .env.local
+
+# macOS
+.DS_Store
+
+# Temporary test scripts
+test_*.exs
+check_*.exs
