@@ -1,34 +1,41 @@
-defmodule Koalemos.Lenses.TraditionalAgentLens do
+defmodule Koalemos.Lenses.ContextAgentLens do
   @moduledoc """
-  TraditionalAgentLens provides opencode-compatible tools for fair comparison testing.
+  ContextAgentLens provides context-focused file management for comparison testing.
 
-  This lens implements identical tool names, parameters, and behaviors to opencode,
-  enabling direct comparison between traditional agent approaches and Koalemos's
-  dynamic context approaches.
+  This lens combines traditional coding tools (Write, Edit, Glob, Grep, Bash, TodoWrite)
+  with an open/close paradigm for automatic context management. Files explicitly opened
+  appear in context automatically and stay updated after edits.
 
   ## Design Philosophy
 
-  - Minimal context: just basic tool instructions
-  - No dynamic context injection - agent must explicitly read files
-  - No automatic file state, AST analysis, or relationship mapping
-  - Tool behaviors and limitations match opencode exactly
+  - Context-focused: Open files appear in context, not in messages
+  - Automatic updates: Edited files auto-refresh in context
+  - Explicit control: Agent chooses what to open/close
+  - Constraint-based: Edit only works on open files (parallel to "Read before Edit")
+
+  ## Paradigm Comparison
+
+  **Traditional Agent**: Read → Edit (content in messages)
+  **Context Agent**: Open → Edit (content in context)
 
   ## Tools
 
-  - `Read` - Read file contents with line numbers
-  - `Write` - Create or overwrite files
-  - `Edit` - Exact string replacement in files
-  - `Glob` - Find files by pattern
-  - `Grep` - Search file contents with regex
-  - `Bash` - Execute shell commands
-  - `TodoWrite` - Manage task list for tracking progress
+  - `open` - Add file/directory to context (like Read but persistent)
+  - `close` - Remove file/directory from context
+  - `write` - Create/overwrite files (auto-opens new files)
+  - `edit` - Exact string replacement (only works on open files, auto-refreshes)
+  - `glob` - Find files by pattern
+  - `grep` - Search file contents with regex
+  - `bash` - Execute shell commands
+  - `todo_write` - Manage task list
 
   ## Usage
 
   ```elixir
   lenses: [
-    ["Koalemos.Lenses.TraditionalAgentLens", %{
-      working_directory: "/path/to/project"
+    ["Koalemos.Lenses.ContextAgentLens", %{
+      working_directory: "/path/to/project",
+      max_open_files: 25
     }]
   ]
   ```
@@ -37,43 +44,66 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
   require Logger
 
   @default_timeout 120_000
-  @default_read_limit 2000
   @max_line_length 2000
+  @default_max_open_files 25
 
   @doc """
-  Provide context including optional static system prompt and current todos.
+  Provide context including system prompt, open files/directories, and todos.
 
-  Config options:
-  - `system_prompt` - Static system prompt to inject (for comparison testing).
-                      Supports EEx templates with @context access.
-  - `working_directory` - Base directory for file operations.
-                          Supports EEx templates with @context access.
+  Context blocks are rendered in this order:
+  1. System prompt (if configured)
+  2. Open files summary
+  3. Each open file (with line numbers) or directory (with listings)
+  4. Todos (if present)
   """
   def provide_context(state, config \\ %{}) do
     lens_state = Map.get(state.context, :lens_state, %{})
+    open_items = Map.get(lens_state, :open_items, %{})
     todos = Map.get(lens_state, :todos, [])
 
     # Evaluate config templates with context
     evaluated_config = evaluate_config(config, state.context)
+    max_files = Map.get(evaluated_config, :max_open_files, @default_max_open_files)
 
-    # Start with static system prompt if provided
-    system_prompt_block =
+    # System prompt
+    system_prompt_blocks =
       case Map.get(evaluated_config, :system_prompt) do
         nil -> []
-        "" -> []  # Explicitly filter empty strings
+        "" -> []
         prompt when is_binary(prompt) -> [%{type: "text", text: prompt}]
         _ -> []
       end
 
-    # Add todo context if todos exist
-    todo_block =
+    # Open files summary and content
+    open_file_blocks =
+      if open_items == %{} do
+        []
+      else
+        count = map_size(open_items)
+        paths = Map.keys(open_items) |> Enum.sort() |> Enum.join(", ")
+
+        summary = %{
+          type: "text",
+          text: "## Open Files: #{count}/#{max_files}\n\n#{paths}\n"
+        }
+
+        content_blocks =
+          open_items
+          |> Enum.sort_by(fn {path, _} -> path end)
+          |> Enum.map(&render_open_item/1)
+
+        [summary | content_blocks]
+      end
+
+    # Todos
+    todo_blocks =
       if Enum.empty?(todos) do
         []
       else
         [%{type: "text", text: render_todos(todos)}]
       end
 
-    system_prompt_block ++ todo_block
+    system_prompt_blocks ++ open_file_blocks ++ todo_blocks
   end
 
   @doc """
@@ -81,7 +111,8 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
   """
   def tools(_config \\ %{}) do
     [
-      {__MODULE__, :read},
+      {__MODULE__, :open},
+      {__MODULE__, :close},
       {__MODULE__, :write},
       {__MODULE__, :edit},
       {__MODULE__, :glob},
@@ -95,31 +126,48 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
 
   def info(tool, context \\ %{})
 
-  def info(:read, _context) do
+  def info(:open, _context) do
     %{
-      name: "Read",
+      name: "Open",
       description: """
-      Read file contents with line numbers.
-      Returns content with line number prefix (e.g., "42: content").
-      Lines longer than #{@max_line_length} characters are truncated.
+      Open a file or directory to add it to your working context.
+      - Files: Content appears in context with line numbers
+      - Directories: Listing appears with file metadata
+      Content stays visible in context across turns and auto-updates after edits.
+      Maximum 25 files can be open simultaneously.
+
+      Tip: Close files that are no longer relevant to free up space for new files.
       """,
       input_schema: %{
         type: "object",
         properties: %{
-          file_path: %{
+          path: %{
             type: "string",
-            description: "Absolute or relative path to the file to read"
-          },
-          offset: %{
-            type: "number",
-            description: "Line number to start from (0-based). Default: 0"
-          },
-          limit: %{
-            type: "number",
-            description: "Maximum number of lines to read. Default: #{@default_read_limit}"
+            description: "Path to file or directory (absolute or relative to working directory)"
           }
         },
-        required: ["file_path"]
+        required: ["path"]
+      }
+    }
+  end
+
+  def info(:close, _context) do
+    %{
+      name: "Close",
+      description: """
+      Close a file or directory, removing it from your working context.
+      Use this to free up space when files are no longer needed for your current task.
+      This helps manage context efficiently and stay within the maximum open file limit.
+      """,
+      input_schema: %{
+        type: "object",
+        properties: %{
+          path: %{
+            type: "string",
+            description: "Path to close (must match the path used to open)"
+          }
+        },
+        required: ["path"]
       }
     }
   end
@@ -131,6 +179,7 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
       Create a new file or completely overwrite an existing file.
       The entire content will replace any existing content.
       Parent directories are created if they don't exist.
+      New files are automatically opened and added to context.
       """,
       input_schema: %{
         type: "object",
@@ -154,9 +203,11 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
       name: "Edit",
       description: """
       Replace an exact string in a file.
+      IMPORTANT: File must be open first (use 'open' tool).
       Fails if old_string is not found in the file.
       By default, only replaces the first occurrence.
       Set replace_all to true to replace all occurrences.
+      File content in context automatically refreshes after edit.
       """,
       input_schema: %{
         type: "object",
@@ -190,6 +241,7 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
       Find files matching a glob pattern.
       Returns list of file paths matching the pattern.
       Supports patterns like "**/*.ex", "src/**/*.ts", etc.
+      Tip: Use 'open <file>' to add files to context for viewing.
       """,
       input_schema: %{
         type: "object",
@@ -214,6 +266,7 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
       description: """
       Search file contents using regex patterns.
       Returns matching files or content based on output_mode.
+      Tip: Use 'open <file>' to view full content of matching files.
       """,
       input_schema: %{
         type: "object",
@@ -327,40 +380,99 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
 
   # Tool execution
 
-  def execute(:read, args, context) do
-    file_path = args["file_path"]
-    offset = args["offset"] || 0
-    limit = args["limit"] || @default_read_limit
+  def execute(:open, args, context) do
+    path = args["path"]
+    lens_state = Map.get(context, :lens_state, %{})
+    open_items = Map.get(lens_state, :open_items, %{})
 
-    full_path = resolve_path(file_path, context)
+    # Get config for max_open_files
+    config = Map.get(context, :current_lens_config, %{})
+    evaluated_config = evaluate_config(config, context)
+    max_files = Map.get(evaluated_config, :max_open_files, @default_max_open_files)
 
-    case File.read(full_path) do
-      {:ok, content} ->
-        lines =
-          content
-          |> String.split("\n")
-          |> Enum.drop(offset)
-          |> Enum.take(limit)
-          |> Enum.with_index(offset + 1)
-          |> Enum.map_join("\n", fn {line, num} ->
-            truncated = truncate_line(line, @max_line_length)
-            "#{num}: #{truncated}"
-          end)
+    # Check limit BEFORE opening
+    if map_size(open_items) >= max_files do
+      paths = Map.keys(open_items) |> Enum.sort() |> Enum.join(", ")
 
-        total_lines = content |> String.split("\n") |> length()
-        shown_lines = min(limit, max(0, total_lines - offset))
+      {
+        "Error: Maximum #{max_files} files already open (#{paths}). Close some files first.",
+        []
+      }
+    else
+      working_dir = get_working_dir(context)
+      full_path = resolve_path(path, working_dir)
 
-        header = "File: #{file_path} (#{total_lines} total lines, showing #{shown_lines} from line #{offset + 1})\n\n"
-        {header <> lines, []}
+      cond do
+        File.regular?(full_path) ->
+          # Open file
+          case File.read(full_path) do
+            {:ok, content} ->
+              lines = String.split(content, "\n") |> length()
 
-      {:error, :enoent} ->
-        {"Error: File not found: #{file_path}", []}
+              item = %{
+                type: :file,
+                full_path: full_path,
+                content: content,
+                lines: lines,
+                last_modified: DateTime.utc_now()
+              }
 
-      {:error, :eisdir} ->
-        {"Error: Path is a directory, not a file: #{file_path}", []}
+              updated_items = Map.put(open_items, path, item)
+              {"opened: #{path} (#{lines} lines)", [open_items: updated_items]}
 
-      {:error, reason} ->
-        {"Error: Could not read file #{file_path}: #{inspect(reason)}", []}
+            {:error, reason} ->
+              {"Error: Could not read file #{path}: #{inspect(reason)}", []}
+          end
+
+        File.dir?(full_path) ->
+          # Open directory
+          case File.ls(full_path) do
+            {:ok, entries} ->
+              entries_with_metadata =
+                entries
+                |> Enum.sort()
+                |> Enum.map(fn name ->
+                  entry_path = Path.join(full_path, name)
+
+                  if File.dir?(entry_path) do
+                    %{name: name, type: :directory}
+                  else
+                    lines = count_lines(entry_path)
+                    %{name: name, type: :file, lines: lines}
+                  end
+                end)
+
+              item = %{
+                type: :directory,
+                full_path: full_path,
+                entries: entries_with_metadata
+              }
+
+              updated_items = Map.put(open_items, path, item)
+
+              {"opened: #{path}/ (#{length(entries_with_metadata)} entries)",
+               [open_items: updated_items]}
+
+            {:error, reason} ->
+              {"Error: Could not read directory #{path}: #{inspect(reason)}", []}
+          end
+
+        true ->
+          {"Error: Path not found: #{path}", []}
+      end
+    end
+  end
+
+  def execute(:close, args, context) do
+    path = args["path"]
+    lens_state = Map.get(context, :lens_state, %{})
+    open_items = Map.get(lens_state, :open_items, %{})
+
+    if Map.has_key?(open_items, path) do
+      updated_items = Map.delete(open_items, path)
+      {"closed: #{path}", [open_items: updated_items]}
+    else
+      {"Error: #{path} is not open", []}
     end
   end
 
@@ -368,17 +480,48 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
     file_path = args["file_path"]
     content = args["content"]
 
-    full_path = resolve_path(file_path, context)
+    # Validate content is a string/binary
+    content_to_write = cond do
+      is_binary(content) -> content
+      is_map(content) or is_list(content) ->
+        # If it's a data structure, try to encode as JSON
+        case Jason.encode(content, pretty: true) do
+          {:ok, json} -> json
+          {:error, _} -> inspect(content, pretty: true)
+        end
+      true ->
+        # For anything else, convert to string representation
+        inspect(content, pretty: true)
+    end
+
+    working_dir = get_working_dir(context)
+    full_path = resolve_path(file_path, working_dir)
 
     # Create parent directories if needed
     dir = Path.dirname(full_path)
 
     case File.mkdir_p(dir) do
       :ok ->
-        case File.write(full_path, content) do
+        case File.write(full_path, content_to_write) do
           :ok ->
-            lines = content |> String.split("\n") |> length()
-            {"Successfully wrote #{lines} lines to #{file_path}", []}
+            lines = content_to_write |> String.split("\n") |> length()
+
+            # Always add to open_items (new or updated)
+            lens_state = Map.get(context, :lens_state, %{})
+            open_items = Map.get(lens_state, :open_items, %{})
+
+            new_item = %{
+              type: :file,
+              full_path: full_path,
+              content: content_to_write,
+              lines: lines,
+              last_modified: DateTime.utc_now()
+            }
+
+            updated_items = Map.put(open_items, file_path, new_item)
+
+            {"Successfully wrote #{lines} lines to #{file_path} (auto-opened)",
+             [open_items: updated_items]}
 
           {:error, reason} ->
             {"Error: Could not write to #{file_path}: #{inspect(reason)}", []}
@@ -395,42 +538,70 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
     new_string = args["new_string"]
     replace_all = args["replace_all"] || false
 
-    full_path = resolve_path(file_path, context)
+    # Check if file is open FIRST
+    lens_state = Map.get(context, :lens_state, %{})
+    open_items = Map.get(lens_state, :open_items, %{})
 
-    case File.read(full_path) do
-      {:ok, content} ->
-        if String.contains?(content, old_string) do
-          new_content =
-            if replace_all do
-              String.replace(content, old_string, new_string)
-            else
-              String.replace(content, old_string, new_string, global: false)
+    unless Map.has_key?(open_items, file_path) do
+      {
+        "Error: File '#{file_path}' is not open. Use 'open #{file_path}' first.",
+        []
+      }
+    else
+      working_dir = get_working_dir(context)
+      full_path = resolve_path(file_path, working_dir)
+
+      case File.read(full_path) do
+        {:ok, content} ->
+          if String.contains?(content, old_string) do
+            new_content =
+              if replace_all do
+                String.replace(content, old_string, new_string)
+              else
+                String.replace(content, old_string, new_string, global: false)
+              end
+
+            case File.write(full_path, new_content) do
+              :ok ->
+                count =
+                  if replace_all do
+                    # Count occurrences
+                    length(String.split(content, old_string)) - 1
+                  else
+                    1
+                  end
+
+                # Auto-refresh: Re-read file and update open_items
+                lines = String.split(new_content, "\n") |> length()
+
+                updated_item = %{
+                  open_items[file_path]
+                  | content: new_content,
+                    lines: lines,
+                    last_modified: DateTime.utc_now()
+                }
+
+                updated_items = Map.put(open_items, file_path, updated_item)
+
+                {"Successfully replaced #{count} occurrence(s) in #{file_path} (context auto-refreshed)",
+                 [open_items: updated_items]}
+
+              {:error, reason} ->
+                {"Error: Could not write to #{file_path}: #{inspect(reason)}", []}
             end
-
-          case File.write(full_path, new_content) do
-            :ok ->
-              count =
-                if replace_all do
-                  # Count occurrences
-                  length(String.split(content, old_string)) - 1
-                else
-                  1
-                end
-
-              {"Successfully replaced #{count} occurrence(s) in #{file_path}", []}
-
-            {:error, reason} ->
-              {"Error: Could not write to #{file_path}: #{inspect(reason)}", []}
+          else
+            {
+              "Error: old_string not found in #{file_path}. The exact string must exist in the file.",
+              []
+            }
           end
-        else
-          {"Error: old_string not found in #{file_path}. The exact string must exist in the file.", []}
-        end
 
-      {:error, :enoent} ->
-        {"Error: File not found: #{file_path}", []}
+        {:error, :enoent} ->
+          {"Error: File not found: #{file_path}", []}
 
-      {:error, reason} ->
-        {"Error: Could not read file #{file_path}: #{inspect(reason)}", []}
+        {:error, reason} ->
+          {"Error: Could not read file #{file_path}: #{inspect(reason)}", []}
+      end
     end
   end
 
@@ -438,7 +609,8 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
     pattern = args["pattern"]
     base_path = args["path"]
 
-    search_path = if base_path, do: resolve_path(base_path, context), else: get_working_dir(context)
+    working_dir = get_working_dir(context)
+    search_path = if base_path, do: resolve_path(base_path, working_dir), else: working_dir
 
     full_pattern =
       if String.starts_with?(pattern, "/") do
@@ -463,7 +635,11 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
         end)
 
       result = Enum.join(relative_matches, "\n")
-      {"Found #{length(matches)} file(s):\n\n#{result}", []}
+
+      {
+        "Found #{length(matches)} file(s):\n\n#{result}\n\nTip: Use 'open <file>' to add files to context",
+        []
+      }
     end
   end
 
@@ -473,7 +649,8 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
     glob_pattern = args["glob"]
     output_mode = args["output_mode"] || "files_with_matches"
 
-    base_path = if search_path, do: resolve_path(search_path, context), else: get_working_dir(context)
+    working_dir = get_working_dir(context)
+    base_path = if search_path, do: resolve_path(search_path, working_dir), else: working_dir
 
     case Regex.compile(pattern) do
       {:ok, regex} ->
@@ -548,7 +725,9 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
         in_progress = Enum.count(todos, &(&1["status"] == "in_progress"))
         completed = Enum.count(todos, &(&1["status"] == "completed"))
 
-        summary = "Todo list updated: #{completed} completed, #{in_progress} in progress, #{pending} pending"
+        summary =
+          "Todo list updated: #{completed} completed, #{in_progress} in progress, #{pending} pending"
+
         {summary, [todos: todos]}
 
       {:error, reason} ->
@@ -561,44 +740,6 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
   end
 
   # Private helpers
-
-  # Evaluate EEx templates in config values
-  # This allows dynamic configuration using context values like:
-  # system_prompt: "<%= Map.get(@context, :system_prompt, \"default\") %>"
-  defp evaluate_config(config, context) when is_map(config) do
-    Map.new(config, fn {key, value} ->
-      {key, evaluate_template_value(value, context)}
-    end)
-  end
-
-  defp evaluate_config(config, _context), do: config
-
-  # Evaluate a single value - recursively handle strings, maps, and lists
-  defp evaluate_template_value(value, context) when is_binary(value) do
-    # Check if string contains EEx markers
-    if String.contains?(value, "<%") do
-      try do
-        assigns = %{context: context}
-        EEx.eval_string(value, assigns: assigns)
-      rescue
-        error ->
-          Logger.warning("Failed to evaluate EEx template in lens config: #{Exception.message(error)}")
-          value  # Return original value on failure
-      end
-    else
-      value
-    end
-  end
-
-  defp evaluate_template_value(value, context) when is_map(value) do
-    evaluate_config(value, context)
-  end
-
-  defp evaluate_template_value(value, context) when is_list(value) do
-    Enum.map(value, &evaluate_template_value(&1, context))
-  end
-
-  defp evaluate_template_value(value, _context), do: value
 
   defp validate_todos(todos) when is_list(todos) do
     in_progress_count = Enum.count(todos, &(&1["status"] == "in_progress"))
@@ -657,13 +798,70 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
     """
   end
 
-  defp resolve_path(path, context) do
-    base = get_working_dir(context)
+  # Render an open file or directory for context display
+  defp render_open_item({path, %{type: :file, content: content, lines: lines}}) do
+    # Truncate if too large
+    max_lines = 500
 
+    {display_content, truncation_note} =
+      if lines > max_lines do
+        truncated =
+          content
+          |> String.split("\n")
+          |> Enum.take(max_lines)
+          |> Enum.join("\n")
+
+        {truncated, "\n\n[... #{lines - max_lines} more lines. Use offset/limit if needed.]"}
+      else
+        {content, ""}
+      end
+
+    numbered =
+      display_content
+      |> String.split("\n")
+      |> Enum.with_index(1)
+      |> Enum.map_join("\n", fn {line, num} ->
+        "#{String.pad_leading(Integer.to_string(num), 4)} | #{line}"
+      end)
+
+    %{
+      type: "text",
+      text: """
+      ## Open File: #{path} (#{lines} lines)
+
+      ```
+      #{numbered}
+      ```
+      #{truncation_note}
+      """
+    }
+  end
+
+  defp render_open_item({path, %{type: :directory, entries: entries}}) do
+    listing =
+      Enum.map_join(entries, "\n", fn entry ->
+        case entry do
+          %{type: :directory, name: name} -> "  #{name}/"
+          %{type: :file, name: name, lines: lines} when not is_nil(lines) -> "  #{name} (#{lines} lines)"
+          %{name: name} -> "  #{name}"
+        end
+      end)
+
+    %{
+      type: "text",
+      text: """
+      ## Open Directory: #{path}/ (#{length(entries)} entries)
+
+      #{listing}
+      """
+    }
+  end
+
+  defp resolve_path(path, base_path) do
     if Path.type(path) == :absolute do
       path
     else
-      Path.join(base, path) |> Path.expand()
+      Path.join(base_path, path) |> Path.expand()
     end
   end
 
@@ -677,11 +875,10 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
       File.cwd!()
   end
 
-  defp truncate_line(line, max_length) do
-    if String.length(line) > max_length do
-      String.slice(line, 0, max_length) <> "..."
-    else
-      line
+  defp count_lines(path) do
+    case File.read(path) do
+      {:ok, content} -> content |> String.split("\n") |> length()
+      {:error, _} -> nil
     end
   end
 
@@ -757,7 +954,11 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
 
   defp format_grep_results(results, pattern, "files_with_matches") do
     files = Enum.map(results, fn {path, _} -> path end)
-    {"Found #{length(files)} file(s) matching '#{pattern}':\n\n#{Enum.join(files, "\n")}", []}
+
+    {
+      "Found #{length(files)} file(s) matching '#{pattern}':\n\n#{Enum.join(files, "\n")}\n\nTip: Use 'open <file>' to view full content",
+      []
+    }
   end
 
   defp format_grep_results(results, pattern, "count") do
@@ -783,6 +984,60 @@ defmodule Koalemos.Lenses.TraditionalAgentLens do
       end)
 
     match_count = Enum.reduce(results, 0, fn {_, matches}, acc -> acc + length(matches) end)
-    {"Found #{match_count} match(es) for '#{pattern}' in #{length(results)} file(s):\n\n#{output}", []}
+
+    {
+      "Found #{match_count} match(es) for '#{pattern}' in #{length(results)} file(s):\n\n#{output}",
+      []
+    }
   end
+
+  defp truncate_line(line, max_length) do
+    if String.length(line) > max_length do
+      String.slice(line, 0, max_length) <> "..."
+    else
+      line
+    end
+  end
+
+  # Evaluate EEx templates in config values
+  # This allows dynamic configuration using context values like:
+  # system_prompt: "<%= Map.get(@context, :system_prompt, \"default\") %>"
+  defp evaluate_config(config, context) when is_map(config) do
+    Map.new(config, fn {key, value} ->
+      {key, evaluate_template_value(value, context)}
+    end)
+  end
+
+  defp evaluate_config(config, _context), do: config
+
+  # Evaluate a single value - recursively handle strings, maps, and lists
+  defp evaluate_template_value(value, context) when is_binary(value) do
+    # Check if string contains EEx markers
+    if String.contains?(value, "<%") do
+      try do
+        assigns = %{context: context}
+        EEx.eval_string(value, assigns: assigns)
+      rescue
+        error ->
+          Logger.warning(
+            "Failed to evaluate EEx template in lens config: #{Exception.message(error)}"
+          )
+
+          # Return original value on failure
+          value
+      end
+    else
+      value
+    end
+  end
+
+  defp evaluate_template_value(value, context) when is_map(value) do
+    evaluate_config(value, context)
+  end
+
+  defp evaluate_template_value(value, context) when is_list(value) do
+    Enum.map(value, &evaluate_template_value(&1, context))
+  end
+
+  defp evaluate_template_value(value, _context), do: value
 end

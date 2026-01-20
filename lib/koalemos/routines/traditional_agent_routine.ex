@@ -65,7 +65,7 @@ defmodule Koalemos.Routines.TraditionalAgentRoutine do
       system_prompt: "You are a software engineer. Help with coding tasks using the available tools.",
       llm_provider: "anthropic",
       llm_model: "claude-sonnet-4-5",
-      max_tokens: 8192,
+      max_tokens: 32000,
       temperature: 0.3
     }
   end

@@ -14,6 +14,7 @@ defmodule KoalemosInspectorWeb.InspectorLive do
 
   alias Koalemos.{EngineManager, Engine}
   alias WireframeEditorWeb.ChatPanel
+  import WireframeEditorWeb.MarkdownHelper
 
   # Available providers and their preset models
   @provider_presets %{
@@ -39,13 +40,14 @@ defmodule KoalemosInspectorWeb.InspectorLive do
     "Koalemos.Routines.PersonaTestRoutine" => "Persona Test",
     "Koalemos.Routines.ThinkingTestRoutine" => "Thinking Test",
     "Koalemos.Routines.CodeExplorerRoutine" => "Code Explorer",
-    "Koalemos.Routines.TraditionalAgentRoutine" => "Traditional Agent"
+    "Koalemos.Routines.TraditionalAgentRoutine" => "Traditional Agent",
+    "Koalemos.Routines.ContextAgentRoutine" => "Context Agent"
   }
 
   @default_system_prompt "You are a software engineer. Help with coding tasks using the available tools."
 
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     socket =
       socket
       |> assign(
@@ -74,16 +76,90 @@ defmodule KoalemosInspectorWeb.InspectorLive do
         active_lenses: [],
         disabled_lenses: [],
         token_estimate: 0,
-        llm_log: []
+        llm_log: [],
+        # Retrospective state
+        retrospective_id: nil,
+        retrospective_status: :idle,
+        retrospective_results: [],
+        retrospective_error: nil,
+        # Extraction state
+        extraction_id: nil,
+        extraction_status: :idle,
+        extracted_insights: []
       )
+
+    # Check if we should attach to an existing routine
+    socket =
+      case Map.get(params, "routine_id") do
+        nil -> socket
+        routine_id -> attach_to_routine(socket, routine_id)
+      end
 
     {:ok, socket}
   end
 
   @impl true
+  def handle_params(params, _uri, socket) do
+    # Handle URL parameter changes (e.g., from push_patch)
+    # Mount already handles initial attachment, so just update if needed
+    socket =
+      case Map.get(params, "routine_id") do
+        nil ->
+          socket
+
+        routine_id when routine_id == socket.assigns.routine_id ->
+          # Already attached to this routine, no change needed
+          socket
+
+        routine_id ->
+          # New routine_id in URL, attach to it
+          attach_to_routine(socket, routine_id)
+      end
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("set_routine", %{"routine" => routine}, socket) do
     Logger.debug("set_routine: #{routine}")
-    {:noreply, assign(socket, routine_input: routine)}
+
+    # Update system prompt based on routine
+    system_prompt = cond do
+      String.contains?(routine, "ContextAgentRoutine") ->
+        """
+        You are a software engineer with context-aware file management.
+
+        ## File Management Strategy
+
+        - Use 'open' to add files/directories to your working context
+        - Open files stay visible and auto-update after edits
+        - Use 'close' to remove files when done
+        - Maximum 10 open files at once
+
+        ## Tool Workflow
+
+        1. **Explore**: Use Glob/Grep to find relevant files
+        2. **Open**: Add files to context with 'open' (content appears automatically)
+        3. **Edit**: Modify open files with 'edit' (only works on open files)
+        4. **Write**: Create new files with 'write' (auto-opens them)
+        5. **Close**: Remove files from context when finished
+
+        ## Important
+
+        - Unlike traditional agents, you don't need to Read files repeatedly
+        - Open files are always visible in your context
+        - After editing, the updated content appears automatically (no re-reading needed)
+        - You must 'open' files before you can 'edit' them (parallel to "Read before Edit")
+
+        Help with coding tasks using the available tools.
+        """
+      String.contains?(routine, "TraditionalAgentRoutine") ->
+        "You are a software engineer. Help with coding tasks using the available tools."
+      true ->
+        @default_system_prompt
+    end
+
+    {:noreply, assign(socket, routine_input: routine, system_prompt: system_prompt)}
   end
 
   def handle_event("routine_form_change", %{"routine_input" => value}, socket) do
@@ -139,7 +215,17 @@ defmodule KoalemosInspectorWeb.InspectorLive do
   end
 
   def handle_event("switch_tab", %{"tab" => tab}, socket) do
-    {:noreply, assign(socket, inspector_tab: String.to_existing_atom(tab))}
+    tab_atom =
+      case tab do
+        "lenses" -> :lenses
+        "context" -> :context
+        "state" -> :state
+        "log" -> :log
+        "retrospective" -> :retrospective
+        _ -> :lenses
+      end
+
+    {:noreply, assign(socket, inspector_tab: tab_atom)}
   end
 
   def handle_event("toggle_inspector", _params, socket) do
@@ -164,6 +250,16 @@ defmodule KoalemosInspectorWeb.InspectorLive do
   end
 
   def handle_event("reset_session", _params, socket) do
+    # Unsubscribe from retrospective if active
+    if socket.assigns.retrospective_id do
+      Phoenix.PubSub.unsubscribe(Koalemos.PubSub, "routine:#{socket.assigns.retrospective_id}")
+    end
+
+    # Unsubscribe from extraction if active
+    if socket.assigns.extraction_id do
+      Phoenix.PubSub.unsubscribe(Koalemos.PubSub, "routine:#{socket.assigns.extraction_id}")
+    end
+
     # Reset to setup state
     socket =
       socket
@@ -179,10 +275,57 @@ defmodule KoalemosInspectorWeb.InspectorLive do
         active_lenses: [],
         disabled_lenses: [],
         token_estimate: 0,
-        llm_log: []
+        llm_log: [],
+        # Retrospective resets
+        retrospective_id: nil,
+        retrospective_status: :idle,
+        retrospective_results: [],
+        retrospective_error: nil,
+        # Extraction resets
+        extraction_id: nil,
+        extraction_status: :idle,
+        extracted_insights: []
       )
 
     {:noreply, socket}
+  end
+
+  def handle_event("trigger_retrospective", _params, socket) do
+    routine_id = socket.assigns.routine_id
+
+    if routine_id do
+      # Generate unique ID for retrospective routine
+      retro_id = "retrospective-#{:erlang.unique_integer([:positive])}"
+
+      # Subscribe to retrospective events
+      Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{retro_id}")
+
+      # Start retrospective routine with source_routine_id
+      user_context = %{
+        source_routine_id: routine_id
+      }
+
+      case EngineManager.start_routine(
+             retro_id,
+             Koalemos.Routines.RetrospectiveRoutine,
+             user_context
+           ) do
+        {:ok, _pid} ->
+          {:noreply,
+           socket
+           |> assign(retrospective_id: retro_id)
+           |> assign(retrospective_status: :running)
+           |> assign(retrospective_error: nil)}
+
+        {:error, reason} ->
+          {:noreply,
+           socket
+           |> assign(retrospective_status: :error)
+           |> assign(retrospective_error: "Failed to start: #{inspect(reason)}")}
+      end
+    else
+      {:noreply, assign(socket, last_error: "No active routine to analyze")}
+    end
   end
 
   # Private helpers for session management
@@ -245,12 +388,49 @@ defmodule KoalemosInspectorWeb.InspectorLive do
           |> assign(routine_module: routine_module)
           |> assign(status: :running)
           |> assign(active_lenses: active_lenses)
+          |> push_patch(to: "/#{routine_id}")
 
         {:noreply, socket}
 
       {:error, reason} ->
         Logger.error("Failed to start routine: #{inspect(reason)}")
         {:noreply, assign(socket, last_error: "Failed to start: #{inspect(reason)}")}
+    end
+  end
+
+  defp attach_to_routine(socket, routine_id) do
+    Logger.info("Attempting to attach to routine: #{routine_id}")
+
+    case EngineManager.get_routine(routine_id) do
+      {:ok, routine_info} ->
+        Logger.info("Successfully found routine #{routine_id}, attaching...")
+
+        # Subscribe to routine events
+        Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}")
+        Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{routine_id}:messages")
+
+        # Extract config from context for display
+        context = routine_info.context || %{}
+        
+        socket
+        |> assign(routine_id: routine_id)
+        |> assign(routine_module: routine_info.module)
+        |> assign(status: routine_info.status)
+        |> assign(messages: routine_info.messages)
+        |> assign(lens_state: routine_info.lens_state)
+        |> assign(active_lenses: context[:lenses] || [])
+        |> assign(current_step: routine_info.current_step)
+        |> assign(selected_provider: context[:llm_provider] || "anthropic")
+        |> assign(model_input: context[:llm_model] || "claude-sonnet-4-5")
+        |> assign(working_directory: context[:working_directory] || File.cwd!())
+        |> assign(system_prompt: context[:system_prompt] || @default_system_prompt)
+        |> assign(extraction_id: nil)
+        |> assign(extraction_status: :idle)
+        |> assign(extracted_insights: [])
+
+      {:error, :not_found} ->
+        Logger.warning("Routine #{routine_id} not found, staying in setup mode")
+        assign(socket, last_error: "Routine #{routine_id} not found. Starting fresh session.")
     end
   end
 
@@ -292,13 +472,178 @@ defmodule KoalemosInspectorWeb.InspectorLive do
   end
 
   def handle_info({:routine_event, event}, socket) do
-    socket = handle_routine_event(event, socket)
+    routine_id = Map.get(event, :routine_id)
+
+    socket =
+      cond do
+        # Extraction event
+        routine_id == socket.assigns.extraction_id ->
+          handle_extraction_event(event, socket)
+
+        # Retrospective event
+        routine_id == socket.assigns.retrospective_id ->
+          handle_retrospective_event(event, socket)
+
+        # Main routine event (existing behavior)
+        routine_id == socket.assigns.routine_id ->
+          handle_routine_event(event, socket)
+
+        # Unknown routine, ignore
+        true ->
+          socket
+      end
+
     {:noreply, socket}
   end
 
   def handle_info(_msg, socket) do
     {:noreply, socket}
   end
+
+  defp handle_retrospective_event(%{event_type: "routine_completed"} = event, socket) do
+    # Extract context from event metadata
+    context = get_in(event, [:metadata, :final_context]) || %{}
+    
+    # Extract knowledge_document from context
+    # StructuredResponseAgent stores output in context[:structured_output][field_name]
+    knowledge_doc =
+      get_in(context, [:structured_output, "knowledge_document"]) ||
+        get_in(context, [:structured_output, :knowledge_document]) ||
+        get_in(context, [:knowledge_document]) ||
+        get_in(context, ["knowledge_document"])
+
+    # Debug logging
+    Logger.info("Retrospective completed. Context keys: #{inspect(Map.keys(context))}")
+    Logger.info("Structured output: #{inspect(get_in(context, [:structured_output]))}")
+    Logger.info("Knowledge doc found: #{!is_nil(knowledge_doc)}")
+
+    retro_id = socket.assigns.retrospective_id
+
+    # Add to results list
+    result = {retro_id, knowledge_doc || "No knowledge document generated"}
+    updated_results = socket.assigns.retrospective_results ++ [result]
+
+    socket =
+      socket
+      |> assign(retrospective_status: :completed)
+      |> assign(retrospective_results: updated_results)
+      |> assign(inspector_tab: :retrospective)
+
+    # Automatically start knowledge extraction if we have a document
+    if knowledge_doc && knowledge_doc != "" do
+      start_knowledge_extraction(socket, retro_id, knowledge_doc)
+    else
+      socket
+    end
+  end
+
+  defp handle_retrospective_event(%{event_type: "error_occurred"} = event, socket) do
+    error_msg = Map.get(event, :error, "Unknown error")
+    
+    Logger.error("Retrospective error: #{inspect(error_msg)}")
+    Logger.error("Full event: #{inspect(event, pretty: true)}")
+
+    socket
+    |> assign(retrospective_status: :error)
+    |> assign(retrospective_error: error_msg)
+  end
+
+  defp handle_retrospective_event(%{event_type: "step_started"}, socket) do
+    # Just tracking, no UI updates needed
+    socket
+  end
+
+  defp handle_retrospective_event(event, socket) do
+    # Log unknown events for debugging
+    Logger.debug("Retrospective event (#{event[:event_type]}): #{inspect(event, pretty: true, limit: 3)}")
+    socket
+  end
+
+  # Knowledge Extraction Event Handlers
+
+  defp start_knowledge_extraction(socket, retro_id, knowledge_doc) do
+    # Generate unique ID for extraction routine
+    extract_id = "extraction-#{:erlang.unique_integer([:positive])}"
+
+    Logger.info("Starting knowledge extraction routine: #{extract_id}")
+
+    # Subscribe to extraction events
+    Phoenix.PubSub.subscribe(Koalemos.PubSub, "routine:#{extract_id}")
+
+    # Start extraction routine with knowledge document
+    user_context = %{
+      source_retrospective_id: retro_id,
+      messages: [
+        %{
+          role: "user",
+          content: """
+          Please extract discrete, actionable insights from the following retrospective analysis.
+
+          # Retrospective Document
+
+          #{knowledge_doc}
+
+          Extract insights following the guidelines provided in your system prompt.
+          """
+        }
+      ]
+    }
+
+    case EngineManager.start_routine(
+           extract_id,
+           Koalemos.Routines.KnowledgeExtractionRoutine,
+           user_context
+         ) do
+      {:ok, _pid} ->
+        Logger.info("Knowledge extraction started: #{extract_id}")
+        socket
+        |> assign(extraction_id: extract_id)
+        |> assign(extraction_status: :running)
+        |> assign(extracted_insights: [])
+
+      {:error, reason} ->
+        Logger.error("Failed to start extraction: #{inspect(reason)}")
+        socket
+        |> assign(extraction_status: :error)
+    end
+  end
+
+  defp handle_extraction_event(%{event_type: "routine_completed"} = event, socket) do
+    # Extract insights from context
+    context = get_in(event, [:metadata, :final_context]) || %{}
+    
+    insights =
+      get_in(context, [:structured_output, "insights"]) ||
+        get_in(context, [:structured_output, :insights]) ||
+        []
+
+    Logger.info("Extraction completed. Found #{length(insights)} insights")
+
+    socket
+    |> assign(extraction_status: :completed)
+    |> assign(extracted_insights: insights)
+  end
+
+  defp handle_extraction_event(%{event_type: "error_occurred"} = event, socket) do
+    error_msg = get_in(event, [:metadata, :error]) || "Unknown error"
+    Logger.error("Extraction error: #{inspect(error_msg)}")
+
+    socket
+    |> assign(extraction_status: :error)
+  end
+
+  defp handle_extraction_event(%{event_type: "step_started"}, socket) do
+    # Keep status as :running
+    socket
+  end
+
+  defp handle_extraction_event(event, socket) do
+    # Log unknown events for debugging
+    Logger.debug("Extraction event (#{event[:event_type]}): #{inspect(event, pretty: true, limit: 3)}")
+    socket
+  end
+
+  # Main Routine Event Handlers
 
   defp handle_routine_event(%{event_type: "step_started", step_id: step_id}, socket) do
     assign(socket, current_step: step_id)
@@ -447,6 +792,44 @@ defmodule KoalemosInspectorWeb.InspectorLive do
             >
               New Session
             </button>
+            <%= if @routine_id && @status in [:running, :completed, :error] do %>
+              <button
+                phx-click="trigger_retrospective"
+                disabled={@retrospective_status == :running}
+                class={"px-3 py-1 text-xs rounded transition #{
+                  if @retrospective_status == :running do
+                    "bg-slate-600 text-slate-400 cursor-not-allowed"
+                  else
+                    "bg-purple-600 text-white hover:bg-purple-700"
+                  end
+                }"}
+              >
+                <%= if @retrospective_status == :running do %>
+                  <div class="flex items-center gap-2">
+                    <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                      <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                      >
+                      </circle>
+                      <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      >
+                      </path>
+                    </svg>
+                    <span>Analyzing...</span>
+                  </div>
+                <% else %>
+                  Run Retrospective
+                <% end %>
+              </button>
+            <% end %>
           <% end %>
           <span class="text-sm text-slate-400">
             {status_badge(@status)}
@@ -583,8 +966,8 @@ defmodule KoalemosInspectorWeb.InspectorLive do
                 <% end %>
               </div>
 
-              <!-- System Prompt (for TraditionalAgentRoutine) -->
-              <%= if String.contains?(@routine_input, "TraditionalAgentRoutine") do %>
+              <!-- System Prompt (for TraditionalAgentRoutine and ContextAgentRoutine) -->
+              <%= if String.contains?(@routine_input, "TraditionalAgentRoutine") or String.contains?(@routine_input, "ContextAgentRoutine") do %>
                 <div class="space-y-2">
                   <label class="block text-sm font-medium text-slate-300">System Prompt</label>
                   <form phx-change="system_prompt_form_change" phx-submit="system_prompt_form_change">
@@ -728,6 +1111,18 @@ defmodule KoalemosInspectorWeb.InspectorLive do
                     <span class="ml-1 px-1.5 py-0.5 text-xs bg-blue-600 rounded-full">{length(@llm_log)}</span>
                   <% end %>
                 </button>
+                <button
+                  phx-click="switch_tab"
+                  phx-value-tab="retrospective"
+                  class={tab_class(@inspector_tab == :retrospective)}
+                >
+                  Retrospective
+                  <%= if length(@retrospective_results) > 0 do %>
+                    <span class="ml-1 px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
+                      {length(@retrospective_results)}
+                    </span>
+                  <% end %>
+                </button>
               </div>
 
               <!-- Tab content -->
@@ -744,6 +1139,16 @@ defmodule KoalemosInspectorWeb.InspectorLive do
                     <.state_tab lens_state={@lens_state} />
                   <% :log -> %>
                     <.log_tab llm_log={@llm_log} />
+
+                  <% :retrospective -> %>
+                    <.retrospective_tab
+                      retrospective_status={@retrospective_status}
+                      retrospective_error={@retrospective_error}
+                      retrospective_results={@retrospective_results}
+                      extraction_status={@extraction_status}
+                      extraction_id={@extraction_id}
+                      extracted_insights={@extracted_insights}
+                    />
                 <% end %>
               </div>
 
@@ -924,6 +1329,174 @@ defmodule KoalemosInspectorWeb.InspectorLive do
       <%= if @llm_log == [] do %>
         <div class="text-sm text-slate-500 italic">No LLM requests yet</div>
       <% end %>
+    </div>
+    """
+  end
+
+  defp retrospective_tab(assigns) do
+    ~H"""
+    <div class="p-4 space-y-4">
+      <%= if @retrospective_status == :running do %>
+        <!-- Running State -->
+        <div class="flex items-center gap-3 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <svg class="animate-spin h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24">
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            >
+            </circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            >
+            </path>
+          </svg>
+          <span class="text-sm text-purple-700">Running retrospective analysis...</span>
+        </div>
+      <% end %>
+      <%= if @retrospective_status == :error do %>
+        <!-- Error State -->
+        <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <h3 class="text-sm font-semibold text-red-900 mb-1">Error</h3>
+          <p class="text-sm text-red-700">{@retrospective_error}</p>
+        </div>
+      <% end %>
+      <%= if Enum.empty?(@retrospective_results) && @retrospective_status == :idle do %>
+        <!-- Empty State -->
+        <div class="text-center py-8">
+          <svg
+            class="mx-auto h-12 w-12 text-slate-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-slate-900">No retrospectives yet</h3>
+          <p class="mt-1 text-sm text-slate-500">
+            Click "Run Retrospective" to analyze the current routine
+          </p>
+        </div>
+      <% end %>
+      <!-- Results List (newest first) -->
+      <%= for {retro_id, knowledge_doc} <- Enum.reverse(@retrospective_results) do %>
+        <div class="border border-slate-200 rounded-lg overflow-hidden">
+          <div class="bg-slate-50 px-4 py-2 border-b border-slate-200">
+            <h3 class="text-xs font-medium text-slate-700">
+              Retrospective: {retro_id}
+            </h3>
+          </div>
+          <div class="p-4 bg-white">
+            <!-- Use markdown helper for rendering -->
+            <div class="prose prose-sm max-w-none
+                        prose-p:my-2 prose-p:leading-relaxed prose-p:text-slate-700
+                        prose-ul:my-2 prose-ul:list-disc prose-ul:pl-5
+                        prose-ol:my-2 prose-ol:list-decimal prose-ol:pl-5
+                        prose-li:my-1
+                        prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:text-slate-800
+                        prose-pre:bg-slate-900 prose-pre:p-3 prose-pre:rounded-lg prose-pre:my-3
+                        [&_pre_code]:text-slate-100 [&_pre_code]:bg-transparent [&_pre_code]:p-0
+                        prose-h1:text-base prose-h1:font-bold prose-h1:mt-4 prose-h1:mb-2 prose-h1:text-slate-900
+                        prose-h2:text-sm prose-h2:font-bold prose-h2:mt-3 prose-h2:mb-1.5 prose-h2:text-slate-900
+                        prose-h3:text-sm prose-h3:font-semibold prose-h3:mt-2 prose-h3:mb-1 prose-h3:text-slate-800
+                        prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:pl-4 prose-blockquote:italic">
+              {safe_markdown_to_html(knowledge_doc, skip_wrapper: true)}
+            </div>
+          </div>
+        </div>
+      <% end %>
+      <!-- Extraction Status -->
+      <%= if @extraction_status == :running do %>
+        <div class="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <svg class="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            >
+            </circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            >
+            </path>
+          </svg>
+          <span class="text-sm text-blue-700">Extracting insights from retrospective...</span>
+        </div>
+      <% end %>
+      <%= if @extraction_status == :error do %>
+        <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <h3 class="text-sm font-semibold text-red-900 mb-1">Extraction Error</h3>
+          <p class="text-sm text-red-700">Failed to extract insights from retrospective</p>
+        </div>
+      <% end %>
+      <!-- Extracted Insights -->
+      <%= if @extraction_status == :completed && !Enum.empty?(@extracted_insights) do %>
+        <div class="border border-emerald-200 rounded-lg overflow-hidden bg-emerald-50">
+          <div class="bg-emerald-100 px-4 py-2 border-b border-emerald-200">
+            <h3 class="text-sm font-semibold" style="color: #064e3b;">
+              🎯 Extracted Insights ({length(@extracted_insights)})
+            </h3>
+            <p class="text-xs mt-0.5" style="color: #047857;">
+              Atomic, actionable knowledge units from the retrospective
+            </p>
+          </div>
+          <div class="p-4 space-y-3">
+            <%= for insight <- @extracted_insights do %>
+              <.insight_card insight={insight} />
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  defp insight_card(assigns) do
+    ~H"""
+    <div class="bg-white border border-slate-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+      <!-- Domain Badge and Section -->
+      <div class="flex items-start justify-between mb-3">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-100 border border-blue-200" style="color: #1e40af;">
+          🏷️ {Map.get(@insight, "domain", "general")}
+        </span>
+        <span class="text-xs italic" style="color: #64748b;">
+          {Map.get(@insight, "section", "")}
+        </span>
+      </div>
+      
+      <!-- Summary -->
+      <h4 class="text-sm font-semibold mb-3 leading-relaxed" style="color: #0f172a;">
+        {Map.get(@insight, "summary", "")}
+      </h4>
+      
+      <!-- Reminder (yellow sticky note style with explicit colors) -->
+      <div class="mb-3 p-3 rounded-md" style="background-color: #fef3c7; border: 1px solid #fbbf24;">
+        <p class="text-sm leading-relaxed" style="color: #78350f;">
+          <span class="font-bold">💡 Reminder:</span>
+          <span class="ml-1">{Map.get(@insight, "reminder", "")}</span>
+        </p>
+      </div>
+      
+      <!-- Applies When -->
+      <div class="text-sm leading-relaxed" style="color: #334155;">
+        <span class="font-semibold" style="color: #0f172a;">📍 Applies when:</span>
+        <span class="ml-1">{Map.get(@insight, "applies_when", "")}</span>
+      </div>
     </div>
     """
   end

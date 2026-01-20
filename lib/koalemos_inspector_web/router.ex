@@ -13,6 +13,7 @@ defmodule KoalemosInspectorWeb.Router do
   scope "/", KoalemosInspectorWeb do
     pipe_through :browser
 
+    live "/:routine_id", InspectorLive
     live "/", InspectorLive
   end
 end
